@@ -2,102 +2,50 @@ import itertools
 import math
 import os
 
-import matplotlib.pyplot as plt
-import numpy as np
-import openpyxl
 import pandas as pd
 import sklearn.preprocessing as pre
 
 import api
-import datasets
+import queries
 
-COUNTIES_OF_INTEREST = [
-    'Alameda',
-    'Contra Costa',
-    'Marin',
-    'Napa',
-    'San Mateo',
-    'San Francisco',
-    'Santa Clara',
-    'Solano',
-    'Sonoma',
-]
-
-ACTION_OVERHEAD = 7
+# Pandas options
+pd.set_option('max_rows', 10)
+pd.set_option('max_columns', 10)
+pd.set_option('expand_frame_repr', True)
+pd.set_option('large_repr', 'truncate')
+pd.options.display.float_format = '{:.2f}'.format
 
 
-def process_poverty_data():
-    files = [
-        {
-            'name': 'CA Statewide Poverty Data',
-            'type': 'xlsx',
-            'directory': 'data/',
-            'sheet': 'Data',
-            'features': [
-                'race_eth_code',
-                'race_eth_name',
-                'geoname',
-                'county_name',
-                'strata_one_code',
-                'strata_one_name',
-                'numerator',
-                'denominator',
-                'estimate',
-            ]
-        },
-    ]
-    for file in files:
-        data = datasets.DataSet(file['directory'], file['name'], file['type'], file['sheet'])
-        data.get_data()
-        data.drop_blank_feature_values(file['features'])
-        data.drop_non_feature_columns(file['features'])
-        df = data.filter_counties(COUNTIES_OF_INTEREST, 'county_name')
-
-        data.save()
+def filter_state(data: pd.DataFrame, state: str) -> pd.DataFrame:
+    return data[data['State'] == state]
 
 
-def reshape_data() -> pd.DataFrame:
-    data = []
-    features = []
-    ignore_features = ['Unemployment_Crises_changes_3m', 'Unemployment_Crises_changes']
-    for filename in os.listdir('../data-analysis/new_story/data'):
-        if filename.startswith("FRED"):
-            name = filename[5:][:-4]
-            if name not in ignore_features:
-                features.append(name)
-                df = api.get_from_csv('data/' + filename)
-                data.append(df)
+def filter_counties(data: pd.DataFrame, counties: list) -> pd.DataFrame:
+    return data[data['County Name'].isin(counties)]
 
-    transformed_df = pd.DataFrame(index=COUNTIES_OF_INTEREST)
-    for i, d in enumerate(data):
-        d = d[COUNTIES_OF_INTEREST]
-        most_recent = d.tail(1)
-        most_recent = most_recent.T
-        most_recent.columns = [features[i]]
-        transformed_df[features[i]] = most_recent
 
-    transformed_df['non_homeownership_rate_percentage'] = 100 - transformed_df['homeownership_rate_percentage']
+def reshape_fred_data(data: pd.DataFrame) -> pd.DataFrame:
+    data['Non-Home Ownership (%)'] = 100 - data['Home Ownership (%)']
 
-    vulnerability_df = api.get_from_csv('data/vulnerability_index.csv')
-    vulnerability_df.rename(columns={'VulnerabilityIndex': 'COVID_VulnerabilityIndex'}, inplace=True)
-    vulnerability_df['COVID_VulnerabilityIndex'] = vulnerability_df['COVID_VulnerabilityIndex'] - 100
-    transformed_df = transformed_df.join(vulnerability_df.set_index('County'))
-
-    # transformed_df = transformed_df.join(policy_df.set_index('County'))
-
-    shelter_df = api.get_from_excel('data/shelter_capacity.xlsx', sheet_name='capacity in use')
-    shelter_df.drop(['PIT Sheltered Homeless, 2016', 'Total Year Round Beds', 'Seasonal Beds', 'Overflow Beds',
-                     'Sheltered Homeless to Total Beds', 'PIT Available Beds'], axis=1, inplace=True)
-    shelter_df.rename(columns={'2019 Sheltered Homeless to Total Beds': 'Percent_Shelter_Beds_Occupied'}, inplace=True)
-    transformed_df = transformed_df.join(shelter_df.set_index('County'))
-
-    transformed_df.drop([
-        'homeownership_rate_percentage',
-        'Rank'
+    data.drop([
+        'Home Ownership (%)',
+        'State',
+        'county_id',
+        'Burdened Households Date',
+        'Home Ownership Date',
+        'Income Inequality Date',
+        'Population Below Poverty Line Date',
+        'Single Parent Households Date',
+        'SNAP Benefits Recipients Date',
+        'Unemployment Rate Date'
     ], axis=1, inplace=True)
-    transformed_df.to_excel('data_clean.xlsx')
 
-    return transformed_df
+    data.set_index(['County Name'], drop=True)
+    data = data.loc[:, ~data.columns.str.contains('^Unnamed')]
+
+    data.to_excel('Output/FRED_data_cleaned.xlsx')
+
+    return data
 
 
 def percent_to_population(feature: str, name: str, df: pd.DataFrame) -> pd.DataFrame:
@@ -106,10 +54,10 @@ def percent_to_population(feature: str, name: str, df: pd.DataFrame) -> pd.DataF
 
 
 def cross_features(df: pd.DataFrame) -> pd.DataFrame:
-    cols = ['Pop_Below_Poverty_Level', 'Pop_Unemployed', 'income_inequality_ratio', 'non_homeowners',
-            'Num_Burdened_HouseHolds', 'Num_Single_Parent_Households']
+    cols = ['Pop_Below_Poverty_Level', 'Pop_Unemployed', 'Income Inequality (Ratio)', 'Non_Home_Ownership_Pop',
+            'Num_Burdened_Households', 'Num_Single_Parent_Households']
     all_combinations = []
-    for r in range(3, len(cols)):
+    for r in range(2, len(cols)):
         combinations_list = list(itertools.combinations(cols, r))
         all_combinations += combinations_list
     all_combinations.pop(0)
@@ -119,27 +67,25 @@ def cross_features(df: pd.DataFrame) -> pd.DataFrame:
 
     crossed_df = pd.DataFrame(new_cols)
     crossed_df = crossed_df.T
-    # crossed_df['Sum'] = crossed_df.sum(axis=1)
     crossed_df['Mean'] = crossed_df.mean(axis=1)
-    # crossed_df['Median'] = crossed_df.median(axis=1)
     crossed_df.to_excel('data_crossed.xlsx')
 
     return crossed_df
 
 
 def normalize(df) -> pd.DataFrame:
-    df = percent_to_population('Percent_of_Pop_Below_Poverty_Level', 'Pop_Below_Poverty_Level', df)
-    df = percent_to_population('Unemployment_Cleaned', 'Pop_Unemployed', df)
-    df = percent_to_population('Burdened_HouseHolds', 'Num_Burdened_HouseHolds', df)
-    df = percent_to_population('Single_Parent_Households', 'Num_Single_Parent_Households', df)
-    df = percent_to_population('non_homeownership_rate_percentage', 'non_homeowners', df)
+    df = percent_to_population('Population Below Poverty Line (%)', 'Pop_Below_Poverty_Level', df)
+    df = percent_to_population('Unemployment Rate (%)', 'Pop_Unemployed', df)
+    df = percent_to_population('Burdened Households (%)', 'Num_Burdened_Households', df)
+    df = percent_to_population('Single Parent Households (%)', 'Num_Single_Parent_Households', df)
+    df = percent_to_population('Non-Home Ownership (%)', 'Non_Home_Ownership_Pop', df)
 
     df = df.drop(['Percent_of_Pop_Below_Poverty_Level',
                   'Unemployment_Cleaned',
-                  'Burdened_HouseHolds',
-                  'Single_Parent_Households',
+                  'Burdened Households (%)',
+                  'Single Parent Households (%)',
                   'Resident_Population_thousands_of_persons',
-                  'non_homeownership_rate_percentage'], axis=1)
+                  'Non-Home Ownership (%)'], axis=1)
 
     scaler = pre.MaxAbsScaler()
     df_scaled = pd.DataFrame(scaler.fit_transform(df), index=df.index, columns=df.columns)
@@ -172,19 +118,10 @@ def priority_indicator(relative_risk: float, policy_index: float, time_left: flo
     return relative_risk * (1 - policy_index) * time_to_action / math.sqrt(time_left)
 
 
-def poverty_demographics():
-    df = pd.read_excel('data/CA Statewide Poverty Data clean.xlsx')
-    res = df.groupby(['county_name', 'race_eth_name']).sum()
-    res['estimate'] = res['numerator'] / res['denominator']
-    res.drop(index='Total', level=1, inplace=True)
-    g = res['estimate'].groupby(level=0, group_keys=False, )
-    df = g.apply(lambda x: x.sort_values(ascending=False))
-    df.to_excel('CAPoverty_sorted.xlsx')
-
-
-def main():
-    df = reshape_data()
+def main(df):
+    df=reshape_fred_data(df)
     analysis_df = normalize(df)
+
     policy_df = api.get_from_csv('data/policy_index.csv')
     policy_df['PolicyIndex'] = 1 - policy_df['PolicyIndex']
 
@@ -198,28 +135,67 @@ def main():
     analysis_df['Relative Rank'] = (analysis_df['Total Relative Risk'] / max_sum)
     analysis_df.to_excel('overall_vulnerability.xlsx')
 
-    presentation_df = df.copy()
-    presentation_df['Crossed'] = analysis_df['Crossed']
-    presentation_df['Relative Rank'] = analysis_df['Relative Rank']
-    presentation_df.to_excel('presentation_data.xlsx')
+    return analysis_df
+
+
+def get_single_county(county: str, state: str) -> pd.DataFrame:
+    if os.path.exists("all_tables.xlsx"):
+        print('Using local `all_tables.xlsx`')
+        df = pd.read_excel('Output/all_tables.xlsx')
+    else:
+        # Todo: Use query function to get from database
+        df = pd.DataFrame()
+    df = filter_state(df, state)
+    df = filter_counties(df, [county])
+    return df
+
+
+def get_multiple_counties(counties: list) -> pd.DataFrame:
+    if os.path.exists("all_tables.xlsx"):
+        print('Using local `all_tables.xlsx`')
+        df = pd.read_excel('Output/all_tables.xlsx')
+    else:
+        # Todo: Use query function to get from database
+        df = pd.DataFrame()
+    df = filter_counties(df, counties)
+
+    return df
+
+
+def get_state_data(state: str) -> pd.DataFrame:
+    if os.path.exists("all_tables.xlsx"):
+        print('Using local `all_tables.xlsx`')
+        df = pd.read_excel('Output/all_tables.xlsx')
+    else:
+        # Todo: Use query function to get from database
+        df = pd.DataFrame()
+
+    df = filter_state(df, state)
+    return df
 
 
 if __name__ == '__main__':
-    # Pandas options
-    pd.set_option('max_rows', 10)
-    pd.set_option('max_columns', 10)
-    pd.set_option('expand_frame_repr', True)
-    pd.set_option('large_repr', 'truncate')
-    pd.options.display.float_format = '{:.2f}'.format
+    if not os.path.exists('Output'):
+        os.makedirs('Output')
 
-    if len(COUNTIES_OF_INTEREST) == 0:
-        COUNTIES_OF_INTEREST = input(
-            'No counties specified. Please specify one or more counties, separated by commas.').split(',')
-    COUNTIES_OF_INTEREST = [x.strip() for x in COUNTIES_OF_INTEREST]
+    task = input(
+        'Are you analyzing a single county (1), multiple counties (2), or all the counties in a state (3)? [default: 1]')
 
-    if ACTION_OVERHEAD is None or ACTION_OVERHEAD == '':
-        ACTION_OVERHEAD = int(input(
-            'Please specify the amount of time it takes to implement the required action or policy. '
-            'Make sure that this is provided in the same unit as the countdown time.').strip())
+    if task == '1' or task is None or task == '':
+        res = input('Enter the county and state (ie: Jefferson County, CO):')
+        res = res.strip().split(',')
+        [x.strip() for x in res]
+        county = res[0]
+        state = res[1]
+        df = get_single_county(county, state)
+    elif task == '2':
+        counties = input('Please specify one or more counties, separated by commas [ie: ].').split(',')
+        counties = [x.strip() for x in counties]
+        df = get_multiple_counties(counties)
+    elif task == '3':
+        state = input("Enter the state's two letter abbreviation (ie: CA):").strip()
+        df = get_state_data(state)
+    else:
+        raise Exception('INVALID INPUT! Enter a valid task number.')
 
-    main()
+    main(df)
