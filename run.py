@@ -24,12 +24,11 @@ def filter_counties(data: pd.DataFrame, counties: list) -> pd.DataFrame:
     return data[data['County Name'].isin(counties)]
 
 
-def reshape_fred_data(data: pd.DataFrame) -> pd.DataFrame:
+def clean_fred_data(data: pd.DataFrame) -> pd.DataFrame:
     data['Non-Home Ownership (%)'] = 100 - data['Home Ownership (%)']
 
     data.drop([
         'Home Ownership (%)',
-        'State',
         'county_id',
         'Burdened Households Date',
         'Home Ownership Date',
@@ -40,7 +39,7 @@ def reshape_fred_data(data: pd.DataFrame) -> pd.DataFrame:
         'Unemployment Rate Date'
     ], axis=1, inplace=True)
 
-    data.set_index(['County Name'], drop=True)
+    data.set_index(['State', 'County Name'], drop=True)
     data = data.loc[:, ~data.columns.str.contains('^Unnamed')]
 
     data.to_excel('Output/FRED_data_cleaned.xlsx')
@@ -114,56 +113,60 @@ def cross(columns: tuple, df: pd.DataFrame) -> pd.Series:
     return new_series
 
 
-def priority_indicator(relative_risk: float, policy_index: float, time_left: float, time_to_action: float) -> float:
-    return relative_risk * (1 - policy_index) * time_to_action / math.sqrt(time_left)
+def priority_indicator(relative_risk: float, policy_index: float, time_left: float) -> float:
+    return relative_risk * (1 - policy_index) / math.sqrt(time_left)
 
 
 def main(df):
-    df=reshape_fred_data(df)
-    analysis_df = normalize(df)
-
-    policy_df = api.get_from_csv('data/policy_index.csv')
-    policy_df['PolicyIndex'] = 1 - policy_df['PolicyIndex']
-
-    crossed = cross_features(analysis_df)
-
-    analysis_df['Crossed'] = crossed['Mean']
-    analysis_df = normalize_column(analysis_df, 'Crossed')
-    analysis_df['Total Relative Risk'] = analysis_df.sum(axis=1)
-    temp_df = pd.DataFrame([analysis_df['Total Relative Risk'], policy_df['PolicyIndex']])
-    max_sum = analysis_df['Total Relative Risk'].max()
-    analysis_df['Relative Rank'] = (analysis_df['Total Relative Risk'] / max_sum)
-    analysis_df.to_excel('overall_vulnerability.xlsx')
-
-    return analysis_df
+    df = clean_fred_data(df)
+    # analysis_df = normalize(df)
+    #
+    # policy_df = api.get_from_csv('data/policy_index.csv')
+    # policy_df['PolicyIndex'] = 1 - policy_df['PolicyIndex']
+    #
+    # crossed = cross_features(analysis_df)
+    #
+    # analysis_df['Crossed'] = crossed['Mean']
+    # analysis_df = normalize_column(analysis_df, 'Crossed')
+    # analysis_df['Total Relative Risk'] = analysis_df.sum(axis=1)
+    # temp_df = pd.DataFrame([analysis_df['Total Relative Risk'], policy_df['PolicyIndex']])
+    # max_sum = analysis_df['Total Relative Risk'].max()
+    # analysis_df['Relative Rank'] = (analysis_df['Total Relative Risk'] / max_sum)
+    # analysis_df.to_excel('overall_vulnerability.xlsx')
+    #
+    # return analysis_df
 
 
 def get_single_county(county: str, state: str) -> pd.DataFrame:
-    if os.path.exists("all_tables.xlsx"):
+    if os.path.exists("Output/all_tables.xlsx"):
         print('Using local `all_tables.xlsx`')
         df = pd.read_excel('Output/all_tables.xlsx')
     else:
         # Todo: Use query function to get from database
         df = pd.DataFrame()
+
     df = filter_state(df, state)
     df = filter_counties(df, [county])
+
     return df
 
 
-def get_multiple_counties(counties: list) -> pd.DataFrame:
-    if os.path.exists("all_tables.xlsx"):
+def get_multiple_counties(counties: list, state: str) -> pd.DataFrame:
+    if os.path.exists("Output/all_tables.xlsx"):
         print('Using local `all_tables.xlsx`')
         df = pd.read_excel('Output/all_tables.xlsx')
     else:
         # Todo: Use query function to get from database
         df = pd.DataFrame()
+
+    df = filter_state(df, state)
     df = filter_counties(df, counties)
 
     return df
 
 
 def get_state_data(state: str) -> pd.DataFrame:
-    if os.path.exists("all_tables.xlsx"):
+    if os.path.exists("Output/all_tables.xlsx"):
         print('Using local `all_tables.xlsx`')
         df = pd.read_excel('Output/all_tables.xlsx')
     else:
@@ -182,18 +185,18 @@ if __name__ == '__main__':
         'Are you analyzing a single county (1), multiple counties (2), or all the counties in a state (3)? [default: 1]')
 
     if task == '1' or task is None or task == '':
-        res = input('Enter the county and state (ie: Jefferson County, CO):')
+        res = input('Enter the county and state (ie: Jefferson County, Colorado):')
         res = res.strip().split(',')
-        [x.strip() for x in res]
-        county = res[0]
-        state = res[1]
+        county = res[0].strip()
+        state = res[1].strip()
         df = get_single_county(county, state)
     elif task == '2':
+        state = input("Which state are you looking for (ie: California)?]").strip()
         counties = input('Please specify one or more counties, separated by commas [ie: ].').split(',')
-        counties = [x.strip() for x in counties]
-        df = get_multiple_counties(counties)
+        counties = [_.strip() for _ in counties]
+        df = get_multiple_counties(counties, state)
     elif task == '3':
-        state = input("Enter the state's two letter abbreviation (ie: CA):").strip()
+        state = input("Which state are you looking for (ie: California)?]").strip()
         df = get_state_data(state)
     else:
         raise Exception('INVALID INPUT! Enter a valid task number.')
