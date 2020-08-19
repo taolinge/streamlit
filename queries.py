@@ -44,8 +44,8 @@ table_units = {
 }
 
 
-def counties_query(connection):
-    cur = connection.cursor()
+def counties_query() -> pd.DataFrame:
+    cur = conn.cursor()
     cur.execute(
         'SELECT id as county_id, state as "State", name as "County Name" '
         'FROM counties'
@@ -55,8 +55,8 @@ def counties_query(connection):
     return pd.DataFrame(results, columns=colnames)
 
 
-def latest_data_single_table(connection, table_name, require_counties=True):
-    cur = connection.cursor()
+def latest_data_single_table(table_name: str, require_counties: bool = True) -> pd.DataFrame:
+    cur = conn.cursor()
     cur.execute(
         'SELECT DISTINCT ON (county_id) '
         'county_id, date AS "{} Date", value AS "{} ({})" '
@@ -67,21 +67,20 @@ def latest_data_single_table(connection, table_name, require_counties=True):
     colnames = [desc[0] for desc in cur.description]
     df = pd.DataFrame(results, columns=colnames)
     if require_counties:
-        counties_df = counties_query(connection)
+        counties_df = counties_query()
         df = counties_df.merge(df)
     return df
 
 
-def latest_data_all_tables(connection):
-    cur = connection.cursor()
-    counties_df = counties_query(connection)
+def latest_data_all_tables() -> pd.DataFrame:
+    counties_df = counties_query()
     for table_name in all_tables:
-        table_output = latest_data_single_table(connection, table_name, require_counties=False)
+        table_output = latest_data_single_table(table_name, require_counties=False)
         counties_df = counties_df.merge(table_output)
     return counties_df
 
 
-def output_data(df: pd.DataFrame, table_name='all_tables', ext='xlsx'):
+def output_data(df: pd.DataFrame, table_name: str = 'all_tables', ext: str = 'xlsx') -> str:
     if not os.path.isdir('Output'):
         os.mkdir('Output')
     if ext == 'pk':
@@ -98,23 +97,22 @@ def output_data(df: pd.DataFrame, table_name='all_tables', ext='xlsx'):
 
 if __name__ == '__main__':
     args = {k: v for k, v in [i.split('=') for i in sys.argv[1:] if '=' in i]}
-
-    table_name = args.get('--table', None)
+    table = args.get('--table', None)
     output_format = args.get('--output', None)
 
-    if table_name:
-        df = latest_data_single_table(conn, args['--table'])
+    if table:
+        df = latest_data_single_table(table)
     else:
-        df = latest_data_all_tables(conn)
+        df = latest_data_all_tables()
 
     if output_format:
-        if table_name:
-            path = output_data(df, table_name=table_name, ext=output_format)
+        if table:
+            path = output_data(df, table_name=table, ext=output_format)
         else:
             path = output_data(df, ext=output_format)
     else:
-        if table_name:
-            path = output_data(df, table_name=table_name)
+        if table:
+            path = output_data(df, table_name=table)
         else:
             path = output_data(df)
 
