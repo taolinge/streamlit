@@ -17,11 +17,11 @@ pd.options.display.float_format = '{:.2f}'.format
 
 
 def filter_state(data: pd.DataFrame, state: str) -> pd.DataFrame:
-    return data[data['State'] == state]
+    return data[data['State'].str.lower() == state.lower()]
 
 
 def filter_counties(data: pd.DataFrame, counties: list) -> pd.DataFrame:
-    return data[data['County Name'].isin(counties)]
+    return data[data['County Name'].str.lower().isin(counties)]
 
 
 def clean_fred_data(data: pd.DataFrame) -> pd.DataFrame:
@@ -113,28 +113,35 @@ def cross(columns: tuple, df: pd.DataFrame) -> pd.Series:
     return new_series
 
 
-def priority_indicator(relative_risk: float, policy_index: float, time_left: float) -> float:
+def priority_indicator(relative_risk: float, policy_index: float, time_left: float = 1) -> float:
     return relative_risk * (1 - policy_index) / math.sqrt(time_left)
 
 
-def main(df):
+def get_policy_data() -> pd.DataFrame:
+    policy_df = api.get_from_csv('data/policy_index.csv')
+    policy_df['Policy Index'] = policy_df['PolicyIndex'].copy()
+    return policy_df
+
+
+def rank_counties(df: pd.DataFrame) -> pd.DataFrame:
     df = clean_fred_data(df)
-    # analysis_df = normalize(df)
-    #
-    # policy_df = api.get_from_csv('data/policy_index.csv')
-    # policy_df['PolicyIndex'] = 1 - policy_df['PolicyIndex']
-    #
-    # crossed = cross_features(analysis_df)
-    #
-    # analysis_df['Crossed'] = crossed['Mean']
-    # analysis_df = normalize_column(analysis_df, 'Crossed')
-    # analysis_df['Total Relative Risk'] = analysis_df.sum(axis=1)
-    # temp_df = pd.DataFrame([analysis_df['Total Relative Risk'], policy_df['PolicyIndex']])
-    # max_sum = analysis_df['Total Relative Risk'].max()
-    # analysis_df['Relative Rank'] = (analysis_df['Total Relative Risk'] / max_sum)
-    # analysis_df.to_excel('overall_vulnerability.xlsx')
-    #
-    # return analysis_df
+    analysis_df = normalize(df)
+    policy_df = get_policy_data()
+
+    crossed = cross_features(analysis_df)
+    analysis_df['Crossed'] = crossed['Mean']
+    analysis_df = normalize_column(analysis_df, 'Crossed')
+    analysis_df['Relative Risk'] = analysis_df.sum(axis=1)
+    max_sum = analysis_df['Relative Risk'].max()
+    analysis_df['Relative Risk'] = (analysis_df['Relative Risk'] / max_sum)
+    # analysis_df['Policy Index'] = policy_df['PolicyIndex'].copy()
+    # analysis_df['Countdown'] = policy_df['Countdown'].copy()
+    # analysis_df['Rank'] = analysis_df.apply(
+    #     lambda x: priority_indicator(x['Relative Risk'], x['PolicyIndex'],x['Countdown']), axis=1
+    # )
+    analysis_df.to_excel('overall_vulnerability.xlsx')
+
+    return analysis_df
 
 
 def get_single_county(county: str, state: str) -> pd.DataFrame:
@@ -142,8 +149,7 @@ def get_single_county(county: str, state: str) -> pd.DataFrame:
         print('Using local `all_tables.xlsx`')
         df = pd.read_excel('Output/all_tables.xlsx')
     else:
-        # Todo: Use query function to get from database
-        df = pd.DataFrame()
+        df = queries.latest_data_all_tables()
 
     df = filter_state(df, state)
     df = filter_counties(df, [county])
@@ -153,11 +159,14 @@ def get_single_county(county: str, state: str) -> pd.DataFrame:
 
 def get_multiple_counties(counties: list, state: str) -> pd.DataFrame:
     if os.path.exists("Output/all_tables.xlsx"):
-        print('Using local `all_tables.xlsx`')
-        df = pd.read_excel('Output/all_tables.xlsx')
+        try:
+            print('Using local `all_tables.xlsx`')
+            df = pd.read_excel('Output/all_tables.xlsx')
+        except:
+            print('Something went wrong with the Excel file. Falling back to database query.')
+            df = queries.latest_data_all_tables()
     else:
-        # Todo: Use query function to get from database
-        df = pd.DataFrame()
+        df = queries.latest_data_all_tables()
 
     df = filter_state(df, state)
     df = filter_counties(df, counties)
@@ -170,11 +179,15 @@ def get_state_data(state: str) -> pd.DataFrame:
         print('Using local `all_tables.xlsx`')
         df = pd.read_excel('Output/all_tables.xlsx')
     else:
-        # Todo: Use query function to get from database
-        df = pd.DataFrame()
+        df = queries.latest_data_all_tables()
 
     df = filter_state(df, state)
     return df
+
+
+def output_table(df: pd.DataFrame, path: str):
+    df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
+    df.to_excel(path)
 
 
 if __name__ == '__main__':
@@ -182,7 +195,7 @@ if __name__ == '__main__':
         os.makedirs('Output')
 
     task = input(
-        'Are you analyzing a single county (1), multiple counties (2), or all the counties in a state (3)? [default: 1]')
+        'Analyze a single county (1), multiple counties (2), or all the counties in a state (3)? [default: 1]')
 
     if task == '1' or task is None or task == '':
         res = input('Enter the county and state (ie: Jefferson County, Colorado):')
@@ -190,15 +203,19 @@ if __name__ == '__main__':
         county = res[0].strip()
         state = res[1].strip()
         df = get_single_county(county, state)
+        output_table(df, 'Output/' + county + '.xlsx')
     elif task == '2':
         state = input("Which state are you looking for (ie: California)?]").strip()
-        counties = input('Please specify one or more counties, separated by commas [ie: ].').split(',')
-        counties = [_.strip() for _ in counties]
+        counties = input('Please specify one or more counties, separated by commas [ie: ].').strip().split(',')
+        counties = [_.strip().lower() for _ in counties]
+        counties = [_ + ' county' for _ in counties if ' county' not in _]
         df = get_multiple_counties(counties, state)
+        output_table(df, 'Output/' + state + '_selected_counties.xlsx')
     elif task == '3':
         state = input("Which state are you looking for (ie: California)?]").strip()
         df = get_state_data(state)
+        output_table(df, 'Output/' + state + '.xlsx')
     else:
         raise Exception('INVALID INPUT! Enter a valid task number.')
 
-    main(df)
+    # main(df)
