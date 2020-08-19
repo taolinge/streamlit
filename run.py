@@ -72,7 +72,7 @@ def cross_features(df: pd.DataFrame) -> pd.DataFrame:
     return crossed_df
 
 
-def normalize(df) -> pd.DataFrame:
+def normalize(df: pd.DataFrame) -> pd.DataFrame:
     df = percent_to_population('Population Below Poverty Line (%)', 'Pop_Below_Poverty_Level', df)
     df = percent_to_population('Unemployment Rate (%)', 'Pop_Unemployed', df)
     df = percent_to_population('Burdened Households (%)', 'Num_Burdened_Households', df)
@@ -95,7 +95,7 @@ def normalize(df) -> pd.DataFrame:
     return df_scaled
 
 
-def normalize_column(df: pd.DataFrame, col) -> pd.DataFrame:
+def normalize_column(df: pd.DataFrame, col: str) -> pd.DataFrame:
     scaler = pre.MaxAbsScaler()
     df[col] = scaler.fit_transform(df[col].values.reshape(-1, 1))
 
@@ -144,20 +144,7 @@ def rank_counties(df: pd.DataFrame) -> pd.DataFrame:
     return analysis_df
 
 
-def get_single_county(county: str, state: str) -> pd.DataFrame:
-    if os.path.exists("Output/all_tables.xlsx"):
-        print('Using local `all_tables.xlsx`')
-        df = pd.read_excel('Output/all_tables.xlsx')
-    else:
-        df = queries.latest_data_all_tables()
-
-    df = filter_state(df, state)
-    df = filter_counties(df, [county])
-
-    return df
-
-
-def get_multiple_counties(counties: list, state: str) -> pd.DataFrame:
+def load_all_data() -> pd.DataFrame:
     if os.path.exists("Output/all_tables.xlsx"):
         try:
             print('Using local `all_tables.xlsx`')
@@ -168,6 +155,21 @@ def get_multiple_counties(counties: list, state: str) -> pd.DataFrame:
     else:
         df = queries.latest_data_all_tables()
 
+    return df
+
+
+def get_single_county(county: str, state: str) -> pd.DataFrame:
+    df = load_all_data()
+
+    df = filter_state(df, state)
+    df = filter_counties(df, [county])
+
+    return df
+
+
+def get_multiple_counties(counties: list, state: str) -> pd.DataFrame:
+    df = load_all_data()
+
     df = filter_state(df, state)
     df = filter_counties(df, counties)
 
@@ -175,11 +177,7 @@ def get_multiple_counties(counties: list, state: str) -> pd.DataFrame:
 
 
 def get_state_data(state: str) -> pd.DataFrame:
-    if os.path.exists("Output/all_tables.xlsx"):
-        print('Using local `all_tables.xlsx`')
-        df = pd.read_excel('Output/all_tables.xlsx')
-    else:
-        df = queries.latest_data_all_tables()
+    df = load_all_data()
 
     df = filter_state(df, state)
     return df
