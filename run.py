@@ -36,25 +36,22 @@ def clean_fred_data(data: pd.DataFrame) -> pd.DataFrame:
         'Population Below Poverty Line Date',
         'Single Parent Households Date',
         'SNAP Benefits Recipients Date',
-        'Unemployment Rate Date'
+        'Unemployment Rate Date',
+        'Resident Population Date'
     ], axis=1, inplace=True)
-
-    data.set_index(['State', 'County Name'], drop=True)
     data = data.loc[:, ~data.columns.str.contains('^Unnamed')]
-
-    data.to_excel('Output/FRED_data_cleaned.xlsx')
 
     return data
 
 
 def percent_to_population(feature: str, name: str, df: pd.DataFrame) -> pd.DataFrame:
-    df[name] = (df[feature] / 100) * df['Resident_Population_thousands_of_persons'] * 1000
+    df[name] = (df[feature] / 100) * df['Resident Population (Thousands of Persons)'] * 1000
     return df
 
 
 def cross_features(df: pd.DataFrame) -> pd.DataFrame:
-    cols = ['Pop_Below_Poverty_Level', 'Pop_Unemployed', 'Income Inequality (Ratio)', 'Non_Home_Ownership_Pop',
-            'Num_Burdened_Households', 'Num_Single_Parent_Households']
+    cols = ['Pop Below Poverty Level', 'Pop Unemployed', 'Income Inequality (Ratio)', 'Non-Home Ownership Pop',
+            'Num Burdened Households', 'Num Single Parent Households']
     all_combinations = []
     for r in range(2, len(cols)):
         combinations_list = list(itertools.combinations(cols, r))
@@ -67,30 +64,28 @@ def cross_features(df: pd.DataFrame) -> pd.DataFrame:
     crossed_df = pd.DataFrame(new_cols)
     crossed_df = crossed_df.T
     crossed_df['Mean'] = crossed_df.mean(axis=1)
-    crossed_df.to_excel('data_crossed.xlsx')
+    crossed_df.to_excel('Output/data_crossed.xlsx')
 
     return crossed_df
 
 
 def normalize(df: pd.DataFrame) -> pd.DataFrame:
-    df = percent_to_population('Population Below Poverty Line (%)', 'Pop_Below_Poverty_Level', df)
-    df = percent_to_population('Unemployment Rate (%)', 'Pop_Unemployed', df)
-    df = percent_to_population('Burdened Households (%)', 'Num_Burdened_Households', df)
-    df = percent_to_population('Single Parent Households (%)', 'Num_Single_Parent_Households', df)
-    df = percent_to_population('Non-Home Ownership (%)', 'Non_Home_Ownership_Pop', df)
+    df = percent_to_population('Population Below Poverty Line (%)', 'Pop Below Poverty Level', df)
+    df = percent_to_population('Unemployment Rate (%)', 'Pop Unemployed', df)
+    df = percent_to_population('Burdened Households (%)', 'Num Burdened Households', df)
+    df = percent_to_population('Single Parent Households (%)', 'Num Single Parent Households', df)
+    df = percent_to_population('Non-Home Ownership (%)', 'Non-Home Ownership Pop', df)
 
-    df = df.drop(['Percent_of_Pop_Below_Poverty_Level',
-                  'Unemployment_Cleaned',
+    df = df.drop(['Population Below Poverty Line (%)',
+                  'Unemployment Rate (%)',
                   'Burdened Households (%)',
                   'Single Parent Households (%)',
-                  'Resident_Population_thousands_of_persons',
-                  'Non-Home Ownership (%)'], axis=1)
+                  'Non-Home Ownership (%)',
+                  'Resident Population (Thousands of Persons)',
+                  ], axis=1)
 
     scaler = pre.MaxAbsScaler()
     df_scaled = pd.DataFrame(scaler.fit_transform(df), index=df.index, columns=df.columns)
-    output_df = df_scaled.copy()
-    output_df['Sum'] = output_df.sum(axis=1)
-    output_df.to_excel('data_normalized.xlsx')
 
     return df_scaled
 
@@ -123,14 +118,14 @@ def get_policy_data() -> pd.DataFrame:
     return policy_df
 
 
-def rank_counties(df: pd.DataFrame) -> pd.DataFrame:
-    df = clean_fred_data(df)
+def rank_counties(df: pd.DataFrame, label: str) -> pd.DataFrame:
     analysis_df = normalize(df)
-    policy_df = get_policy_data()
+    # policy_df = get_policy_data()
 
     crossed = cross_features(analysis_df)
     analysis_df['Crossed'] = crossed['Mean']
     analysis_df = normalize_column(analysis_df, 'Crossed')
+
     analysis_df['Relative Risk'] = analysis_df.sum(axis=1)
     max_sum = analysis_df['Relative Risk'].max()
     analysis_df['Relative Risk'] = (analysis_df['Relative Risk'] / max_sum)
@@ -139,7 +134,7 @@ def rank_counties(df: pd.DataFrame) -> pd.DataFrame:
     # analysis_df['Rank'] = analysis_df.apply(
     #     lambda x: priority_indicator(x['Relative Risk'], x['PolicyIndex'],x['Countdown']), axis=1
     # )
-    analysis_df.to_excel('overall_vulnerability.xlsx')
+    analysis_df.to_excel('Output/'+label+'_overall_vulnerability.xlsx')
 
     return analysis_df
 
@@ -160,26 +155,32 @@ def load_all_data() -> pd.DataFrame:
 
 def get_single_county(county: str, state: str) -> pd.DataFrame:
     df = load_all_data()
+    df = clean_fred_data(df)
 
     df = filter_state(df, state)
     df = filter_counties(df, [county])
-
+    df.set_index(['County Name'], drop=True, inplace=True)
     return df
 
 
 def get_multiple_counties(counties: list, state: str) -> pd.DataFrame:
     df = load_all_data()
+    df = clean_fred_data(df)
 
     df = filter_state(df, state)
     df = filter_counties(df, counties)
+    df.set_index(['State', 'County Name'], drop=True, inplace=True)
 
     return df
 
 
 def get_state_data(state: str) -> pd.DataFrame:
     df = load_all_data()
+    df = clean_fred_data(df)
 
     df = filter_state(df, state)
+    df.set_index(['State', 'County Name'], drop=True, inplace=True)
+
     return df
 
 
@@ -192,10 +193,10 @@ if __name__ == '__main__':
     if not os.path.exists('Output'):
         os.makedirs('Output')
 
-    task = input(
-        'Analyze a single county (1), multiple counties (2), or all the counties in a state (3)? [default: 1]')
+    task = input('Analyze a single county (1), multiple counties (2), or all the counties in a state (3)? [default: 1]')\
+        .strip()
 
-    if task == '1' or task is None or task == '':
+    if task == '1' or task == '':
         res = input('Enter the county and state (ie: Jefferson County, Colorado):')
         res = res.strip().split(',')
         county = res[0].strip()
@@ -209,11 +210,12 @@ if __name__ == '__main__':
         counties = [_ + ' county' for _ in counties if ' county' not in _]
         df = get_multiple_counties(counties, state)
         output_table(df, 'Output/' + state + '_selected_counties.xlsx')
+        rank_counties(df, state + '_selected_counties')
     elif task == '3':
         state = input("Which state are you looking for (ie: California)?]").strip()
         df = get_state_data(state)
         output_table(df, 'Output/' + state + '.xlsx')
+        rank_counties(df,state)
     else:
         raise Exception('INVALID INPUT! Enter a valid task number.')
 
-    # main(df)

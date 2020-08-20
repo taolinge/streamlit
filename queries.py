@@ -20,7 +20,8 @@ all_tables = [
     'population_below_poverty',
     'single_parent_households',
     'snap_benefits_recipients',
-    'unemployment_rate'
+    'unemployment_rate',
+    'resident_population'
 ]
 
 table_headers = {
@@ -30,7 +31,8 @@ table_headers = {
     'population_below_poverty': 'Population Below Poverty Line',
     'single_parent_households': 'Single Parent Households',
     'snap_benefits_recipients': 'SNAP Benefits Recipients',
-    'unemployment_rate': 'Unemployment Rate'
+    'unemployment_rate': 'Unemployment Rate',
+    'resident_population': 'Resident Population'
 }
 
 table_units = {
@@ -40,7 +42,8 @@ table_units = {
     'population_below_poverty': '%',
     'single_parent_households': '%',
     'snap_benefits_recipients': 'Persons',
-    'unemployment_rate': '%'
+    'unemployment_rate': '%',
+    'resident_population': 'Thousands of Persons',
 }
 
 
