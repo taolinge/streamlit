@@ -108,8 +108,8 @@ def cross(columns: tuple, df: pd.DataFrame) -> pd.Series:
     return new_series
 
 
-def priority_indicator(relative_risk: float, policy_index: float, time_left: float = 1) -> float:
-    return relative_risk * (1 - policy_index) / math.sqrt(time_left)
+def priority_indicator(socioeconomic_index: float, policy_index: float, time_left: float = 1) -> float:
+    return socioeconomic_index * (1 - policy_index) / math.sqrt(time_left)
 
 
 def get_policy_data() -> pd.DataFrame:
@@ -215,7 +215,7 @@ if __name__ == '__main__':
         state = input("Which state are you looking for (ie: California)?]").strip()
         df = get_state_data(state)
         output_table(df, 'Output/' + state + '.xlsx')
-        rank_counties(df,state)
+        rank_counties(df, state)
     else:
         raise Exception('INVALID INPUT! Enter a valid task number.')
 
