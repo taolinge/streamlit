@@ -22,8 +22,8 @@ There are two ways to interact with this data.
 ### About the data
 This data is the most recent data we could get, but some datasets are updated more frequently than others. You can see the date that the data was updated in `all_tables.xlsx`. We refresh the data monthly on the first of the month. All datasets are at the county level. The following datasets are currently in the database:
 
-| Name | Source | Updated |Notes | 
-|------|---------| ------- | -----|
+| Feature Name | Source | Updated | Notes | 
+| ------------ | ------ | ------- | ----- |
 | Burdened Households (%) | [FRED](https://fred.stlouisfed.org/) | 1/1/2018 | People who pay more than 30 percent of their income towards rent |
 | Home Ownership (%) | [FRED](https://fred.stlouisfed.org/) | 1/1/2018 | Inverted to non-homeowners in analysis to get renters |
 | Income Inequality (Ratio) | [FRED](https://fred.stlouisfed.org/) | 1/1/2018 | |
