@@ -21,7 +21,9 @@ all_tables = [
     'single_parent_households',
     'snap_benefits_recipients',
     'unemployment_rate',
-    'resident_population'
+    'resident_population',
+    'fair_market_rents',
+    'median_rents'
 ]
 
 table_headers = {
@@ -97,6 +99,8 @@ def output_data(df: pd.DataFrame, table_name: str = 'all_tables', ext: str = 'xl
         sys.exit()
     return path
 
+# def fmr_join():
+    #what to put here
 
 if __name__ == '__main__':
     args = {k: v for k, v in [i.split('=') for i in sys.argv[1:] if '=' in i]}

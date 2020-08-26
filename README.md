@@ -33,7 +33,9 @@ This data is the most recent data we could get, but some datasets are updated mo
 | Unemployment Rate (%) | [FRED](https://fred.stlouisfed.org/) | 6/1/2020 | |
 | Resident Population (Thousands of Persons) | [FRED](https://fred.stlouisfed.org/) | 1/1/2019 | Used to convert percentages to raw population|
 | COVID Vulnerability Index | [CHMURA](http://www.chmuraecon.com/interactive/covid-19-economic-vulnerability-index/) | 4/15/2020 | |
-
+| Fair Market Rents | [HUD](https://www.huduser.gov/portal/datasets/fmr.html#2021_data) | 10/1/2020 | Represents the estimated amount (base rent + essential utilities) that a property in a given area typically rents for|
+| Median Rents | [HUD](https://www.huduser.gov/PORTAL/datasets/50per.html) | 2021 | Rent estimates at the 50th percentile (or median)  calculated for all Fair Market Rent areas|
+| Housing Stock Distributions | [Statista](https://www.statista.com/statistics/206393/distribution-of-housing-units-in-the-us-by-number-of-bedrooms/) | 2017 | Distribution of housing units in the US by number of bedrooms|
 If you have datasets you'd like to see included, please create an Issue.
  
  
@@ -45,6 +47,18 @@ We calculate this using a custom formula to balance socioeconomic factors with t
 `relative_risk = socioeconomic_index * (1 - policy_index) / sqrt(time_remaining)`
 
 In this equation, we aim to minimize socioeconomic risk on the top of the fraction, maximize the policy response value and take 1 minus the index value calculated (to represent that better policy constitutes less relative risk), and maximize the time remaining on the bottom of the fraction. The square root of the time remaining is used to represent how additional time has diminishing returns. For example, the different between having 2 days and 2 weeks until protections expire is much different than whether policies expire in 3 months or 4 months when we think about how to prioritize one county over another.   
+
+## What is cost of evictions?
+
+To calculate the cost to avoid evictions the following calcuation was used:
+
+    `(burdened household proportion/100) * county rent * housing stock distribution percentage * population * (burdened households/100)`
+
+Housing stock distributions (statista) were used to evaluate the types of houses that exist in the United States (e.g. studio, one bedroom, etc.).  Burdened household proportions were decided by Arup and were used to determine what percentage of people were most at risk.  Proportions were set at 5, 25, 33, 50, and 75 (why?).  County rents for each housing stock were sourced from HUD, and used Fair Market Rates to determine rent prices for each stock.  Fair Market Rents (FMRs) represent the estimated amount (base rent + essential utilities) that a property in a given area typically rents for. Burdened households was a percentage calculated by (source?) which gives the percentage of the population at risk of not paying their rent that month (?).  Population data was pulled from HUD and represents the population by county in the year 2017. 
+
+Performing this calculation for each proportion and each housing stock will calculate the amount needed to prevent eviction for each proportion.  The total cost of evictions for a particular county for one month was calcuated by summing each housing stock.  To get the cost of prevention for more than one month, the sum was multiplied by the number of months of interest.  
+
+Upon script completion, an sheet will be created within the output excel file displaying all values mentioned above in an easy to follow table format.  If you experience problems with the script or have questions about methodologies, please reach out to a member of the development team.  
 
 ## Python Users
 We've done our previous analyses in Python, and have built data gathering, cleaning, and analysis functions.
