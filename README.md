@@ -1,10 +1,10 @@
 # Arup Eviction Data
 This is a repository for analysis on open data related to evictions as a result of COVID-19. This repository gathers data from the Federal Reserve Economic Data portal (FRED). There are a number of potential use cases we're aware of to apply that data to address evictions. 
 
-The analysis we do now allows us compare counties side by side by their "Relative Risk" of evictions, based on the FRED data.
+The analysis we do now allows us compare counties side by side by their "Relative Risk" of evictions.
 
 ## Usage
-This repository currently supports three workflows:
+This repository currently supports three primary workflows:
 
 1. Gathering data for a single county in a state
 2. Gathering and comparing data for multiple counties using a Relative Risk index
@@ -16,11 +16,29 @@ These workflows support a number of use cases, including:
 - Directing policy response on the city or county level
 
 There are two ways to interact with this data.
-- Python scripts
-- Custom SQL Queries
+- Python scripts - Include functions to gather, clean, and analyze data to output a relative risk ranking for multiple counties. Can be extended with your own scripts. 
+- Custom SQL Queries - SQL that you write to get the most recent data from our database and use however you want. 
 
+### About the data
+This data is the most recent data we could get, but some datasets are updated more frequently than others. You can see the date that the data was updated in `all_tables.xlsx`. We refresh the data monthly on the first of the month. All datasets are at the county level. The following datasets are currently in the database:
+
+| Name | Source | Updated |Notes | 
+|------|---------| ------- | -----|
+| Burdened Households (%) | [FRED](https://fred.stlouisfed.org/) | 1/1/2018 | People who pay more than 30 percent of their income towards rent |
+| Home Ownership (%) | [FRED](https://fred.stlouisfed.org/) | 1/1/2018 | Inverted to non-homeowners in analysis to get renters |
+| Income Inequality (Ratio) | [FRED](https://fred.stlouisfed.org/) | 1/1/2018 | |
+| Population Below Poverty Line (%) | [FRED](https://fred.stlouisfed.org/) | 1/1/2018 | |
+| Single Parent Households (%) | [FRED](https://fred.stlouisfed.org/) | 1/1/2018 | |
+| SNAP Benefits Recipients (Persons) | [FRED](https://fred.stlouisfed.org/) | 1/1/2017 | |
+| Unemployment Rate (%) | [FRED](https://fred.stlouisfed.org/) | 6/1/2020 | |
+| Resident Population (Thousands of Persons) | [FRED](https://fred.stlouisfed.org/) | 1/1/2019 | Used to convert percentages to raw population|
+| COVID Vulnerability Index | [CHMURA](http://www.chmuraecon.com/interactive/covid-19-economic-vulnerability-index/) | 4/15/2020 | |
+
+If you have datasets you'd like to see included, please create an Issue.
+ 
+ 
 ### What is Relative Risk?
-Relative risk is an index used to compare counties against each other. It is _not_ a measure of absolute or percentage risk and has no meaning outside of this analysis. We use this compare counties to understand where people are more at risk of eviction. 
+Relative risk is an index used to compare counties against each other in our Python analysis. It is _not_ a measure of absolute or percentage risk and has no meaning outside of this analysis. We use this compare counties to understand where people are more at risk of eviction. 
 
 We calculate this using a custom formula to balance socioeconomic factors with the policy response of a city. There are three parts of this formula: a socioeconomic value from FRED and other data sources, a policy value found using the policy Excel sheet in this repository, and the time remaining until protections end. The equation is
 
@@ -72,9 +90,8 @@ DB_USER = readonly
 DB_PASSWORD = PublicReadPassword
 ```
 
-
 ## Contributing
-We would love for you to use this code, build on it, and share with others. See [our contribution guide](CONTRIBUTING.md) for more information.
+We would love for you to use this code, build on it, and share with others. See [our contribution guide](CONTRIBUTING.md) and [code of conduct](CODE_OF_CONDUCT.md)  for more information.
 
 ### Issues
 Please post bugs, errors, and questions to the Issues tab of this repository.
