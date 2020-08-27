@@ -112,16 +112,9 @@ def priority_indicator(socioeconomic_index: float, policy_index: float, time_lef
     return socioeconomic_index * (1 - policy_index) / math.sqrt(time_left)
 
 
-def get_policy_data() -> pd.DataFrame:
-    policy_df = api.get_from_csv('data/policy_index.csv')
-    policy_df['Policy Index'] = policy_df['PolicyIndex'].copy()
-    return policy_df
-
-
 def rank_counties(df: pd.DataFrame, label: str) -> pd.DataFrame:
+    policy_df = api.get_from_excel('Policy Workbook.xlsx', 'Analysis Data')
     analysis_df = normalize(df)
-    # policy_df = get_policy_data()
-
     crossed = cross_features(analysis_df)
     analysis_df['Crossed'] = crossed['Mean']
     analysis_df = normalize_column(analysis_df, 'Crossed')
@@ -129,12 +122,18 @@ def rank_counties(df: pd.DataFrame, label: str) -> pd.DataFrame:
     analysis_df['Relative Risk'] = analysis_df.sum(axis=1)
     max_sum = analysis_df['Relative Risk'].max()
     analysis_df['Relative Risk'] = (analysis_df['Relative Risk'] / max_sum)
-    # analysis_df['Policy Index'] = policy_df['PolicyIndex'].copy()
-    # analysis_df['Countdown'] = policy_df['Countdown'].copy()
-    # analysis_df['Rank'] = analysis_df.apply(
-    #     lambda x: priority_indicator(x['Relative Risk'], x['PolicyIndex'],x['Countdown']), axis=1
-    # )
-    analysis_df.to_excel('Output/'+label+'_overall_vulnerability.xlsx')
+    counties = df.index.levels[1].values
+
+    if not any(policy_df['County Name'].isin(counties)):
+        print('Selected counties are not in the policy data! Fill out `Policy Workbook.xlsx` for the desired counties')
+    else:
+        analysis_df['Policy Index'] = policy_df['Policy Value'].copy()
+        analysis_df['Countdown'] = policy_df['Countdown'].copy()
+        analysis_df['Rank'] = analysis_df.apply(
+            lambda x: priority_indicator(x['Relative Risk'], x['Policy Index'], x['Countdown']), axis=1
+        )
+
+    analysis_df.to_excel('Output/' + label + '_overall_vulnerability.xlsx')
 
     return analysis_df
 
@@ -193,7 +192,7 @@ if __name__ == '__main__':
     if not os.path.exists('Output'):
         os.makedirs('Output')
 
-    task = input('Analyze a single county (1), multiple counties (2), or all the counties in a state (3)? [default: 1]')\
+    task = input('Analyze a single county (1), multiple counties (2), or all the counties in a state (3)? [default: 1]') \
         .strip()
 
     if task == '1' or task == '':
@@ -218,4 +217,3 @@ if __name__ == '__main__':
         rank_counties(df, state)
     else:
         raise Exception('INVALID INPUT! Enter a valid task number.')
-
