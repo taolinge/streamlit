@@ -188,6 +188,12 @@ def output_table(df: pd.DataFrame, path: str):
     df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
     df.to_excel(path)
 
+def join_fmr_data(county, state):
+    df = queries.fmr_data()
+    print(df)
+
+# def get_cost_of_evictions(county, state):
+
 
 if __name__ == '__main__':
     if not os.path.exists('Output'):
@@ -199,9 +205,14 @@ if __name__ == '__main__':
     if task == '1' or task == '':
         res = input('Enter the county and state (ie: Jefferson County, Colorado):')
         res = res.strip().split(',')
+        cost_of_evictions = input('Are you also interested in running a cost of evictions analysis for your chosen county? (y/n) ')
+        cost_of_evictions.strip()
         county = res[0].strip()
         state = res[1].strip()
         df = get_single_county(county, state)
+        if cost_of_evictions == 'y':
+            join_fmr_data(county, state)
+            # get_cost_of_evictions(county, state)
         output_table(df, 'Output/' + county + '.xlsx')
     elif task == '2':
         state = input("Which state are you looking for (ie: California)?]").strip()

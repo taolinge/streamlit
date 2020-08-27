@@ -22,8 +22,8 @@ all_tables = [
     'snap_benefits_recipients',
     'unemployment_rate',
     'resident_population',
-    'fair_market_rents',
-    'median_rents'
+    # 'fair_market_rents',
+    # 'median_rents'
 ]
 
 table_headers = {
@@ -34,7 +34,10 @@ table_headers = {
     'single_parent_households': 'Single Parent Households',
     'snap_benefits_recipients': 'SNAP Benefits Recipients',
     'unemployment_rate': 'Unemployment Rate',
-    'resident_population': 'Resident Population'
+    'resident_population': 'Resident Population',
+    # 'fair_market_rents': 'Fair Market Rents',
+    # 'median_rents': 'Median Rents'
+
 }
 
 table_units = {
@@ -46,6 +49,8 @@ table_units = {
     'snap_benefits_recipients': 'Persons',
     'unemployment_rate': '%',
     'resident_population': 'Thousands of Persons',
+    # 'fair_market_rents': 'dollars',
+    # 'median_rents': 'dollars'
 }
 
 
@@ -99,8 +104,16 @@ def output_data(df: pd.DataFrame, table_name: str = 'all_tables', ext: str = 'xl
         sys.exit()
     return path
 
-# def fmr_join():
-    #what to put here
+def fmr_data():
+    cur = conn.cursor()
+    cur.execute(
+        'SELECT state_full as "State", countyname as "County Name" '
+        'FROM fair_market_rents'
+    )
+    colnames = [desc[0] for desc in cur.description]
+    results = cur.fetchall()
+    return pd.DataFrame(results, columns=colnames)
+
 
 if __name__ == '__main__':
     args = {k: v for k, v in [i.split('=') for i in sys.argv[1:] if '=' in i]}
