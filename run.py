@@ -9,7 +9,7 @@ import api
 import queries
 
 # Pandas options
-pd.set_option('max_rows', 10)
+pd.set_option('max_rows', 25)
 pd.set_option('max_columns', 10)
 pd.set_option('expand_frame_repr', True)
 pd.set_option('large_repr', 'truncate')
@@ -119,18 +119,21 @@ def priority_indicator(socioeconomic_index: float, policy_index: float, time_lef
 
 
 def rank_counties(df: pd.DataFrame, label: str) -> pd.DataFrame:
+    print(df.columns)
     analysis_df = normalize(df)
+
     crossed = cross_features(analysis_df)
     analysis_df['Crossed'] = crossed['Mean']
     analysis_df = normalize_column(analysis_df, 'Crossed')
-    analysis_df['Policy Value'] = df['Policy Value']
-    analysis_df['Countdown'] = df['Countdown']
+    print(analysis_df.columns)
 
     analysis_df['Relative Risk'] = analysis_df.sum(axis=1)
     max_sum = analysis_df['Relative Risk'].max()
     analysis_df['Relative Risk'] = (analysis_df['Relative Risk'] / max_sum)
 
-    if 'Relative Risk' in list(analysis_df.columns):
+    if 'Policy Value' in list(df.columns):
+        analysis_df['Policy Value'] = df['Policy Value']
+        analysis_df['Countdown'] = df['Countdown']
         analysis_df['Rank'] = analysis_df.apply(
             lambda x: priority_indicator(x['Relative Risk'], x['Policy Value'], x['Countdown']), axis=1
         )
@@ -158,14 +161,10 @@ def load_all_data() -> pd.DataFrame:
 
 def get_single_county(county: str, state: str) -> pd.DataFrame:
     df = load_all_data()
-
     df = filter_state(df, state)
     df = filter_counties(df, [county])
     df = get_existing_policies(df)
-    print(df)
-
     df = clean_fred_data(df)
-    print(df)
 
     df.set_index(['County Name'], drop=True, inplace=True)
     return df
@@ -174,7 +173,7 @@ def get_single_county(county: str, state: str) -> pd.DataFrame:
 def get_existing_policies(df):
     policy_df = queries.policy_query()
     temp_df = df.merge(policy_df, on='county_id')
-    if not temp_df.empty:
+    if not temp_df.empty and len(df) == len(temp_df):
         res = input('Policy data found in database. Use this data? [Y/n]').strip()
         if res.lower() == 'y' or res.lower() == 'yes' or res == '':
             return temp_df
@@ -184,7 +183,6 @@ def get_existing_policies(df):
 
 def get_multiple_counties(counties: list, state: str) -> pd.DataFrame:
     df = load_all_data()
-
     df = filter_state(df, state)
     df = filter_counties(df, counties)
     df = get_existing_policies(df)
@@ -197,9 +195,10 @@ def get_multiple_counties(counties: list, state: str) -> pd.DataFrame:
 
 def get_state_data(state: str) -> pd.DataFrame:
     df = load_all_data()
+    df = filter_state(df, state)
+    df = get_existing_policies(df)
     df = clean_fred_data(df)
 
-    df = filter_state(df, state)
     df.set_index(['State', 'County Name'], drop=True, inplace=True)
 
     return df
@@ -211,10 +210,14 @@ def output_table(df: pd.DataFrame, path: str):
 
 
 def display_results(df):
-    df.sort_values('Rank', ascending=False, inplace=True)
-    print(df['Rank'])
-    print('Ranked by overall priority, higher values mean higher priority.')
-
+    if 'Rank' in df.columns:
+        df.sort_values('Rank', ascending=False, inplace=True)
+        print(df['Rank'])
+        print('Ranked by overall priority, higher values mean higher priority.')
+    else:
+        df.sort_values('Relative Risk', ascending=False, inplace=True)
+        print(df['Relative Risk'])
+        print('Ranked by relative risk, higher values mean higher priority.')
 
 if __name__ == '__main__':
     if not os.path.exists('Output'):
