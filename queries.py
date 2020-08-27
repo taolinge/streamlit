@@ -32,8 +32,8 @@ static_tables = [
 
 static_columns = {
     'chmura_economic_vulnerability_index': ['VulnerabilityIndex', 'Rank'],
-    'fair_market_rents': ['fmr_0', 'fmr_1','fmr_2','fmr_3','fmr_4',],
-    'median_rents':['rent50_0', 'rent50_1','rent50_2','rent50_3','rent50_4',]
+    'fair_market_rents': ['fmr_0', 'fmr_1', 'fmr_2', 'fmr_3', 'fmr_4', ],
+    'median_rents': ['rent50_0', 'rent50_1', 'rent50_2', 'rent50_3', 'rent50_4', ]
 }
 
 table_headers = {
@@ -44,7 +44,7 @@ table_headers = {
     'single_parent_households': 'Single Parent Households',
     'snap_benefits_recipients': 'SNAP Benefits Recipients',
     'unemployment_rate': 'Unemployment Rate',
-    'resident_population': 'Resident Population'
+    'resident_population': 'Resident Population',
 }
 
 table_units = {
@@ -64,6 +64,17 @@ def counties_query() -> pd.DataFrame:
     cur.execute(
         'SELECT id as county_id, state as "State", name as "County Name" '
         'FROM counties'
+    )
+    colnames = [desc[0] for desc in cur.description]
+    results = cur.fetchall()
+    return pd.DataFrame(results, columns=colnames)
+
+
+def policy_query() -> pd.DataFrame:
+    cur = conn.cursor()
+    cur.execute(
+        'SELECT county_id as county_id, policy_value as "Policy Value", countdown as "Countdown" '
+        'FROM policy'
     )
     colnames = [desc[0] for desc in cur.description]
     results = cur.fetchall()
@@ -107,12 +118,14 @@ def static_data_single_table(table_name: str, columns: list) -> pd.DataFrame:
     df = counties_df.merge(df)
     return df
 
-def static_data_all_table() -> pd.DataFrame:   
+
+def static_data_all_table() -> pd.DataFrame:
     counties_df = counties_query()
     for table_name in static_tables:
         table_output = static_data_single_table(table_name, static_columns[table_name])
         counties_df = counties_df.merge(table_output)
     return counties_df
+
 
 def output_data(df: pd.DataFrame, table_name: str = 'fred_tables', ext: str = 'xlsx') -> str:
     if not os.path.isdir('Output'):

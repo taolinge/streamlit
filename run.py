@@ -64,7 +64,6 @@ def cross_features(df: pd.DataFrame) -> pd.DataFrame:
     crossed_df = pd.DataFrame(new_cols)
     crossed_df = crossed_df.T
     crossed_df['Mean'] = crossed_df.mean(axis=1)
-    crossed_df.to_excel('Output/data_crossed.xlsx')
 
     return crossed_df
 
@@ -75,6 +74,9 @@ def normalize(df: pd.DataFrame) -> pd.DataFrame:
     df = percent_to_population('Burdened Households (%)', 'Num Burdened Households', df)
     df = percent_to_population('Single Parent Households (%)', 'Num Single Parent Households', df)
     df = percent_to_population('Non-Home Ownership (%)', 'Non-Home Ownership Pop', df)
+
+    if 'Policy Value' in list(df.columns) or 'Countdown' in list(df.columns):
+        df = df.drop(['Policy Value', 'Countdown'], axis=1)
 
     df = df.drop(['Population Below Poverty Line (%)',
                   'Unemployment Rate (%)',
@@ -108,30 +110,32 @@ def cross(columns: tuple, df: pd.DataFrame) -> pd.Series:
     return new_series
 
 
-def priority_indicator(socioeconomic_index: float, policy_index: float, time_left: float = 1) -> float:
-    return socioeconomic_index * (1 - policy_index) / math.sqrt(time_left)
+def priority_indicator(socioeconomic_index: float, policy_index: float, time_left: int = 1) -> float:
+    if time_left < 1:
+        # Handle 0 values
+        time_left = 1
+
+    return float(socioeconomic_index) * (1 - float(policy_index)) / math.sqrt(time_left)
 
 
 def rank_counties(df: pd.DataFrame, label: str) -> pd.DataFrame:
-    policy_df = api.get_from_excel('Policy Workbook.xlsx', 'Analysis Data')
     analysis_df = normalize(df)
     crossed = cross_features(analysis_df)
     analysis_df['Crossed'] = crossed['Mean']
     analysis_df = normalize_column(analysis_df, 'Crossed')
+    analysis_df['Policy Value'] = df['Policy Value']
+    analysis_df['Countdown'] = df['Countdown']
 
     analysis_df['Relative Risk'] = analysis_df.sum(axis=1)
     max_sum = analysis_df['Relative Risk'].max()
     analysis_df['Relative Risk'] = (analysis_df['Relative Risk'] / max_sum)
-    counties = df.index.levels[1].values
 
-    if not any(policy_df['County Name'].isin(counties)):
-        print('Selected counties are not in the policy data! Fill out `Policy Workbook.xlsx` for the desired counties')
-    else:
-        analysis_df['Policy Index'] = policy_df['Policy Value'].copy()
-        analysis_df['Countdown'] = policy_df['Countdown'].copy()
+    if 'Relative Risk' in list(analysis_df.columns):
         analysis_df['Rank'] = analysis_df.apply(
-            lambda x: priority_indicator(x['Relative Risk'], x['Policy Index'], x['Countdown']), axis=1
+            lambda x: priority_indicator(x['Relative Risk'], x['Policy Value'], x['Countdown']), axis=1
         )
+    else:
+        print('Selected counties are not in the policy data! Fill out `Policy Workbook.xlsx` for the desired counties')
 
     analysis_df.to_excel('Output/' + label + '_overall_vulnerability.xlsx')
 
@@ -154,20 +158,38 @@ def load_all_data() -> pd.DataFrame:
 
 def get_single_county(county: str, state: str) -> pd.DataFrame:
     df = load_all_data()
-    df = clean_fred_data(df)
 
     df = filter_state(df, state)
     df = filter_counties(df, [county])
+    df = get_existing_policies(df)
+    print(df)
+
+    df = clean_fred_data(df)
+    print(df)
+
     df.set_index(['County Name'], drop=True, inplace=True)
+    return df
+
+
+def get_existing_policies(df):
+    policy_df = queries.policy_query()
+    temp_df = df.merge(policy_df, on='county_id')
+    if not temp_df.empty:
+        res = input('Policy data found in database. Use this data? [Y/n]').strip()
+        if res.lower() == 'y' or res.lower() == 'yes' or res == '':
+            return temp_df
+
     return df
 
 
 def get_multiple_counties(counties: list, state: str) -> pd.DataFrame:
     df = load_all_data()
-    df = clean_fred_data(df)
 
     df = filter_state(df, state)
     df = filter_counties(df, counties)
+    df = get_existing_policies(df)
+    df = clean_fred_data(df)
+
     df.set_index(['State', 'County Name'], drop=True, inplace=True)
 
     return df
@@ -188,6 +210,12 @@ def output_table(df: pd.DataFrame, path: str):
     df.to_excel(path)
 
 
+def display_results(df):
+    df.sort_values('Rank', ascending=False, inplace=True)
+    print(df['Rank'])
+    print('Ranked by overall priority, higher values mean higher priority.')
+
+
 if __name__ == '__main__':
     if not os.path.exists('Output'):
         os.makedirs('Output')
@@ -198,22 +226,27 @@ if __name__ == '__main__':
     if task == '1' or task == '':
         res = input('Enter the county and state (ie: Jefferson County, Colorado):')
         res = res.strip().split(',')
-        county = res[0].strip()
-        state = res[1].strip()
+        county = res[0].strip().lower()
+        state = res[1].strip().lower()
         df = get_single_county(county, state)
         output_table(df, 'Output/' + county + '.xlsx')
+        print('Done!')
     elif task == '2':
-        state = input("Which state are you looking for (ie: California)?]").strip()
-        counties = input('Please specify one or more counties, separated by commas [ie: ].').strip().split(',')
+        state = input("Which state are you looking for (ie: California)?").strip()
+        counties = input('Please specify one or more counties, separated by commas.').strip().split(',')
         counties = [_.strip().lower() for _ in counties]
         counties = [_ + ' county' for _ in counties if ' county' not in _]
         df = get_multiple_counties(counties, state)
         output_table(df, 'Output/' + state + '_selected_counties.xlsx')
-        rank_counties(df, state + '_selected_counties')
+        analysis_df = rank_counties(df, state + '_selected_counties')
+        display_results(analysis_df)
+        print('Done!')
     elif task == '3':
-        state = input("Which state are you looking for (ie: California)?]").strip()
+        state = input("Which state are you looking for (ie: California)?").strip()
         df = get_state_data(state)
         output_table(df, 'Output/' + state + '.xlsx')
-        rank_counties(df, state)
+        analysis_df = rank_counties(df, state)
+        display_results(analysis_df)
+        print('Done!')
     else:
         raise Exception('INVALID INPUT! Enter a valid task number.')
