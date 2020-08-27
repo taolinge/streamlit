@@ -5,12 +5,11 @@ import os
 import pandas as pd
 import sklearn.preprocessing as pre
 
-import api
 import queries
 
 # Pandas options
-pd.set_option('max_rows', 10)
-pd.set_option('max_columns', 10)
+pd.set_option('max_rows', 25)
+pd.set_option('max_columns', 12)
 pd.set_option('expand_frame_repr', True)
 pd.set_option('large_repr', 'truncate')
 pd.options.display.float_format = '{:.2f}'.format
@@ -30,11 +29,13 @@ def filter_state(data: pd.DataFrame, state: str) -> pd.DataFrame:
 
 
 def filter_counties(data: pd.DataFrame, counties: list) -> pd.DataFrame:
+    counties = [_.lower() for _ in counties]
     return data[data['County Name'].str.lower().isin(counties)]
 
 
-def clean_fred_data(data: pd.DataFrame) -> pd.DataFrame:
-    data['Non-Home Ownership (%)'] = 100 - data['Home Ownership (%)']
+def clean_data(data: pd.DataFrame) -> pd.DataFrame:
+    data.set_index(['State', 'County Name'], drop=True, inplace=True)
+    data['Non-Home Ownership (%)'] = 100 - pd.to_numeric(data['Home Ownership (%)'], downcast='float')
 
     data.drop([
         'Home Ownership (%)',
@@ -49,6 +50,7 @@ def clean_fred_data(data: pd.DataFrame) -> pd.DataFrame:
         'Resident Population Date'
     ], axis=1, inplace=True)
     data = data.loc[:, ~data.columns.str.contains('^Unnamed')]
+    data = data.astype(float)
 
     return data
 
@@ -62,10 +64,9 @@ def cross_features(df: pd.DataFrame) -> pd.DataFrame:
     cols = ['Pop Below Poverty Level', 'Pop Unemployed', 'Income Inequality (Ratio)', 'Non-Home Ownership Pop',
             'Num Burdened Households', 'Num Single Parent Households']
     all_combinations = []
-    for r in range(2, len(cols)):
+    for r in range(2, 3):
         combinations_list = list(itertools.combinations(cols, r))
         all_combinations += combinations_list
-    all_combinations.pop(0)
     new_cols = []
     for combo in all_combinations:
         new_cols.append(cross(combo, df))
@@ -73,7 +74,6 @@ def cross_features(df: pd.DataFrame) -> pd.DataFrame:
     crossed_df = pd.DataFrame(new_cols)
     crossed_df = crossed_df.T
     crossed_df['Mean'] = crossed_df.mean(axis=1)
-    crossed_df.to_excel('Output/data_crossed.xlsx')
 
     return crossed_df
 
@@ -84,6 +84,9 @@ def normalize(df: pd.DataFrame) -> pd.DataFrame:
     df = percent_to_population('Burdened Households (%)', 'Num Burdened Households', df)
     df = percent_to_population('Single Parent Households (%)', 'Num Single Parent Households', df)
     df = percent_to_population('Non-Home Ownership (%)', 'Non-Home Ownership Pop', df)
+
+    if 'Policy Value' in list(df.columns) or 'Countdown' in list(df.columns):
+        df = df.drop(['Policy Value', 'Countdown'], axis=1)
 
     df = df.drop(['Population Below Poverty Line (%)',
                   'Unemployment Rate (%)',
@@ -117,13 +120,17 @@ def cross(columns: tuple, df: pd.DataFrame) -> pd.Series:
     return new_series
 
 
-def priority_indicator(socioeconomic_index: float, policy_index: float, time_left: float = 1) -> float:
-    return socioeconomic_index * (1 - policy_index) / math.sqrt(time_left)
+def priority_indicator(socioeconomic_index: float, policy_index: float, time_left: int = 1) -> float:
+    if time_left < 1:
+        # Handle 0 values
+        time_left = 1
+
+    return float(socioeconomic_index) * (1 - float(policy_index)) / math.sqrt(time_left)
 
 
 def rank_counties(df: pd.DataFrame, label: str) -> pd.DataFrame:
-    policy_df = api.get_from_excel('Policy Workbook.xlsx', 'Analysis Data')
     analysis_df = normalize(df)
+
     crossed = cross_features(analysis_df)
     analysis_df['Crossed'] = crossed['Mean']
     analysis_df = normalize_column(analysis_df, 'Crossed')
@@ -131,16 +138,15 @@ def rank_counties(df: pd.DataFrame, label: str) -> pd.DataFrame:
     analysis_df['Relative Risk'] = analysis_df.sum(axis=1)
     max_sum = analysis_df['Relative Risk'].max()
     analysis_df['Relative Risk'] = (analysis_df['Relative Risk'] / max_sum)
-    counties = df.index.levels[1].values
 
-    if not any(policy_df['County Name'].isin(counties)):
-        print('Selected counties are not in the policy data! Fill out `Policy Workbook.xlsx` for the desired counties')
-    else:
-        analysis_df['Policy Index'] = policy_df['Policy Value'].copy()
-        analysis_df['Countdown'] = policy_df['Countdown'].copy()
+    if 'Policy Value' in list(df.columns):
+        analysis_df['Policy Value'] = df['Policy Value']
+        analysis_df['Countdown'] = df['Countdown']
         analysis_df['Rank'] = analysis_df.apply(
-            lambda x: priority_indicator(x['Relative Risk'], x['Policy Index'], x['Countdown']), axis=1
+            lambda x: priority_indicator(x['Relative Risk'], x['Policy Value'], x['Countdown']), axis=1
         )
+    else:
+        print('Selected counties are not in the policy data! Fill out `Policy Workbook.xlsx` for the desired counties')
 
     analysis_df.to_excel('Output/' + label + '_overall_vulnerability.xlsx')
 
@@ -150,8 +156,11 @@ def rank_counties(df: pd.DataFrame, label: str) -> pd.DataFrame:
 def load_all_data() -> pd.DataFrame:
     if os.path.exists("Output/all_tables.xlsx"):
         try:
-            print('Using local `all_tables.xlsx`')
-            df = pd.read_excel('Output/all_tables.xlsx')
+            res = input('Use local `all_tables.xlsx`? [y/N]')
+            if res.lower() == 'y' or res.lower() == 'yes':
+                df = pd.read_excel('Output/all_tables.xlsx')
+            else:
+                df = queries.latest_data_all_tables()
         except:
             print('Something went wrong with the Excel file. Falling back to database query.')
             df = queries.latest_data_all_tables()
@@ -161,33 +170,42 @@ def load_all_data() -> pd.DataFrame:
     return df
 
 
+def get_existing_policies(df: pd.DataFrame) -> pd.DataFrame:
+    policy_df = queries.policy_query()
+    temp_df = df.merge(policy_df, on='county_id')
+    if not temp_df.empty and len(df) == len(temp_df):
+        res = input('Policy data found in database. Use this data? [Y/n]').strip()
+        if res.lower() == 'y' or res.lower() == 'yes' or res == '':
+            return temp_df
+
+    return df
+
+
 def get_single_county(county: str, state: str) -> pd.DataFrame:
     df = load_all_data()
-    df = clean_fred_data(df)
-
     df = filter_state(df, state)
     df = filter_counties(df, [county])
-    df.set_index(['County Name'], drop=True, inplace=True)
+    df = get_existing_policies(df)
+    df = clean_data(df)
+
     return df
 
 
 def get_multiple_counties(counties: list, state: str) -> pd.DataFrame:
     df = load_all_data()
-    df = clean_fred_data(df)
-
     df = filter_state(df, state)
     df = filter_counties(df, counties)
-    df.set_index(['State', 'County Name'], drop=True, inplace=True)
+    df = get_existing_policies(df)
+    df = clean_data(df)
 
     return df
 
 
 def get_state_data(state: str) -> pd.DataFrame:
     df = load_all_data()
-    df = clean_fred_data(df)
-
     df = filter_state(df, state)
-    df.set_index(['State', 'County Name'], drop=True, inplace=True)
+    df = get_existing_policies(df)
+    df = clean_data(df)
 
     return df
 
@@ -232,6 +250,24 @@ def join_fmr_data(county, state):
 # def get_cost_of_evictions(county, state):
 
 
+def print_summary(df: pd.DataFrame, output: str):
+    print('*** Results ***')
+    if 'Rank' in df.columns:
+        df.sort_values('Rank', ascending=False, inplace=True)
+        print(df['Rank'])
+        print('* Ranked by overall priority, higher values mean higher priority.')
+        print('Normalized analysis data is located at {o}'.format(o=output[:-5]) + '_overall_vulnerability.xlsx')
+    elif len(df) > 1:
+        df.sort_values('Relative Risk', ascending=False, inplace=True)
+        print(df['Relative Risk'])
+        print('* Ranked by relative risk, higher values mean higher priority.')
+        print('Normalized analysis data is located at {o}'.format(o=output[:-5]) + '_overall_vulnerability.xlsx')
+    else:
+        print('Fetched single county data')
+    print('Raw fetched data is located at {o}'.format(o=output))
+    print('Done!')
+
+
 if __name__ == '__main__':
     if not os.path.exists('Output'):
         os.makedirs('Output')
@@ -244,25 +280,27 @@ if __name__ == '__main__':
         res = res.strip().split(',')
         cost_of_evictions = input('Are you also interested in running a cost of evictions analysis for your chosen county? (y/n) ')
         cost_of_evictions.strip()
-        county = res[0].strip()
-        state = res[1].strip()
+        county = res[0].strip().lower()
+        state = res[1].strip().lower()
         df = get_single_county(county, state)
         if cost_of_evictions == 'y':
             join_fmr_data(county, state)
-            # get_cost_of_evictions(county, state)
-        output_table(df, 'Output/' + county + '.xlsx')
+        output_table(df, 'Output/' + county.capitalize() + '.xlsx')
+        print_summary(df, 'Output/' + county.capitalize() + '.xlsx')
     elif task == '2':
-        state = input("Which state are you looking for (ie: California)?]").strip()
-        counties = input('Please specify one or more counties, separated by commas [ie: ].').strip().split(',')
+        state = input("Which state are you looking for (ie: California)?").strip()
+        counties = input('Please specify one or more counties, separated by commas.').strip().split(',')
         counties = [_.strip().lower() for _ in counties]
         counties = [_ + ' county' for _ in counties if ' county' not in _]
         df = get_multiple_counties(counties, state)
         output_table(df, 'Output/' + state + '_selected_counties.xlsx')
-        rank_counties(df, state + '_selected_counties')
+        analysis_df = rank_counties(df, state + '_selected_counties')
+        print_summary(analysis_df, 'Output/' + state + '_selected_counties.xlsx')
     elif task == '3':
-        state = input("Which state are you looking for (ie: California)?]").strip()
+        state = input("Which state are you looking for (ie: California)?").strip()
         df = get_state_data(state)
         output_table(df, 'Output/' + state + '.xlsx')
-        rank_counties(df, state)
+        analysis_df = rank_counties(df, state)
+        print_summary(analysis_df, 'Output/' + state + '.xlsx')
     else:
         raise Exception('INVALID INPUT! Enter a valid task number.')
