@@ -15,6 +15,15 @@ pd.set_option('expand_frame_repr', True)
 pd.set_option('large_repr', 'truncate')
 pd.options.display.float_format = '{:.2f}'.format
 
+HOUSING_STOCK_DISTRIBUTION = { # Assumed National housing distribution [source]
+    0: 0.0079,
+    1: 0.1083,
+    2: 0.2466,
+    3: 0.4083,
+    4: 0.2289
+}
+# todo: turn this into a constant as well and document
+BURDENED_HOUSEHOLD_PROPORTION = [5, 25, 33, 50, 75]
 
 def filter_state(data: pd.DataFrame, state: str) -> pd.DataFrame:
     return data[data['State'].str.lower() == state.lower()]
@@ -188,8 +197,37 @@ def output_table(df: pd.DataFrame, path: str):
     df.to_excel(path)
 
 def join_fmr_data(county, state):
-    df = queries.fmr_data()
-    print(df)
+    all_other_data = load_all_data()
+    df = queries.static_data_single_table('fair_market_rents', queries.static_columns['fair_market_rents'])
+    df=df.drop([
+        'State',
+        'County Name'
+    ], axis=1)
+    df = pd.merge(all_other_data, df, on='county_id')
+    df = filter_state(df, state)
+    df = filter_counties(df, [county])
+    print(df.head())
+    df.set_index(['State', 'County Name'], drop=True, inplace=True)
+    df=df.drop([
+        'Burdened Households Date',
+        'Home Ownership Date',
+        'Income Inequality Date',
+        'Population Below Poverty Line Date',
+        'Single Parent Households Date',
+        'SNAP Benefits Recipients Date',
+        'Unemployment Rate Date',
+        'Resident Population Date'
+    ], axis=1)
+    df=df.astype(float)
+    print(df.head())
+    for key, value in HOUSING_STOCK_DISTRIBUTION.items():
+        for pro in BURDENED_HOUSEHOLD_PROPORTION:
+            df[str(key)+'_br_cost_'+str(pro)] = value * df['fmr_0'] * (pro/100) * (df['Resident Population (Thousands of Persons)']*1000) * (df['Burdened Households (%)']/100)
+            df[str(key)+'_br_cost_'+str(pro)] = value * df['fmr_1'] * (pro/100) * (df['Resident Population (Thousands of Persons)']*1000) * (df['Burdened Households (%)']/100)
+            df[str(key)+'_br_cost_'+str(pro)] = value * df['fmr_2'] * (pro/100) * (df['Resident Population (Thousands of Persons)']*1000) * (df['Burdened Households (%)']/100)
+            df[str(key)+'_br_cost_'+str(pro)] = value * df['fmr_3'] * (pro/100) * (df['Resident Population (Thousands of Persons)']*1000) * (df['Burdened Households (%)']/100)
+            df[str(key)+'_br_cost_'+str(pro)] = value * df['fmr_4'] * (pro/100) * (df['Resident Population (Thousands of Persons)']*1000) * (df['Burdened Households (%)']/100)
+    return df
 
 # def get_cost_of_evictions(county, state):
 
