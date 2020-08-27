@@ -26,7 +26,6 @@ def filter_counties(data: pd.DataFrame, counties: list) -> pd.DataFrame:
 def clean_data(data: pd.DataFrame) -> pd.DataFrame:
     data.set_index(['State', 'County Name'], drop=True, inplace=True)
     data['Non-Home Ownership (%)'] = 100 - pd.to_numeric(data['Home Ownership (%)'], downcast='float')
-    # data['Vulnerability Index']=
 
     data.drop([
         'Home Ownership (%)',
@@ -55,10 +54,9 @@ def cross_features(df: pd.DataFrame) -> pd.DataFrame:
     cols = ['Pop Below Poverty Level', 'Pop Unemployed', 'Income Inequality (Ratio)', 'Non-Home Ownership Pop',
             'Num Burdened Households', 'Num Single Parent Households']
     all_combinations = []
-    for r in range(2, len(cols)):
+    for r in range(2, 3):
         combinations_list = list(itertools.combinations(cols, r))
         all_combinations += combinations_list
-    all_combinations.pop(0)
     new_cols = []
     for combo in all_combinations:
         new_cols.append(cross(combo, df))
