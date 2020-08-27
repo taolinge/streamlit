@@ -91,6 +91,18 @@ You can get the most recent Federal Reserve Economic Data (FRED) using the follo
 
 This command will query the eviction data database, and return data in an `Output` folder. If no folder exists, will be created by the `queries.py` script.
 
+### Policy Workbook
+Included in this repository is a template Excel file for policy data. This file is referenced in the Python scripts. There are three pages to be aware of.
+
+#### Policy Timeline
+This page is used to keep track of time-dependent policies and generate a "countdown clock" for a county. You can add policies and their expirations to end up with a date where people lose protections. You can also color the cells on this page to show where different policies overlap and how their expirations line up visually.  
+
+#### Policy Ranking
+This page is used to collect and represent the specific policy nuanced not captured by the timeline. For each county, enter a `1` in each cell where a policy applies. These values are weighted according the methodology used by EvictionLab (with a couple minor modifications) to get an index score for each county.
+
+#### Analysis Data
+This page collects the results from the previous two pages in a format that can be more easily read by the Python scripts. You may need to copy the countdown and policy index values for each county you're analyzing. 
+
 ## Database Users
 The database that this repository uses is open for *read-only* access. The connection details are stored in `credentials.py` if you're using the Python workflow.
 
