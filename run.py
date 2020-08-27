@@ -5,7 +5,6 @@ import os
 import pandas as pd
 import sklearn.preprocessing as pre
 
-import api
 import queries
 
 # Pandas options
@@ -25,6 +24,7 @@ def filter_counties(data: pd.DataFrame, counties: list) -> pd.DataFrame:
 
 
 def clean_fred_data(data: pd.DataFrame) -> pd.DataFrame:
+    data.set_index(['State', 'County Name'], drop=True, inplace=True)
     data['Non-Home Ownership (%)'] = 100 - pd.to_numeric(data['Home Ownership (%)'], downcast='float')
 
     data.drop([
@@ -161,7 +161,7 @@ def load_all_data() -> pd.DataFrame:
     return df
 
 
-def get_existing_policies(df):
+def get_existing_policies(df:pd.DataFrame)->pd.DataFrame:
     policy_df = queries.policy_query()
     temp_df = df.merge(policy_df, on='county_id')
     if not temp_df.empty and len(df) == len(temp_df):
@@ -177,7 +177,6 @@ def get_single_county(county: str, state: str) -> pd.DataFrame:
     df = filter_state(df, state)
     df = filter_counties(df, [county])
     df = get_existing_policies(df)
-    df.set_index(['State', 'County Name'], drop=True, inplace=True)
     df = clean_fred_data(df)
 
     return df
@@ -188,7 +187,6 @@ def get_multiple_counties(counties: list, state: str) -> pd.DataFrame:
     df = filter_state(df, state)
     df = filter_counties(df, counties)
     df = get_existing_policies(df)
-    df.set_index(['State', 'County Name'], drop=True, inplace=True)
     df = clean_fred_data(df)
 
     return df
@@ -198,7 +196,6 @@ def get_state_data(state: str) -> pd.DataFrame:
     df = load_all_data()
     df = filter_state(df, state)
     df = get_existing_policies(df)
-    df.set_index(['State', 'County Name'], drop=True, inplace=True)
     df = clean_fred_data(df)
 
     return df
@@ -209,7 +206,8 @@ def output_table(df: pd.DataFrame, path: str):
     df.to_excel(path)
 
 
-def print_summary(df, output):
+def print_summary(df:pd.DataFrame, output:str):
+    print('*** Results ***')
     if 'Rank' in df.columns:
         df.sort_values('Rank', ascending=False, inplace=True)
         print(df['Rank'])
