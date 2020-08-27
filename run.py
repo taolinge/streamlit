@@ -10,7 +10,7 @@ import queries
 
 # Pandas options
 pd.set_option('max_rows', 25)
-pd.set_option('max_columns', 10)
+pd.set_option('max_columns', 12)
 pd.set_option('expand_frame_repr', True)
 pd.set_option('large_repr', 'truncate')
 pd.options.display.float_format = '{:.2f}'.format
@@ -25,7 +25,7 @@ def filter_counties(data: pd.DataFrame, counties: list) -> pd.DataFrame:
 
 
 def clean_fred_data(data: pd.DataFrame) -> pd.DataFrame:
-    data['Non-Home Ownership (%)'] = 100 - data['Home Ownership (%)']
+    data['Non-Home Ownership (%)'] = 100 - pd.to_numeric(data['Home Ownership (%)'], downcast='float')
 
     data.drop([
         'Home Ownership (%)',
@@ -40,6 +40,7 @@ def clean_fred_data(data: pd.DataFrame) -> pd.DataFrame:
         'Resident Population Date'
     ], axis=1, inplace=True)
     data = data.loc[:, ~data.columns.str.contains('^Unnamed')]
+    data = data.astype(float)
 
     return data
 
@@ -119,13 +120,11 @@ def priority_indicator(socioeconomic_index: float, policy_index: float, time_lef
 
 
 def rank_counties(df: pd.DataFrame, label: str) -> pd.DataFrame:
-    print(df.columns)
     analysis_df = normalize(df)
 
     crossed = cross_features(analysis_df)
     analysis_df['Crossed'] = crossed['Mean']
     analysis_df = normalize_column(analysis_df, 'Crossed')
-    print(analysis_df.columns)
 
     analysis_df['Relative Risk'] = analysis_df.sum(axis=1)
     max_sum = analysis_df['Relative Risk'].max()
@@ -148,25 +147,17 @@ def rank_counties(df: pd.DataFrame, label: str) -> pd.DataFrame:
 def load_all_data() -> pd.DataFrame:
     if os.path.exists("Output/all_tables.xlsx"):
         try:
-            print('Using local `all_tables.xlsx`')
-            df = pd.read_excel('Output/all_tables.xlsx')
+            res = input('Use local `all_tables.xlsx`? [y/N]')
+            if res.lower() == 'y' or res.lower() == 'yes':
+                df = pd.read_excel('Output/all_tables.xlsx')
+            else:
+                df = queries.latest_data_all_tables()
         except:
             print('Something went wrong with the Excel file. Falling back to database query.')
             df = queries.latest_data_all_tables()
     else:
         df = queries.latest_data_all_tables()
 
-    return df
-
-
-def get_single_county(county: str, state: str) -> pd.DataFrame:
-    df = load_all_data()
-    df = filter_state(df, state)
-    df = filter_counties(df, [county])
-    df = get_existing_policies(df)
-    df = clean_fred_data(df)
-
-    df.set_index(['County Name'], drop=True, inplace=True)
     return df
 
 
@@ -181,14 +172,24 @@ def get_existing_policies(df):
     return df
 
 
+def get_single_county(county: str, state: str) -> pd.DataFrame:
+    df = load_all_data()
+    df = filter_state(df, state)
+    df = filter_counties(df, [county])
+    df = get_existing_policies(df)
+    df.set_index(['State', 'County Name'], drop=True, inplace=True)
+    df = clean_fred_data(df)
+
+    return df
+
+
 def get_multiple_counties(counties: list, state: str) -> pd.DataFrame:
     df = load_all_data()
     df = filter_state(df, state)
     df = filter_counties(df, counties)
     df = get_existing_policies(df)
-    df = clean_fred_data(df)
-
     df.set_index(['State', 'County Name'], drop=True, inplace=True)
+    df = clean_fred_data(df)
 
     return df
 
@@ -197,9 +198,8 @@ def get_state_data(state: str) -> pd.DataFrame:
     df = load_all_data()
     df = filter_state(df, state)
     df = get_existing_policies(df)
-    df = clean_fred_data(df)
-
     df.set_index(['State', 'County Name'], drop=True, inplace=True)
+    df = clean_fred_data(df)
 
     return df
 
@@ -209,15 +209,20 @@ def output_table(df: pd.DataFrame, path: str):
     df.to_excel(path)
 
 
-def display_results(df):
+def print_summary(df, output):
     if 'Rank' in df.columns:
         df.sort_values('Rank', ascending=False, inplace=True)
         print(df['Rank'])
         print('Ranked by overall priority, higher values mean higher priority.')
-    else:
+    elif len(df) > 1:
         df.sort_values('Relative Risk', ascending=False, inplace=True)
         print(df['Relative Risk'])
         print('Ranked by relative risk, higher values mean higher priority.')
+    else:
+        print('Fetched single county data')
+    print('Results are located at {o}'.format(o=output))
+    print('Done!')
+
 
 if __name__ == '__main__':
     if not os.path.exists('Output'):
@@ -232,8 +237,8 @@ if __name__ == '__main__':
         county = res[0].strip().lower()
         state = res[1].strip().lower()
         df = get_single_county(county, state)
-        output_table(df, 'Output/' + county + '.xlsx')
-        print('Done!')
+        output_table(df, 'Output/' + county.capitalize() + '.xlsx')
+        print_summary(df, 'Output/' + county.capitalize() + '.xlsx')
     elif task == '2':
         state = input("Which state are you looking for (ie: California)?").strip()
         counties = input('Please specify one or more counties, separated by commas.').strip().split(',')
@@ -242,14 +247,12 @@ if __name__ == '__main__':
         df = get_multiple_counties(counties, state)
         output_table(df, 'Output/' + state + '_selected_counties.xlsx')
         analysis_df = rank_counties(df, state + '_selected_counties')
-        display_results(analysis_df)
-        print('Done!')
+        print_summary(analysis_df, 'Output/' + state + '_selected_counties.xlsx')
     elif task == '3':
         state = input("Which state are you looking for (ie: California)?").strip()
         df = get_state_data(state)
         output_table(df, 'Output/' + state + '.xlsx')
         analysis_df = rank_counties(df, state)
-        display_results(analysis_df)
-        print('Done!')
+        print_summary(analysis_df, 'Output/' + state + '.xlsx')
     else:
         raise Exception('INVALID INPUT! Enter a valid task number.')
