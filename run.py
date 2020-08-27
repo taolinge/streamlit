@@ -20,6 +20,7 @@ def filter_state(data: pd.DataFrame, state: str) -> pd.DataFrame:
 
 
 def filter_counties(data: pd.DataFrame, counties: list) -> pd.DataFrame:
+    counties = [_.lower() for _ in counties]
     return data[data['County Name'].str.lower().isin(counties)]
 
 
@@ -160,7 +161,7 @@ def load_all_data() -> pd.DataFrame:
     return df
 
 
-def get_existing_policies(df:pd.DataFrame)->pd.DataFrame:
+def get_existing_policies(df: pd.DataFrame) -> pd.DataFrame:
     policy_df = queries.policy_query()
     temp_df = df.merge(policy_df, on='county_id')
     if not temp_df.empty and len(df) == len(temp_df):
@@ -205,18 +206,18 @@ def output_table(df: pd.DataFrame, path: str):
     df.to_excel(path)
 
 
-def print_summary(df:pd.DataFrame, output:str):
+def print_summary(df: pd.DataFrame, output: str):
     print('*** Results ***')
     if 'Rank' in df.columns:
         df.sort_values('Rank', ascending=False, inplace=True)
         print(df['Rank'])
         print('* Ranked by overall priority, higher values mean higher priority.')
-        print('Normalized analysis data is located at {o}'.format(o=output[:-5])+'_overall_vulnerability.xlsx')
+        print('Normalized analysis data is located at {o}'.format(o=output[:-5]) + '_overall_vulnerability.xlsx')
     elif len(df) > 1:
         df.sort_values('Relative Risk', ascending=False, inplace=True)
         print(df['Relative Risk'])
         print('* Ranked by relative risk, higher values mean higher priority.')
-        print('Normalized analysis data is located at {o}'.format(o=output[:-5])+'_overall_vulnerability.xlsx')
+        print('Normalized analysis data is located at {o}'.format(o=output[:-5]) + '_overall_vulnerability.xlsx')
     else:
         print('Fetched single county data')
     print('Raw fetched data is located at {o}'.format(o=output))
