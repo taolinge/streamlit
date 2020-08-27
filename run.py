@@ -23,9 +23,10 @@ def filter_counties(data: pd.DataFrame, counties: list) -> pd.DataFrame:
     return data[data['County Name'].str.lower().isin(counties)]
 
 
-def clean_fred_data(data: pd.DataFrame) -> pd.DataFrame:
+def clean_data(data: pd.DataFrame) -> pd.DataFrame:
     data.set_index(['State', 'County Name'], drop=True, inplace=True)
     data['Non-Home Ownership (%)'] = 100 - pd.to_numeric(data['Home Ownership (%)'], downcast='float')
+    # data['Vulnerability Index']=
 
     data.drop([
         'Home Ownership (%)',
@@ -177,7 +178,7 @@ def get_single_county(county: str, state: str) -> pd.DataFrame:
     df = filter_state(df, state)
     df = filter_counties(df, [county])
     df = get_existing_policies(df)
-    df = clean_fred_data(df)
+    df = clean_data(df)
 
     return df
 
@@ -187,7 +188,7 @@ def get_multiple_counties(counties: list, state: str) -> pd.DataFrame:
     df = filter_state(df, state)
     df = filter_counties(df, counties)
     df = get_existing_policies(df)
-    df = clean_fred_data(df)
+    df = clean_data(df)
 
     return df
 
@@ -196,7 +197,7 @@ def get_state_data(state: str) -> pd.DataFrame:
     df = load_all_data()
     df = filter_state(df, state)
     df = get_existing_policies(df)
-    df = clean_fred_data(df)
+    df = clean_data(df)
 
     return df
 
@@ -211,14 +212,16 @@ def print_summary(df:pd.DataFrame, output:str):
     if 'Rank' in df.columns:
         df.sort_values('Rank', ascending=False, inplace=True)
         print(df['Rank'])
-        print('Ranked by overall priority, higher values mean higher priority.')
+        print('* Ranked by overall priority, higher values mean higher priority.')
+        print('Normalized analysis data is located at {o}'.format(o=output[:-5])+'_overall_vulnerability.xlsx')
     elif len(df) > 1:
         df.sort_values('Relative Risk', ascending=False, inplace=True)
         print(df['Relative Risk'])
-        print('Ranked by relative risk, higher values mean higher priority.')
+        print('* Ranked by relative risk, higher values mean higher priority.')
+        print('Normalized analysis data is located at {o}'.format(o=output[:-5])+'_overall_vulnerability.xlsx')
     else:
         print('Fetched single county data')
-    print('Results are located at {o}'.format(o=output))
+    print('Raw fetched data is located at {o}'.format(o=output))
     print('Done!')
 
 

@@ -103,6 +103,9 @@ def latest_data_all_tables() -> pd.DataFrame:
     for table_name in fred_tables:
         table_output = latest_data_single_table(table_name, require_counties=False)
         counties_df = counties_df.merge(table_output)
+    chmura_df = static_data_single_table('chmura_economic_vulnerability_index', ['VulnerabilityIndex'])
+    counties_df = counties_df.merge(chmura_df)
+
     return counties_df
 
 
