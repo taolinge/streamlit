@@ -13,7 +13,7 @@ conn = psycopg2.connect(
     host=credentials.DB_HOST
 )
 
-all_tables = [
+fred_tables = [
     'burdened_households',
     'homeownership_rate',
     'income_inequality',
@@ -21,8 +21,20 @@ all_tables = [
     'single_parent_households',
     'snap_benefits_recipients',
     'unemployment_rate',
-    'resident_population'
+    'resident_population',
 ]
+
+static_tables = [
+    'chmura_economic_vulnerability_index',
+    'median_rents',
+    'fair_market_rents'
+]
+
+static_columns = {
+    'chmura_economic_vulnerability_index': ['VulnerabilityIndex', 'Rank'],
+    'fair_market_rents': ['fmr_0', 'fmr_1','fmr_2','fmr_3','fmr_4',],
+    'median_rents':['rent50_0', 'rent50_1','rent50_2','rent50_3','rent50_4',]
+}
 
 table_headers = {
     'burdened_households': 'Burdened Households',
@@ -77,13 +89,32 @@ def latest_data_single_table(table_name: str, require_counties: bool = True) -> 
 
 def latest_data_all_tables() -> pd.DataFrame:
     counties_df = counties_query()
-    for table_name in all_tables:
+    for table_name in fred_tables:
         table_output = latest_data_single_table(table_name, require_counties=False)
         counties_df = counties_df.merge(table_output)
     return counties_df
 
 
-def output_data(df: pd.DataFrame, table_name: str = 'all_tables', ext: str = 'xlsx') -> str:
+def static_data_single_table(table_name: str, columns: list) -> pd.DataFrame:
+    cur = conn.cursor()
+    str_columns = ', '.join('"{}"'.format(c) for c in columns)
+    query = 'SELECT county_id, {} FROM {} '.format(str_columns, table_name)
+    cur.execute(query)
+    results = cur.fetchall()
+    colnames = [desc[0] for desc in cur.description]
+    df = pd.DataFrame(results, columns=colnames)
+    counties_df = counties_query()
+    df = counties_df.merge(df)
+    return df
+
+def static_data_all_table() -> pd.DataFrame:   
+    counties_df = counties_query()
+    for table_name in static_tables:
+        table_output = static_data_single_table(table_name, static_columns[table_name])
+        counties_df = counties_df.merge(table_output)
+    return counties_df
+
+def output_data(df: pd.DataFrame, table_name: str = 'fred_tables', ext: str = 'xlsx') -> str:
     if not os.path.isdir('Output'):
         os.mkdir('Output')
     if ext == 'pk':
