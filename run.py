@@ -39,7 +39,6 @@ def clean_data(data: pd.DataFrame) -> pd.DataFrame:
 
     data.drop([
         'Home Ownership (%)',
-        'county_id',
         'Burdened Households Date',
         'Home Ownership Date',
         'Income Inequality Date',
@@ -214,30 +213,14 @@ def output_table(df: pd.DataFrame, path: str):
     df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
     df.to_excel(path)
 
-def join_fmr_data(county, state):
-    all_other_data = load_all_data()
-    df = queries.static_data_single_table('fair_market_rents', queries.static_columns['fair_market_rents'])
-    df=df.drop([
+def join_fmr_data(df, county, state):
+    fmr_df = queries.static_data_single_table('fair_market_rents', queries.static_columns['fair_market_rents'])
+    fmr_df=fmr_df.drop([
         'State',
         'County Name'
     ], axis=1)
-    df = pd.merge(all_other_data, df, on='county_id')
-    df = filter_state(df, state)
-    df = filter_counties(df, [county])
-    print(df.head())
-    df.set_index(['State', 'County Name'], drop=True, inplace=True)
-    df=df.drop([
-        'Burdened Households Date',
-        'Home Ownership Date',
-        'Income Inequality Date',
-        'Population Below Poverty Line Date',
-        'Single Parent Households Date',
-        'SNAP Benefits Recipients Date',
-        'Unemployment Rate Date',
-        'Resident Population Date'
-    ], axis=1)
+    df = pd.merge(fmr_df, df, on='county_id')
     df=df.astype(float)
-    print(df.head())
     for key, value in HOUSING_STOCK_DISTRIBUTION.items():
         for pro in BURDENED_HOUSEHOLD_PROPORTION:
             df[str(key)+'_br_cost_'+str(pro)] = value * df['fmr_0'] * (pro/100) * (df['Resident Population (Thousands of Persons)']*1000) * (df['Burdened Households (%)']/100)
@@ -284,7 +267,7 @@ if __name__ == '__main__':
         state = res[1].strip().lower()
         df = get_single_county(county, state)
         if cost_of_evictions == 'y':
-            join_fmr_data(county, state)
+            df=join_fmr_data(df, county, state)
         output_table(df, 'Output/' + county.capitalize() + '.xlsx')
         print_summary(df, 'Output/' + county.capitalize() + '.xlsx')
     elif task == '2':
