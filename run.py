@@ -120,6 +120,7 @@ def priority_indicator(socioeconomic_index: float, policy_index: float, time_lef
 
 
 def rank_counties(df: pd.DataFrame, label: str) -> pd.DataFrame:
+    df.drop(['county_id'], axis=1, inplace=True)
     analysis_df = normalize(df)
 
     crossed = cross_features(analysis_df)
