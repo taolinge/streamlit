@@ -30,7 +30,6 @@ def clean_data(data: pd.DataFrame) -> pd.DataFrame:
 
     data.drop([
         'Home Ownership (%)',
-        'county_id',
         'Burdened Households Date',
         'Home Ownership Date',
         'Income Inequality Date',
