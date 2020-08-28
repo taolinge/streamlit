@@ -35,7 +35,7 @@ This data is the most recent data we could get, but some datasets are updated mo
 | COVID Vulnerability Index | [CHMURA](http://www.chmuraecon.com/interactive/covid-19-economic-vulnerability-index/) | 4/15/2020 | |
 | Fair Market Rents | [HUD](https://www.huduser.gov/portal/datasets/fmr.html#2021_data) | 10/1/2020 | Represents the estimated amount (base rent + essential utilities) that a property in a given area typically rents for|
 | Median Rents | [HUD](https://www.huduser.gov/PORTAL/datasets/50per.html) | 2021 | Rent estimates at the 50th percentile (or median)  calculated for all Fair Market Rent areas|
-| Housing Stock Distributions | [Statista](https://www.statista.com/statistics/206393/distribution-of-housing-units-in-the-us-by-number-of-bedrooms/) | 2017 | Distribution of housing units in the US by number of bedrooms|
+| Housing Stock Distributions | [US Census](https://www.census.gov/programs-surveys/ahs/data/interactive/ahstablecreator.html?s_areas=00000&s_year=2017&s_tablename=TABLE2&s_bygroup1=1&s_bygroup2=1&s_filtergroup1=1&s_filtergroup2=1) | 2017 | Distribution of housing units in the US by number of bedrooms |
 If you have datasets you'd like to see included, please create an Issue.
  
  
@@ -54,11 +54,34 @@ To calculate the cost to avoid evictions the following calcuation was used:
 
     `(burdened household proportion/100) * county rent * housing stock distribution percentage * population * (burdened households/100)`
 
-Housing stock distributions (statista) were used to evaluate the types of houses that exist in the United States (e.g. studio, one bedroom, etc.).  Burdened household proportions were decided by Arup and were used to determine what percentage of people were most at risk.  Proportions were set at 5, 25, 33, 50, and 75 (why?).  County rents for each housing stock were sourced from HUD, and used Fair Market Rates to determine rent prices for each stock.  Fair Market Rents (FMRs) represent the estimated amount (base rent + essential utilities) that a property in a given area typically rents for. Burdened households was a percentage calculated by (source?) which gives the percentage of the population at risk of not paying their rent that month (?).  Population data was pulled from HUD and represents the population by county in the year 2017. 
+Housing stock distributions (US Census) were used to evaluate the types of houses that exist in the United States (e.g. studio, one bedroom, etc.).  Burdened household proportions were decided by Arup and were used to determine what percentage of people were most at risk.  Proportions were set at 5, 25, 33, 50, and 75 to represent that not all burdened households will face eviction, and we don't know how many actually will.  With the chosen proportion values, we are representing a general range, knowing there isn't a case where nobody will be evicted, or a case where everybody will be evicted.  These numbers can be adjusted based on the user's knowledge of their own county. County rents for each housing stock were sourced from HUD, and used Fair Market Rates to determine rent prices for each stock.  Fair Market Rents (FMRs) represent the estimated amount (base rent + essential utilities) that a property in a given area typically rents for. Burdened households was a percentage calculated by FRED which gives the percentage of the population who pay more than 30% of their income on rent.  Population data was pulled from HUD and represents the population by county in the year 2017. 
 
-Performing this calculation for each proportion and each housing stock will calculate the amount needed to prevent eviction for each proportion.  The total cost of evictions for a particular county for one month was calcuated by summing each housing stock.  To get the cost of prevention for more than one month, the sum was multiplied by the number of months of interest.  
+Performing this calculation for each proportion and each housing stock will calculate the amount needed to prevent eviction for each proportion.  The total cost of evictions for a particular county for one month was calcuated by summing each housing stock.  To get the cost of prevention for more than one month, the sum was multiplied by the number of months of interest. 
 
-Upon script completion, an sheet will be created within the output excel file displaying all values mentioned above in an easy to follow table format.  If you experience problems with the script or have questions about methodologies, please reach out to a member of the development team.  
+This script uses Fair Market Rent values.  Median rent values are also available in the database.  The script can be manually adjusted by the user to reference median rent values rather than fair market rent if they choose.  
+
+Upon script completion, an excel file will be created within the output folder displaying all values mentioned above.  If you experience problems with the script or have questions about methodologies, please reach out to a member of the development team.  
+
+Explanation of output fields:
+
+    county_id: Unique ID for each county
+    fmr_[0-4]: Fair Market Rent value for a 0 bedroom house to a 4 bedroom house
+    Burdened Households (%): People who pay more than 30 percent of their income towards rent
+    Income Inequality (Ratio): The income earned by the top percentage of households and dividing that by the income earned by the poorest percentage of households.
+    Population Below Poverty Line (%): Population living below the minimum level of income deemed adequate in a particular county 
+    Single Parent Households (%): Number of households with a single parent
+    SNAP Benefits Recipients (Persons): Number of people receiving Supplemental Nutrition Assistance Progarm benefits 
+    Unemployment Rate (%): Percentage of the population unemployed
+    Resident Population (Thousands of Persons): Number of persons in a county 
+    VulnerabilityIndex: COVID Vulnerability Index, as defined by CHMURA
+    Non-Home Ownership (%): Percentage of persons who do not own a home
+    [0-4]_br_cost_5: Cost of preventing evictions for a 0-4 bedroom house for proportion 5
+    [0-4]_br_cost_25: Cost of preventing evictions for a 0-4 bedroom house for proportion 25
+    [0-4]_br_cost_33: Cost of preventing evictions for a 0-4 bedroom house for proportion 33
+    [0-4]_br_cost_50: Cost of preventing evictions for a 0-4 bedroom house for proportion 50
+    [0-4]_br_cost_75: Cost of preventing evictions for a 0-4 bedroom house for proportion 75
+
+To calculate the total cost of evictions for a single month, simply add the costs for each housing type for a particular proportion.  
 
 ## Python Users
 We've done our previous analyses in Python, and have built data gathering, cleaning, and analysis functions.

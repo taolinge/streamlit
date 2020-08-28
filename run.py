@@ -230,8 +230,6 @@ def join_fmr_data(df, county, state):
             df[str(key)+'_br_cost_'+str(pro)] = value * df['fmr_4'] * (pro/100) * (df['Resident Population (Thousands of Persons)']*1000) * (df['Burdened Households (%)']/100)
     return df
 
-# def get_cost_of_evictions(county, state):
-
 
 def print_summary(df: pd.DataFrame, output: str):
     print('*** Results ***')
