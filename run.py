@@ -14,7 +14,8 @@ pd.set_option('expand_frame_repr', True)
 pd.set_option('large_repr', 'truncate')
 pd.options.display.float_format = '{:.2f}'.format
 
-HOUSING_STOCK_DISTRIBUTION = {  # Assumed National housing distribution [https://www.census.gov/programs-surveys/ahs/data/interactive/ahstablecreator.html?s_areas=00000&s_year=2017&s_tablename=TABLE2&s_bygroup1=1&s_bygroup2=1&s_filtergroup1=1&s_filtergroup2=1]
+HOUSING_STOCK_DISTRIBUTION = {
+    # Assumed National housing distribution [https://www.census.gov/programs-surveys/ahs/data/interactive/ahstablecreator.html?s_areas=00000&s_year=2017&s_tablename=TABLE2&s_bygroup1=1&s_bygroup2=1&s_filtergroup1=1&s_filtergroup2=1]
     0: 0.0079,
     1: 0.1083,
     2: 0.2466,
@@ -216,13 +217,22 @@ def output_table(df: pd.DataFrame, path: str):
     df.to_excel(path)
 
 
-def calculate_fmr_cost_estimate(df: pd.DataFrame) -> pd.DataFrame:
-    fmr_df = queries.static_data_single_table('fair_market_rents', queries.static_columns['fair_market_rents'])
-    fmr_df = fmr_df.drop([
-        'State',
-        'County Name'
-    ], axis=1)
-    df = pd.merge(fmr_df, df, on='county_id')
+def calculate_cost_estimate(df: pd.DataFrame, rent_type: str = 'fmr') -> pd.DataFrame:
+    if rent_type == 'fmr':
+        fmr_df = queries.static_data_single_table('fair_market_rents', queries.static_columns['fair_market_rents'])
+        fmr_df = fmr_df.drop([
+            'State',
+            'County Name'
+        ], axis=1)
+        df = pd.merge(fmr_df, df, on='county_id')
+    elif rent_type == 'med':
+        med_df = queries.static_data_single_table('median_rents', queries.static_columns['median_rents'])
+        med_df = med_df.drop([
+            'State',
+            'County Name'
+        ], axis=1)
+        df = pd.merge(med_df, df, on='county_id')
+
     df = df.astype(float)
     for key, value in HOUSING_STOCK_DISTRIBUTION.items():
         for pro in BURDENED_HOUSEHOLD_PROPORTION:
@@ -253,6 +263,7 @@ def print_summary(df: pd.DataFrame, output: str):
         print('Normalized analysis data is located at {o}'.format(o=output[:-5]) + '_overall_vulnerability.xlsx')
     else:
         print('Fetched single county data')
+
     print('Raw fetched data is located at {o}'.format(o=output))
     print('Done!')
 
@@ -273,8 +284,10 @@ if __name__ == '__main__':
         county = res[0].strip().lower()
         state = res[1].strip().lower()
         df = get_single_county(county, state)
+
         if cost_of_evictions == 'y' or cost_of_evictions == '':
-            df = calculate_fmr_cost_estimate(df)
+            df = calculate_cost_estimate(df, rent_type='fmr')
+
         output_table(df, 'Output/' + county.capitalize() + '.xlsx')
         print_summary(df, 'Output/' + county.capitalize() + '.xlsx')
     elif task == '2':
@@ -283,12 +296,14 @@ if __name__ == '__main__':
         counties = [_.strip().lower() for _ in counties]
         counties = [_ + ' county' for _ in counties if ' county' not in _]
         df = get_multiple_counties(counties, state)
+
         output_table(df, 'Output/' + state + '_selected_counties.xlsx')
         analysis_df = rank_counties(df, state + '_selected_counties')
         print_summary(analysis_df, 'Output/' + state + '_selected_counties.xlsx')
     elif task == '3':
         state = input("Which state are you looking for? (ie: California)").strip()
         df = get_state_data(state)
+
         output_table(df, 'Output/' + state + '.xlsx')
         analysis_df = rank_counties(df, state)
         print_summary(analysis_df, 'Output/' + state + '.xlsx')
