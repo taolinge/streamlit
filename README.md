@@ -32,7 +32,7 @@ This data is the most recent data we could get, but some datasets are updated mo
 | SNAP Benefits Recipients (Persons) | [FRED](https://fred.stlouisfed.org/) | 1/1/2017 | |
 | Unemployment Rate (%) | [FRED](https://fred.stlouisfed.org/) | 6/1/2020 | |
 | Resident Population (Thousands of Persons) | [FRED](https://fred.stlouisfed.org/) | 1/1/2019 | Used to convert percentages to raw population|
-| COVID Vulnerability Index | [CHMURA](http://www.chmuraecon.com/interactive/covid-19-economic-vulnerability-index/) | 4/15/2020 | |
+| COVID Vulnerability Index | [CHMURA](http://www.chmuraecon.com/interactive/covid-19-economic-vulnerability-index/) | 4/15/2020 | An index from CHMURA to represent how vulnerable counties across the US are to COVID-related economic effects. |
 | Fair Market Rents | [HUD](https://www.huduser.gov/portal/datasets/fmr.html#2021_data) | 10/1/2020 | Represents the estimated amount (base rent + essential utilities) that a property in a given area typically rents for|
 | Median Rents | [HUD](https://www.huduser.gov/PORTAL/datasets/50per.html) | 2021 | Rent estimates at the 50th percentile (or median)  calculated for all Fair Market Rent areas|
 | Housing Stock Distributions | [US Census](https://www.census.gov/programs-surveys/ahs/data/interactive/ahstablecreator.html?s_areas=00000&s_year=2017&s_tablename=TABLE2&s_bygroup1=1&s_bygroup2=1&s_filtergroup1=1&s_filtergroup2=1) | 2017 | Distribution of housing units in the US by number of bedrooms |
@@ -53,7 +53,7 @@ In this equation, we aim to minimize socioeconomic risk on the top of the fracti
 
 To calculate the cost to avoid evictions the following calcuation was used:
 
-    `(burdened household proportion/100) * county rent * housing stock distribution percentage * population * (burdened households/100)`
+`(burdened household proportion/100) * county rent * housing stock distribution percentage * population * (burdened households/100)`
 
 Housing stock distributions (US Census) were used to evaluate the types of houses that exist in the United States (e.g. studio, one bedroom, etc.).  Burdened household proportions were decided by Arup and were used to determine what percentage of people were most at risk.  Proportions were set at 5, 25, 33, 50, and 75 to represent that not all burdened households will face eviction, and we don't know how many actually will.  With the chosen proportion values, we are representing a general range, knowing there isn't a case where nobody will be evicted, or a case where everybody will be evicted.  These numbers can be adjusted based on the user's knowledge of their own county. County rents for each housing stock were sourced from HUD, and used Fair Market Rates to determine rent prices for each stock.  Fair Market Rents (FMRs) represent the estimated amount (base rent + essential utilities) that a property in a given area typically rents for. Burdened households was a percentage calculated by FRED which gives the percentage of the population who pay more than 30% of their income on rent.  Population data was pulled from HUD and represents the population by county in the year 2017. 
 
@@ -65,22 +65,22 @@ Upon script completion, an excel file will be created within the output folder d
 
 Explanation of output fields:
 
-    county_id: Unique ID for each county
-    fmr_[0-4]: Fair Market Rent value for a 0 bedroom house to a 4 bedroom house
-    Burdened Households (%): People who pay more than 30 percent of their income towards rent
-    Income Inequality (Ratio): The income earned by the top percentage of households and dividing that by the income earned by the poorest percentage of households.
-    Population Below Poverty Line (%): Population living below the minimum level of income deemed adequate in a particular county 
-    Single Parent Households (%): Number of households with a single parent
-    SNAP Benefits Recipients (Persons): Number of people receiving Supplemental Nutrition Assistance Progarm benefits 
-    Unemployment Rate (%): Percentage of the population unemployed
-    Resident Population (Thousands of Persons): Number of persons in a county 
-    VulnerabilityIndex: COVID Vulnerability Index, as defined by CHMURA
-    Non-Home Ownership (%): Percentage of persons who do not own a home
-    [0-4]_br_cost_5: Cost of preventing evictions for a 0-4 bedroom house for proportion 5
-    [0-4]_br_cost_25: Cost of preventing evictions for a 0-4 bedroom house for proportion 25
-    [0-4]_br_cost_33: Cost of preventing evictions for a 0-4 bedroom house for proportion 33
-    [0-4]_br_cost_50: Cost of preventing evictions for a 0-4 bedroom house for proportion 50
-    [0-4]_br_cost_75: Cost of preventing evictions for a 0-4 bedroom house for proportion 75
+- county_id: Unique ID for each county
+- fmr_[0-4]: Fair Market Rent value for a 0 bedroom house to a 4 bedroom house
+- Burdened Households (%): People who pay more than 30 percent of their income towards rent
+- Income Inequality (Ratio): The income earned by the top percentage of households and dividing that by the income earned by the poorest percentage of households.
+- Population Below Poverty Line (%): Population living below the minimum level of income deemed adequate in a particular county 
+- Single Parent Households (%): Number of households with a single parent
+- SNAP Benefits Recipients (Persons): Number of people receiving Supplemental Nutrition Assistance Progarm benefits 
+- Unemployment Rate (%): Percentage of the population unemployed
+- Resident Population (Thousands of Persons): Number of persons in a county 
+- VulnerabilityIndex: COVID Vulnerability Index, as defined by CHMURA
+- Non-Home Ownership (%): Percentage of persons who do not own a home
+- [0-4]_br_cost_5: Cost of preventing evictions for a 0-4 bedroom house for 5% of burdened households
+- [0-4]_br_cost_25: Cost of preventing evictions for a 0-4 bedroom house for 25% of burdened households
+- [0-4]_br_cost_33: Cost of preventing evictions for a 0-4 bedroom house for 33% of burdened households
+- [0-4]_br_cost_50: Cost of preventing evictions for a 0-4 bedroom house for 50% of burdened households
+- [0-4]_br_cost_75: Cost of preventing evictions for a 0-4 bedroom house for 75% of burdened households
 
 To calculate the total cost of evictions for a single month, simply add the costs for each housing type for a particular proportion.  
 
