@@ -14,15 +14,16 @@ pd.set_option('expand_frame_repr', True)
 pd.set_option('large_repr', 'truncate')
 pd.options.display.float_format = '{:.2f}'.format
 
-HOUSING_STOCK_DISTRIBUTION = { # Assumed National housing distribution [source]
+HOUSING_STOCK_DISTRIBUTION = {  # Assumed National housing distribution [https://www.census.gov/programs-surveys/ahs/data/interactive/ahstablecreator.html?s_areas=00000&s_year=2017&s_tablename=TABLE2&s_bygroup1=1&s_bygroup2=1&s_filtergroup1=1&s_filtergroup2=1]
     0: 0.0079,
     1: 0.1083,
     2: 0.2466,
     3: 0.4083,
     4: 0.2289
 }
-# todo: turn this into a constant as well and document
+
 BURDENED_HOUSEHOLD_PROPORTION = [5, 25, 33, 50, 75]
+
 
 def filter_state(data: pd.DataFrame, state: str) -> pd.DataFrame:
     return data[data['State'].str.lower() == state.lower()]
@@ -214,21 +215,27 @@ def output_table(df: pd.DataFrame, path: str):
     df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
     df.to_excel(path)
 
-def join_fmr_data(df, county, state):
+
+def calculate_fmr_cost_estimate(df: pd.DataFrame) -> pd.DataFrame:
     fmr_df = queries.static_data_single_table('fair_market_rents', queries.static_columns['fair_market_rents'])
-    fmr_df=fmr_df.drop([
+    fmr_df = fmr_df.drop([
         'State',
         'County Name'
     ], axis=1)
     df = pd.merge(fmr_df, df, on='county_id')
-    df=df.astype(float)
+    df = df.astype(float)
     for key, value in HOUSING_STOCK_DISTRIBUTION.items():
         for pro in BURDENED_HOUSEHOLD_PROPORTION:
-            df[str(key)+'_br_cost_'+str(pro)] = value * df['fmr_0'] * (pro/100) * (df['Resident Population (Thousands of Persons)']*1000) * (df['Burdened Households (%)']/100)
-            df[str(key)+'_br_cost_'+str(pro)] = value * df['fmr_1'] * (pro/100) * (df['Resident Population (Thousands of Persons)']*1000) * (df['Burdened Households (%)']/100)
-            df[str(key)+'_br_cost_'+str(pro)] = value * df['fmr_2'] * (pro/100) * (df['Resident Population (Thousands of Persons)']*1000) * (df['Burdened Households (%)']/100)
-            df[str(key)+'_br_cost_'+str(pro)] = value * df['fmr_3'] * (pro/100) * (df['Resident Population (Thousands of Persons)']*1000) * (df['Burdened Households (%)']/100)
-            df[str(key)+'_br_cost_'+str(pro)] = value * df['fmr_4'] * (pro/100) * (df['Resident Population (Thousands of Persons)']*1000) * (df['Burdened Households (%)']/100)
+            df[str(key) + '_br_cost_' + str(pro)] = value * df['fmr_0'] * (pro / 100) * (
+                    df['Resident Population (Thousands of Persons)'] * 1000) * (df['Burdened Households (%)'] / 100)
+            df[str(key) + '_br_cost_' + str(pro)] = value * df['fmr_1'] * (pro / 100) * (
+                    df['Resident Population (Thousands of Persons)'] * 1000) * (df['Burdened Households (%)'] / 100)
+            df[str(key) + '_br_cost_' + str(pro)] = value * df['fmr_2'] * (pro / 100) * (
+                    df['Resident Population (Thousands of Persons)'] * 1000) * (df['Burdened Households (%)'] / 100)
+            df[str(key) + '_br_cost_' + str(pro)] = value * df['fmr_3'] * (pro / 100) * (
+                    df['Resident Population (Thousands of Persons)'] * 1000) * (df['Burdened Households (%)'] / 100)
+            df[str(key) + '_br_cost_' + str(pro)] = value * df['fmr_4'] * (pro / 100) * (
+                    df['Resident Population (Thousands of Persons)'] * 1000) * (df['Burdened Households (%)'] / 100)
     return df
 
 
@@ -258,19 +265,20 @@ if __name__ == '__main__':
         .strip()
 
     if task == '1' or task == '':
-        res = input('Enter the county and state (ie: Jefferson County, Colorado):')
+        res = input('Enter the county and state to analyze (ie: Jefferson County, Colorado):')
         res = res.strip().split(',')
-        cost_of_evictions = input('Are you also interested in running a cost of evictions analysis for your chosen county? (y/n) ')
+        cost_of_evictions = input(
+            'Run an analysis to estimate the cost to avoid evictions for your chosen county? (Y/n) ')
         cost_of_evictions.strip()
         county = res[0].strip().lower()
         state = res[1].strip().lower()
         df = get_single_county(county, state)
-        if cost_of_evictions == 'y':
-            df=join_fmr_data(df, county, state)
+        if cost_of_evictions == 'y' or cost_of_evictions == '':
+            df = calculate_fmr_cost_estimate(df)
         output_table(df, 'Output/' + county.capitalize() + '.xlsx')
         print_summary(df, 'Output/' + county.capitalize() + '.xlsx')
     elif task == '2':
-        state = input("Which state are you looking for (ie: California)?").strip()
+        state = input("Which state are you looking for? (ie: California)").strip()
         counties = input('Please specify one or more counties, separated by commas.').strip().split(',')
         counties = [_.strip().lower() for _ in counties]
         counties = [_ + ' county' for _ in counties if ' county' not in _]
@@ -279,7 +287,7 @@ if __name__ == '__main__':
         analysis_df = rank_counties(df, state + '_selected_counties')
         print_summary(analysis_df, 'Output/' + state + '_selected_counties.xlsx')
     elif task == '3':
-        state = input("Which state are you looking for (ie: California)?").strip()
+        state = input("Which state are you looking for? (ie: California)").strip()
         df = get_state_data(state)
         output_table(df, 'Output/' + state + '.xlsx')
         analysis_df = rank_counties(df, state)
