@@ -135,8 +135,8 @@ If you'd like to query the database directly using the method of your choice, yo
 DB_HOST = ade-eviction.ccgup3bgyakw.us-east-1.rds.amazonaws.com
 DB_NAME = eviction_data
 DB_PORT = 5432
-DB_USER = readonly
-DB_PASSWORD = PublicReadPassword
+DB_USER = readuser
+DB_PASSWORD = password
 ```
 
 ## Contributing
