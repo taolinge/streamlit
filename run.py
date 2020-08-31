@@ -147,8 +147,6 @@ def rank_counties(df: pd.DataFrame, label: str) -> pd.DataFrame:
         analysis_df['Rank'] = analysis_df.apply(
             lambda x: priority_indicator(x['Relative Risk'], x['Policy Value'], x['Countdown']), axis=1
         )
-    else:
-        print('Selected counties are not in the policy data! Fill out `Policy Workbook.xlsx` for the desired counties')
 
     analysis_df.to_excel('Output/' + label + '_overall_vulnerability.xlsx')
 
@@ -158,7 +156,7 @@ def rank_counties(df: pd.DataFrame, label: str) -> pd.DataFrame:
 def load_all_data() -> pd.DataFrame:
     if os.path.exists("Output/all_tables.xlsx"):
         try:
-            res = input('Use local `all_tables.xlsx`? [y/N]')
+            res = input('Previous data found. Use data from local `all_tables.xlsx`? [y/N]')
             if res.lower() == 'y' or res.lower() == 'yes':
                 df = pd.read_excel('Output/all_tables.xlsx')
             else:
@@ -179,6 +177,13 @@ def get_existing_policies(df: pd.DataFrame) -> pd.DataFrame:
         res = input('Policy data found in database. Use this data? [Y/n]').strip()
         if res.lower() == 'y' or res.lower() == 'yes' or res == '':
             return temp_df
+    else:
+        policy_df = pd.read_excel('Policy Workbook.xlsx', sheet_name='Analysis Data')
+        temp_df = df.merge(policy_df, on='County Name')
+        if not temp_df.empty and len(df) == len(temp_df):
+            return temp_df
+        else:
+            print("INFO: Policy data not found. Check that you've properly filled in `Policy Workbook.xlsx`")
 
     return df
 
