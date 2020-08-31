@@ -183,7 +183,7 @@ def get_existing_policies(df: pd.DataFrame) -> pd.DataFrame:
         if not temp_df.empty and len(df) == len(temp_df):
             return temp_df
         else:
-            print("INFO: Policy data not found. Check that you've properly filled in `Policy Workbook.xlsx`")
+            print("INFO: Policy data not found. Check that you've properly filled in the Analysis Data page in `Policy Workbook.xlsx` with the counties you're analyzing.")
 
     return df
 
@@ -224,20 +224,17 @@ def output_table(df: pd.DataFrame, path: str):
 
 def calculate_cost_estimate(df: pd.DataFrame, rent_type: str = 'fmr') -> pd.DataFrame:
     if rent_type == 'fmr':
-        fmr_df = queries.static_data_single_table('fair_market_rents', queries.static_columns['fair_market_rents'])
-        fmr_df = fmr_df.drop([
-            'State',
-            'County Name'
-        ], axis=1)
-        df = pd.merge(fmr_df, df, on='county_id')
+        cost_df = queries.static_data_single_table('fair_market_rents', queries.static_columns['fair_market_rents'])
     elif rent_type == 'med':
-        med_df = queries.static_data_single_table('median_rents', queries.static_columns['median_rents'])
-        med_df = med_df.drop([
-            'State',
-            'County Name'
-        ], axis=1)
-        df = pd.merge(med_df, df, on='county_id')
+        cost_df = queries.static_data_single_table('median_rents', queries.static_columns['median_rents'])
+    else:
+        raise Exception('Invalid input - {x} is not a valid rent type. Must be either `fmr` (Free Market Rent) or `med` (Median Rent)'.format(x=rent_type))
 
+    cost_df = cost_df.drop([
+        'State',
+        'County Name'
+    ], axis=1)
+    df = pd.merge(cost_df, df, on='county_id')
     df = df.astype(float)
     for key, value in HOUSING_STOCK_DISTRIBUTION.items():
         for pro in BURDENED_HOUSEHOLD_PROPORTION:
@@ -257,14 +254,14 @@ def calculate_cost_estimate(df: pd.DataFrame, rent_type: str = 'fmr') -> pd.Data
 def print_summary(df: pd.DataFrame, output: str):
     print('*** Results ***')
     if 'Rank' in df.columns:
+        print('* Shown in order by overall priority, higher values mean higher priority.')
         df.sort_values('Rank', ascending=False, inplace=True)
         print(df['Rank'])
-        print('* Ranked by overall priority, higher values mean higher priority.')
         print('Normalized analysis data is located at {o}'.format(o=output[:-5]) + '_overall_vulnerability.xlsx')
     elif len(df) > 1:
+        print('* Shown in order by relative risk, higher values mean higher relative risk.')
         df.sort_values('Relative Risk', ascending=False, inplace=True)
         print(df['Relative Risk'])
-        print('* Ranked by relative risk, higher values mean higher priority.')
         print('Normalized analysis data is located at {o}'.format(o=output[:-5]) + '_overall_vulnerability.xlsx')
     else:
         print('Fetched single county data')
