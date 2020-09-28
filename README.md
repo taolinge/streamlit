@@ -43,7 +43,7 @@ If you have datasets you'd like to see included, please create an Issue.
 ### What is Relative Risk?
 Relative risk is an index used to compare counties against each other in our Python analysis. It is _not_ a measure of absolute or percentage risk and has no meaning outside of this analysis. We use this to compare counties to understand where people are more at risk of eviction. 
 
-We calculate this using a custom formula to balance socioeconomic factors with the policy response of a city. There are three parts of this formula: a socioeconomic value from FRED and other data sources, a policy value found using the policy Excel sheet in this repository, and the time remaining until protections end. The equation is
+We calculate this using a custom formula to balance socioeconomic factors with the policy response of a city. There are three parts of this formula: a *socioeconomic index* value calculated from the combination of normalized FRED data and other data sources in the table above, a *policy index* value found using the policy Excel sheet in this repository and using methodology adapted from EvictionLab, and the *time remaining* until protections end. The equation is
 
 `relative_risk = socioeconomic_index * (1 - policy_index) / sqrt(time_remaining)`
 
