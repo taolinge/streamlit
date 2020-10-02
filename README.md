@@ -1,7 +1,7 @@
 # Arup Eviction Data
 This is a repository for analysis on open data related to evictions as a result of COVID-19. This repository gathers data from the Federal Reserve Economic Data portal (FRED). There are a number of potential use cases we're aware of to apply that data to address evictions. 
 
-The analysis we do now allows us compare counties side by side by their "Relative Risk" of evictions.
+This analysis allows us to compare counties side by side by their "Relative Risk" of evictions.
 
 ## Usage
 This repository currently supports three primary workflows:
