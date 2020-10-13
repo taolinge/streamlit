@@ -4,9 +4,11 @@ import os
 
 import pandas as pd
 import sklearn.preprocessing as pre
+import streamlit as st
 
 import api
 import queries
+from constants import STATES
 
 # Pandas options
 pd.set_option('max_rows', 10)
@@ -25,7 +27,7 @@ def filter_counties(data: pd.DataFrame, counties: list) -> pd.DataFrame:
 
 
 def clean_fred_data(data: pd.DataFrame) -> pd.DataFrame:
-    data['Non-Home Ownership (%)'] = 100 - data['Home Ownership (%)']
+    data['Non-Home Ownership (%)'] = 100 - data['Home Ownership (%)'].astype(float)
 
     data.drop([
         'Home Ownership (%)',
@@ -45,7 +47,7 @@ def clean_fred_data(data: pd.DataFrame) -> pd.DataFrame:
 
 
 def percent_to_population(feature: str, name: str, df: pd.DataFrame) -> pd.DataFrame:
-    df[name] = (df[feature] / 100) * df['Resident Population (Thousands of Persons)'] * 1000
+    df[name] = (df[feature].astype(float) / 100) * df['Resident Population (Thousands of Persons)'].astype(float) * 1000
     return df
 
 
@@ -134,10 +136,9 @@ def rank_counties(df: pd.DataFrame, label: str) -> pd.DataFrame:
     # analysis_df['Rank'] = analysis_df.apply(
     #     lambda x: priority_indicator(x['Relative Risk'], x['PolicyIndex'],x['Countdown']), axis=1
     # )
-    analysis_df.to_excel('Output/'+label+'_overall_vulnerability.xlsx')
+    analysis_df.to_excel('Output/' + label + '_overall_vulnerability.xlsx')
 
     return analysis_df
-
 
 def load_all_data() -> pd.DataFrame:
     if os.path.exists("Output/all_tables.xlsx"):
@@ -193,29 +194,45 @@ if __name__ == '__main__':
     if not os.path.exists('Output'):
         os.makedirs('Output')
 
-    task = input('Analyze a single county (1), multiple counties (2), or all the counties in a state (3)? [default: 1]')\
-        .strip()
+    st.write('# Eviction Data Analysis')
 
-    if task == '1' or task == '':
-        res = input('Enter the county and state (ie: Jefferson County, Colorado):')
-        res = res.strip().split(',')
-        county = res[0].strip()
-        state = res[1].strip()
-        df = get_single_county(county, state)
-        output_table(df, 'Output/' + county + '.xlsx')
-    elif task == '2':
-        state = input("Which state are you looking for (ie: California)?]").strip()
-        counties = input('Please specify one or more counties, separated by commas [ie: ].').strip().split(',')
-        counties = [_.strip().lower() for _ in counties]
-        counties = [_ + ' county' for _ in counties if ' county' not in _]
-        df = get_multiple_counties(counties, state)
-        output_table(df, 'Output/' + state + '_selected_counties.xlsx')
-        rank_counties(df, state + '_selected_counties')
-    elif task == '3':
-        state = input("Which state are you looking for (ie: California)?]").strip()
+    task = st.selectbox('What type of analysis are you doing?', ['Single County', 'Multiple Counties', 'State'])
+    # task = input('Analyze a single county (1), multiple counties (2), or all the counties in a state (3)? [default: 1]')\
+    #     .strip()
+
+    if task == 'Single County' or task == '':
+        res = st.text_input('Enter the county and state (ie: Jefferson County, Colorado):')
+        # res = input('Enter the county and state (ie: Jefferson County, Colorado):')
+        if st.button("Submit"):
+            res = res.strip().split(',')
+            county = res[0].strip()
+            state = res[1].strip()
+            df = get_single_county(county, state)
+            st.write(df)
+            output_table(df, 'Output/' + county + '.xlsx')
+    elif task == 'Multiple Counties':
+        state = st.selectbox("Select a state", STATES).strip()
+        # state = input("Which state are you looking for (ie: California)?]").strip()
+        counties = st.text_area('Please specify one or more counties, separated by commas [ie: ].').strip().split(',')
+        if st.button("Submit"):
+            # counties = input('Please specify one or more counties, separated by commas [ie: ].').strip().split(',')
+            counties = [_.strip().lower() for _ in counties]
+            counties = [_ + ' county' for _ in counties if ' county' not in _]
+            df = get_multiple_counties(counties, state)
+            st.subheader('Raw Data')
+            st.write(df)
+            output_table(df, 'Output/' + state + '_selected_counties.xlsx')
+            ranks = rank_counties(df, state + '_selected_counties')
+            st.dataframe(ranks)
+    elif task == 'State':
+        state = st.selectbox("Select a state", STATES).strip()
+        # state = input("Which state are you looking for (ie: California)?]").strip()
         df = get_state_data(state)
+        st.subheader('Raw Data')
+        st.dataframe(df)
         output_table(df, 'Output/' + state + '.xlsx')
-        rank_counties(df, state)
+        ranks = rank_counties(df, state)
+        st.subheader('Ranking')
+        st.write(ranks['Relative Risk'])
     else:
         raise Exception('INVALID INPUT! Enter a valid task number.')
-
