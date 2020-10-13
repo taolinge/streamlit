@@ -5,6 +5,8 @@ import os
 import pandas as pd
 import sklearn.preprocessing as pre
 import streamlit as st
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 import api
 import queries
@@ -140,6 +142,7 @@ def rank_counties(df: pd.DataFrame, label: str) -> pd.DataFrame:
 
     return analysis_df
 
+
 def load_all_data() -> pd.DataFrame:
     if os.path.exists("Output/all_tables.xlsx"):
         try:
@@ -190,6 +193,18 @@ def output_table(df: pd.DataFrame, path: str):
     df.to_excel(path)
 
 
+def init_UI():
+    st.write("""
+    # Eviction Data Analysis
+    
+    This tool supports data analysis of 
+    
+    To contribute to this tool or see more details, 
+    
+    """)
+    task = st.selectbox('What type of analysis are you doing?', ['Single County', 'Multiple Counties', 'State'])
+
+
 if __name__ == '__main__':
     if not os.path.exists('Output'):
         os.makedirs('Output')
@@ -208,8 +223,10 @@ if __name__ == '__main__':
             county = res[0].strip()
             state = res[1].strip()
             df = get_single_county(county, state)
-            st.write(df)
+            if st.checkbox('Show raw data'):
+                st.dataframe(df)
             output_table(df, 'Output/' + county + '.xlsx')
+            st.write('Data was saved at `' + 'Output/' + county + '.xlsx')
     elif task == 'Multiple Counties':
         state = st.selectbox("Select a state", STATES).strip()
         # state = input("Which state are you looking for (ie: California)?]").strip()
@@ -219,20 +236,35 @@ if __name__ == '__main__':
             counties = [_.strip().lower() for _ in counties]
             counties = [_ + ' county' for _ in counties if ' county' not in _]
             df = get_multiple_counties(counties, state)
-            st.subheader('Raw Data')
-            st.write(df)
+            if st.checkbox('Show raw data'):
+                st.subheader('Raw Data')
+                st.dataframe(df)
             output_table(df, 'Output/' + state + '_selected_counties.xlsx')
-            ranks = rank_counties(df, state + '_selected_counties')
+            st.write('Data was saved at `' + 'Output/' + state + '_selected_counties.xlsx')
+            ranks = rank_counties(df, state + '_selected_counties').sort_values()
             st.dataframe(ranks)
     elif task == 'State':
         state = st.selectbox("Select a state", STATES).strip()
         # state = input("Which state are you looking for (ie: California)?]").strip()
         df = get_state_data(state)
-        st.subheader('Raw Data')
-        st.dataframe(df)
+        if st.checkbox('Show raw data'):
+            st.subheader('Raw Data')
+            st.dataframe(df)
         output_table(df, 'Output/' + state + '.xlsx')
-        ranks = rank_counties(df, state)
+        st.write('Data was saved at `' + 'Output/' + state + '.xlsx')
+        ranks = rank_counties(df, state).sort_values(by='Relative Risk', ascending=False)
         st.subheader('Ranking')
+        st.write('Higher values correspond to more relative risk')
         st.write(ranks['Relative Risk'])
+        st.write('## Charts')
+        features = st.multiselect('Features', list(df.columns))
+        chart_data = df.reset_index(level='State')[features]
+        st.write(chart_data)
+        st.bar_chart(chart_data)
+
+        st.subheader('Correlation Plot')
+        fig, ax = plt.subplots(figsize=(10, 10))
+        st.write(sns.heatmap(df.corr(), annot=True, linewidths=0.5))
+        st.pyplot(fig)
     else:
         raise Exception('INVALID INPUT! Enter a valid task number.')
