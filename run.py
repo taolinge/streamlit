@@ -1,6 +1,8 @@
+import getopt
 import itertools
 import math
 import os
+import sys
 
 import pandas as pd
 import sklearn.preprocessing as pre
@@ -202,19 +204,9 @@ def init_UI():
     To contribute to this tool or see more details, 
     
     """)
-    task = st.selectbox('What type of analysis are you doing?', ['Single County', 'Multiple Counties', 'State'])
-
-
-if __name__ == '__main__':
-    if not os.path.exists('Output'):
-        os.makedirs('Output')
-
     st.write('# Eviction Data Analysis')
-
     task = st.selectbox('What type of analysis are you doing?',
                         ['Single County', 'Multiple Counties', 'State', 'National'])
-    # task = input('Analyze a single county (1), multiple counties (2), or all the counties in a state (3)? [default: 1]')\
-    #     .strip()
 
     if task == 'Single County' or task == '':
         res = st.text_input('Enter the county and state (ie: Jefferson County, Colorado):')
@@ -290,5 +282,62 @@ if __name__ == '__main__':
         st.write(sns.heatmap(natl_df.corr(), annot=True, linewidths=0.5))
         st.pyplot(fig)
 
+
+if __name__ == '__main__':
+    if not os.path.exists('Output'):
+        os.makedirs('Output')
+
+    opts, args = getopt.getopt(sys.argv[1:], "hm:", ["mode="])
+
+    print(opts)
+    mode = None
+    for opt, arg in opts:
+        if opt == '-h':
+            print('run.py -mode <mode>')
+            sys.exit()
+        elif opt in ("-m", "--mode"):
+            mode = arg
+            print(mode)
+
+    if mode == 'script':
+        task = input(
+            'Analyze a single county (1), multiple counties (2), all the counties in a state (3), or a nation-wide analysis (4)? [default: 1]') \
+            .strip()
+
+        if task == '1' or task == '':
+            res = input('Enter the county and state to analyze (ie: Jefferson County, Colorado):')
+            res = res.strip().split(',')
+            cost_of_evictions = input(
+                'Run an analysis to estimate the cost to avoid evictions for your chosen county? (Y/n) ')
+            cost_of_evictions.strip()
+            county = res[0].strip().lower()
+            state = res[1].strip().lower()
+            df = get_single_county(county, state)
+
+            if cost_of_evictions == 'y' or cost_of_evictions == '':
+                df = calculate_cost_estimate(df, rent_type='fmr')
+
+            output_table(df, 'Output/' + county.capitalize() + '.xlsx')
+            print_summary(df, 'Output/' + county.capitalize() + '.xlsx')
+        elif task == '2':
+            state = input("Which state are you looking for? (ie: California)").strip()
+            counties = input('Please specify one or more counties, separated by commas.').strip().split(',')
+            counties = [_.strip().lower() for _ in counties]
+            counties = [_ + ' county' for _ in counties if ' county' not in _]
+            df = get_multiple_counties(counties, state)
+
+            output_table(df, 'Output/' + state + '_selected_counties.xlsx')
+            analysis_df = rank_counties(df, state + '_selected_counties')
+            print_summary(analysis_df, 'Output/' + state + '_selected_counties.xlsx')
+        elif task == '3':
+            state = input("Which state are you looking for? (ie: California)").strip()
+            df = get_state_data(state)
+
+            output_table(df, 'Output/' + state + '.xlsx')
+            analysis_df = rank_counties(df, state)
+            print_summary(analysis_df, 'Output/' + state + '.xlsx')
+        else:
+            raise Exception('INVALID INPUT! Enter a valid task number.')
+
     else:
-        raise Exception('INVALID INPUT! Enter a valid task number.')
+        init_UI()
