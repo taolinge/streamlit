@@ -31,6 +31,7 @@ HOUSING_STOCK_DISTRIBUTION = {
 }
 
 BURDENED_HOUSEHOLD_PROPORTION = [5, 25, 33, 50, 75]
+MODE = 'UI'
 
 
 def filter_state(data: pd.DataFrame, state: str) -> pd.DataFrame:
@@ -180,9 +181,13 @@ def get_existing_policies(df: pd.DataFrame) -> pd.DataFrame:
     policy_df = queries.policy_query()
     temp_df = df.merge(policy_df, on='county_id')
     if not temp_df.empty and len(df) == len(temp_df):
-        res = input('Policy data found in database. Use this data? [Y/n]').strip()
-        if res.lower() == 'y' or res.lower() == 'yes' or res == '':
-            return temp_df
+        if MODE == 'SCRIPT':
+            res = input('Policy data found in database. Use this data? [Y/n]').strip()
+            if res.lower() == 'y' or res.lower() == 'yes' or res == '':
+                return temp_df
+        elif MODE == 'UI':
+            if st.checkbox('Use existing policy data?'):
+                return temp_df
     else:
         policy_df = pd.read_excel('Policy Workbook.xlsx', sheet_name='Analysis Data')
         temp_df = df.merge(policy_df, on='County Name')
@@ -311,43 +316,44 @@ def run_UI():
 
     if task == 'Single County' or task == '':
         res = st.text_input('Enter the county and state (ie: Jefferson County, Colorado):')
-        # res = input('Enter the county and state (ie: Jefferson County, Colorado):')
-        res = res.strip().split(',')
-        county = res[0].strip()
-        state = res[1].strip()
-        df = get_single_county(county, state)
-        st.write(df)
-        if st.checkbox('Show raw data'):
-            st.subheader('Raw Data')
-            st.dataframe(df)
+        if res:
+            res = res.strip().split(',')
+            county = res[0].strip()
+            state = res[1].strip()
+            if county and state:
+                df = get_single_county(county, state)
+                st.write(df)
+                if st.checkbox('Show raw data'):
+                    st.subheader('Raw Data')
+                    st.dataframe(df)
 
-        if st.checkbox('Do cost to avoid eviction analysis?'):
-            rent_type = st.selectbox('Rent Type', ['Fair Market', 'Median'])
-            location = st.selectbox('Select a location to assume a housing distribution:', locations)
-            distribution = {
-                0: float(metro_areas.loc[location, '0_br_pct']),
-                1: float(metro_areas.loc[location, '1_br_pct']),
-                2: float(metro_areas.loc[location, '2_br_pct']),
-                3: float(metro_areas.loc[location, '3_br_pct']),
-                4: float(metro_areas.loc[location, '4_br_pct']),
-            }
+                if st.checkbox('Do cost to avoid eviction analysis?'):
+                    rent_type = st.selectbox('Rent Type', ['Fair Market', 'Median'])
+                    location = st.selectbox('Select a location to assume a housing distribution:', locations)
+                    distribution = {
+                        0: float(metro_areas.loc[location, '0_br_pct']),
+                        1: float(metro_areas.loc[location, '1_br_pct']),
+                        2: float(metro_areas.loc[location, '2_br_pct']),
+                        3: float(metro_areas.loc[location, '3_br_pct']),
+                        4: float(metro_areas.loc[location, '4_br_pct']),
+                    }
 
-            if rent_type == '' or rent_type == 'Fair Market':
-                df = calculate_cost_estimate(df, rent_type='fmr', distribution=distribution)
-            elif rent_type == 'Median':
-                df = calculate_cost_estimate(df, rent_type='med', distribution=distribution)
+                    if rent_type == '' or rent_type == 'Fair Market':
+                        df = calculate_cost_estimate(df, rent_type='fmr', distribution=distribution)
+                    elif rent_type == 'Median':
+                        df = calculate_cost_estimate(df, rent_type='med', distribution=distribution)
 
-        output_table(df, 'Output/' + county + '.xlsx')
-        st.write('Data was saved at `' + 'Output/' + county + '.xlsx')
-        st.write('## Results')
-        st.dataframe(df)
+                output_table(df, 'Output/' + county + '.xlsx')
+                st.write('Data was saved at `' + 'Output/' + county + '.xlsx')
+                st.write('## Results')
+                st.dataframe(df)
     elif task == 'Multiple Counties':
         state = st.selectbox("Select a state", STATES).strip()
         county_list = queries.counties_query()
         county_list = county_list[county_list['State'] == state]['County Name'].to_list()
         counties = st.multiselect('Please specify one or more counties', county_list)
         counties = [_.strip().lower() for _ in counties]
-        if len(counties)>0:
+        if len(counties) > 0:
             df = get_multiple_counties(counties, state)
 
             if st.checkbox('Show raw data'):
@@ -471,6 +477,7 @@ if __name__ == '__main__':
             print(mode)
 
     if mode == 'script':
+        MODE = 'SCRIPT'
         task = input(
             'Analyze a single county (1), multiple counties (2), all the counties in a state (3), or a nation-wide analysis (4)? [default: 1]') \
             .strip()
