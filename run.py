@@ -211,7 +211,8 @@ if __name__ == '__main__':
 
     st.write('# Eviction Data Analysis')
 
-    task = st.selectbox('What type of analysis are you doing?', ['Single County', 'Multiple Counties', 'State'])
+    task = st.selectbox('What type of analysis are you doing?',
+                        ['Single County', 'Multiple Counties', 'State', 'National'])
     # task = input('Analyze a single county (1), multiple counties (2), or all the counties in a state (3)? [default: 1]')\
     #     .strip()
 
@@ -266,5 +267,28 @@ if __name__ == '__main__':
         fig, ax = plt.subplots(figsize=(10, 10))
         st.write(sns.heatmap(df.corr(), annot=True, linewidths=0.5))
         st.pyplot(fig)
+    elif task == 'National':
+        frames = []
+        for state in STATES:
+            df = get_state_data(state)
+            frames.append(df)
+        natl_df = pd.concat(frames)
+        output_table(natl_df, 'Output/US_national.xlsx')
+        st.write('Data was saved at `' + 'Output/US_national.xlsx')
+        ranks = rank_counties(natl_df, 'US_national').sort_values(by='Relative Risk', ascending=False)
+        st.subheader('Ranking')
+        st.write('Higher values correspond to more relative risk')
+        st.write(ranks['Relative Risk'])
+        st.write('## Charts')
+        features = st.multiselect('Features', list(natl_df.columns))
+        chart_data = natl_df.reset_index(level='State')[features]
+        st.write(chart_data)
+        st.bar_chart(chart_data)
+
+        st.subheader('Correlation Plot')
+        fig, ax = plt.subplots(figsize=(10, 10))
+        st.write(sns.heatmap(natl_df.corr(), annot=True, linewidths=0.5))
+        st.pyplot(fig)
+
     else:
         raise Exception('INVALID INPUT! Enter a valid task number.')
