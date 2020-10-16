@@ -1,7 +1,7 @@
 # Arup Eviction Data
 This is a repository for analysis on open data related to evictions as a result of COVID-19. This repository gathers data from the Federal Reserve Economic Data portal (FRED). There are a number of potential use cases we're aware of to apply that data to address evictions. 
 
-The analysis we do now allows us compare counties side by side by their "Relative Risk" of evictions.
+This analysis allows us to compare counties side by side by their "Relative Risk" of evictions.
 
 ## Usage
 This repository currently supports three primary workflows:
@@ -32,19 +32,57 @@ This data is the most recent data we could get, but some datasets are updated mo
 | SNAP Benefits Recipients (Persons) | [FRED](https://fred.stlouisfed.org/) | 1/1/2017 | |
 | Unemployment Rate (%) | [FRED](https://fred.stlouisfed.org/) | 6/1/2020 | |
 | Resident Population (Thousands of Persons) | [FRED](https://fred.stlouisfed.org/) | 1/1/2019 | Used to convert percentages to raw population|
-| COVID Vulnerability Index | [CHMURA](http://www.chmuraecon.com/interactive/covid-19-economic-vulnerability-index/) | 4/15/2020 | |
+| COVID Vulnerability Index | [CHMURA](http://www.chmuraecon.com/interactive/covid-19-economic-vulnerability-index/) | 4/15/2020 | An index from CHMURA to represent how vulnerable counties across the US are to COVID-related economic effects. |
+| Fair Market Rents | [HUD](https://www.huduser.gov/portal/datasets/fmr.html#2021_data) | 10/1/2020 | Represents the estimated amount (base rent + essential utilities) that a property in a given area typically rents for|
+| Median Rents | [HUD](https://www.huduser.gov/PORTAL/datasets/50per.html) | 2021 | Rent estimates at the 50th percentile (or median)  calculated for all Fair Market Rent areas|
+| Housing Stock Distributions | [US Census](https://www.census.gov/programs-surveys/ahs/data/interactive/ahstablecreator.html?s_areas=00000&s_year=2017&s_tablename=TABLE2&s_bygroup1=1&s_bygroup2=1&s_filtergroup1=1&s_filtergroup2=1) | 2017 | Distribution of housing units in the US by number of bedrooms. Defaults to the national distribution, but includes data for the top 15 metro areas in the US. Includes percentage and estimated housing units. |
 
 If you have datasets you'd like to see included, please create an Issue.
  
  
 ### What is Relative Risk?
-Relative risk is an index used to compare counties against each other in our Python analysis. It is _not_ a measure of absolute or percentage risk and has no meaning outside of this analysis. We use this compare counties to understand where people are more at risk of eviction. 
+Relative risk is an index used to compare counties against each other in our Python analysis. It is _not_ a measure of absolute or percentage risk and has no meaning outside of this analysis. We use this to compare counties to understand where people are more at risk of eviction. 
 
-We calculate this using a custom formula to balance socioeconomic factors with the policy response of a city. There are three parts of this formula: a socioeconomic value from FRED and other data sources, a policy value found using the policy Excel sheet in this repository, and the time remaining until protections end. The equation is
+We calculate this using a custom formula to balance socioeconomic factors with the policy response of a city. There are three parts of this formula: a *socioeconomic index* value calculated from the combination of normalized FRED data and other data sources in the table above, a *policy index* value found using the policy Excel sheet in this repository and using methodology adapted from EvictionLab, and the *time remaining* until protections end. The equation is
 
 `relative_risk = socioeconomic_index * (1 - policy_index) / sqrt(time_remaining)`
 
 In this equation, we aim to minimize socioeconomic risk on the top of the fraction, maximize the policy response value and take 1 minus the index value calculated (to represent that better policy constitutes less relative risk), and maximize the time remaining on the bottom of the fraction. The square root of the time remaining is used to represent how additional time has diminishing returns. For example, the different between having 2 days and 2 weeks until protections expire is much different than whether policies expire in 3 months or 4 months when we think about how to prioritize one county over another.   
+
+## What is cost of evictions?
+
+To calculate the cost to avoid evictions the following calcuation was used:
+
+`(burdened_household_proportion / 100) * county_rent * housing_stock_distribution percentage * population * (burdened_households_proportion / 100)`
+
+Housing stock distributions (US Census) were used to evaluate the types of houses that exist in the United States (e.g. studio, one bedroom, etc.).  Burdened household proportions were decided by Arup and were used to determine what percentage of people were most at risk.  Proportions were set at 5, 25, 33, 50, and 75 to represent that not all burdened households will face eviction, and we don't know how many actually will.  With the chosen proportion values, we are representing a general range, knowing there isn't a case where nobody will be evicted, or a case where everybody will be evicted.  These numbers can be adjusted based on the user's knowledge of their own county. County rents for each housing stock were sourced from HUD, and used Fair Market Rates to determine rent prices for each stock.  Fair Market Rents (FMRs) represent the estimated amount (base rent + essential utilities) that a property in a given area typically rents for. Burdened households was a percentage calculated by FRED which gives the percentage of the population who pay more than 30% of their income on rent.  Population data was pulled from HUD and represents the population by county in the year 2017. 
+
+Performing this calculation for each proportion and each housing stock will calculate the amount needed to prevent eviction for each proportion.  The total cost of evictions for a particular county for one month was calcuated by summing each housing stock.  To get the cost of prevention for more than one month, the sum was multiplied by the number of months of interest. 
+
+This script uses Fair Market Rent values.  Median rent values are also available in the database.  The script can be manually adjusted by the user to reference median rent values rather than fair market rent if they choose.  
+
+Upon script completion, an excel file will be created within the output folder displaying all values mentioned above.  If you experience problems with the script or have questions about methodologies, please reach out to a member of the development team.  
+
+## Outputs
+
+- county_id: Unique ID for each county
+- fmr_[0-4]: Fair Market Rent value for a 0 bedroom house to a 4 bedroom house
+- Burdened Households (%): People who pay more than 30 percent of their income towards rent
+- Income Inequality (Ratio): The income earned by the top percentage of households and dividing that by the income earned by the poorest percentage of households.
+- Population Below Poverty Line (%): Population living below the minimum level of income deemed adequate in a particular county 
+- Single Parent Households (%): Number of households with a single parent
+- SNAP Benefits Recipients (Persons): Number of people receiving Supplemental Nutrition Assistance Progarm benefits 
+- Unemployment Rate (%): Percentage of the population unemployed
+- Resident Population (Thousands of Persons): Number of persons in a county 
+- VulnerabilityIndex: COVID Vulnerability Index, as defined by CHMURA
+- Non-Home Ownership (%): Percentage of persons who do not own a home
+- [0-4]_br_cost_5: Cost of preventing evictions for a 0-4 bedroom house for 5% of burdened households
+- [0-4]_br_cost_25: Cost of preventing evictions for a 0-4 bedroom house for 25% of burdened households
+- [0-4]_br_cost_33: Cost of preventing evictions for a 0-4 bedroom house for 33% of burdened households
+- [0-4]_br_cost_50: Cost of preventing evictions for a 0-4 bedroom house for 50% of burdened households
+- [0-4]_br_cost_75: Cost of preventing evictions for a 0-4 bedroom house for 75% of burdened households
+
+To calculate the total cost of evictions for a single month, simply add the costs for each housing type for a particular proportion.  
 
 ## Python Users
 We've done our previous analyses in Python, and have built data gathering, cleaning, and analysis functions.
@@ -77,6 +115,18 @@ You can get the most recent Federal Reserve Economic Data (FRED) using the follo
 
 This command will query the eviction data database, and return data in an `Output` folder. If no folder exists, will be created by the `queries.py` script.
 
+### Policy Workbook
+Included in this repository is a template Excel file for policy data. This file is referenced in the Python scripts. There are three pages to be aware of.
+
+#### Policy Timeline
+This page is used to keep track of time-dependent policies and generate a "countdown clock" for a county. You can add policies and their expirations to end up with a date where people lose protections. You can also color the cells on this page to show where different policies overlap and how their expirations line up visually.  
+
+#### Policy Ranking
+This page is used to collect and represent the specific policy nuanced not captured by the timeline. For each county, enter a `1` in each cell where a policy applies. These values are weighted according the methodology used by EvictionLab (with a couple minor modifications) to get an index score for each county.
+
+#### Analysis Data
+This page collects the results from the previous two pages in a format that can be more easily read by the Python scripts. You may need to copy the countdown and policy index values for each county you're analyzing. 
+
 ## Database Users
 The database that this repository uses is open for *read-only* access. The connection details are stored in `credentials.py` if you're using the Python workflow.
 
@@ -86,8 +136,8 @@ If you'd like to query the database directly using the method of your choice, yo
 DB_HOST = ade-eviction.ccgup3bgyakw.us-east-1.rds.amazonaws.com
 DB_NAME = eviction_data
 DB_PORT = 5432
-DB_USER = readonly
-DB_PASSWORD = PublicReadPassword
+DB_USER = readuser
+DB_PASSWORD = password
 ```
 
 ## Contributing
