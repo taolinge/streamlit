@@ -229,7 +229,7 @@ def output_table(df: pd.DataFrame, path: str):
     df.to_excel(path)
 
 
-def calculate_cost_estimate(df: pd.DataFrame, rent_type: str = 'fmr') -> pd.DataFrame:
+def calculate_cost_estimate(df: pd.DataFrame, distribution: dict, rent_type: str = 'fmr') -> pd.DataFrame:
     if rent_type == 'fmr':
         cost_df = queries.static_data_single_table('fair_market_rents', queries.static_columns['fair_market_rents'])
     elif rent_type == 'med':
@@ -243,9 +243,10 @@ def calculate_cost_estimate(df: pd.DataFrame, rent_type: str = 'fmr') -> pd.Data
         'State',
         'County Name'
     ], axis=1)
-    df = pd.merge(cost_df, df, on='county_id')
+
+    df = df.reset_index().merge(cost_df, how="left", on='county_id').set_index(['State', 'County Name'])
     df = df.astype(float)
-    for key, value in HOUSING_STOCK_DISTRIBUTION.items():
+    for key, value in distribution.items():
         for pro in BURDENED_HOUSEHOLD_PROPORTION:
             df[str(key) + '_br_cost_' + str(pro)] = value * df['fmr_0'] * (pro / 100) * (
                     df['Resident Population (Thousands of Persons)'] * 1000) * (df['Burdened Households (%)'] / 100)
@@ -279,54 +280,122 @@ def print_summary(df: pd.DataFrame, output: str):
     print('Done!')
 
 
-def init_UI():
+@st.cache
+def load_distributions():
+    metro_areas = queries.generic_select_query('housing_stock_distribution', [
+        'location',
+        '0_br_pct',
+        '1_br_pct',
+        '2_br_pct',
+        '3_br_pct',
+        '4_br_pct'
+    ])
+    locations = list(metro_areas['location'])
+    metro_areas.set_index('location', inplace=True)
+
+    return metro_areas, locations
+
+
+def run_UI():
     st.write("""
     # Eviction Data Analysis
 
-    This tool supports data analysis of 
+    This tool supports analysis of county level data from a variety of data sources.
 
-    To contribute to this tool or see more details, 
-
+    More documentation and contribution details are at our [GitHub Repository](https://github.com/arup-group/eviction-data)
     """)
     st.write('# Eviction Data Analysis')
     task = st.selectbox('What type of analysis are you doing?',
                         ['Single County', 'Multiple Counties', 'State', 'National'])
+    metro_areas, locations = load_distributions()
 
     if task == 'Single County' or task == '':
         res = st.text_input('Enter the county and state (ie: Jefferson County, Colorado):')
         # res = input('Enter the county and state (ie: Jefferson County, Colorado):')
-        if st.button("Submit"):
-            res = res.strip().split(',')
-            county = res[0].strip()
-            state = res[1].strip()
-            df = get_single_county(county, state)
-            if st.checkbox('Show raw data'):
-                st.dataframe(df)
-            output_table(df, 'Output/' + county + '.xlsx')
-            st.write('Data was saved at `' + 'Output/' + county + '.xlsx')
+        res = res.strip().split(',')
+        county = res[0].strip()
+        state = res[1].strip()
+        df = get_single_county(county, state)
+        st.write(df)
+        if st.checkbox('Show raw data'):
+            st.subheader('Raw Data')
+            st.dataframe(df)
+
+        if st.checkbox('Do cost to avoid eviction analysis?'):
+            rent_type = st.selectbox('Rent Type', ['Fair Market', 'Median'])
+            location = st.selectbox('Select a location to assume a housing distribution:', locations)
+            distribution = {
+                0: float(metro_areas.loc[location, '0_br_pct']),
+                1: float(metro_areas.loc[location, '1_br_pct']),
+                2: float(metro_areas.loc[location, '2_br_pct']),
+                3: float(metro_areas.loc[location, '3_br_pct']),
+                4: float(metro_areas.loc[location, '4_br_pct']),
+            }
+
+            if rent_type == '' or rent_type == 'Fair Market':
+                df = calculate_cost_estimate(df, rent_type='fmr', distribution=distribution)
+            elif rent_type == 'Median':
+                df = calculate_cost_estimate(df, rent_type='med', distribution=distribution)
+
+        output_table(df, 'Output/' + county + '.xlsx')
+        st.write('Data was saved at `' + 'Output/' + county + '.xlsx')
+        st.write('## Results')
+        st.dataframe(df)
     elif task == 'Multiple Counties':
         state = st.selectbox("Select a state", STATES).strip()
-        # state = input("Which state are you looking for (ie: California)?]").strip()
-        counties = st.text_area('Please specify one or more counties, separated by commas [ie: ].').strip().split(',')
-        if st.button("Submit"):
-            # counties = input('Please specify one or more counties, separated by commas [ie: ].').strip().split(',')
-            counties = [_.strip().lower() for _ in counties]
-            counties = [_ + ' county' for _ in counties if ' county' not in _]
+        county_list = queries.counties_query()
+        county_list = county_list[county_list['State'] == state]['County Name'].to_list()
+        counties = st.multiselect('Please specify one or more counties', county_list)
+        counties = [_.strip().lower() for _ in counties]
+        if len(counties)>0:
             df = get_multiple_counties(counties, state)
+
             if st.checkbox('Show raw data'):
                 st.subheader('Raw Data')
                 st.dataframe(df)
+
+            if st.checkbox('Do cost to avoid eviction analysis?'):
+                rent_type = st.selectbox('Rent Type', ['Fair Market', 'Median'])
+                location = st.selectbox('Select a location to assume a housing distribution:', locations)
+                distribution = {
+                    0: float(metro_areas.loc[location, '0_br_pct']),
+                    1: float(metro_areas.loc[location, '1_br_pct']),
+                    2: float(metro_areas.loc[location, '2_br_pct']),
+                    3: float(metro_areas.loc[location, '3_br_pct']),
+                    4: float(metro_areas.loc[location, '4_br_pct']),
+                }
+
+                if rent_type == '' or rent_type == 'Fair Market':
+                    df = calculate_cost_estimate(df, rent_type='fmr', distribution=distribution)
+                elif rent_type == 'Median':
+                    df = calculate_cost_estimate(df, rent_type='med', distribution=distribution)
             output_table(df, 'Output/' + state + '_selected_counties.xlsx')
             st.write('Data was saved at `' + 'Output/' + state + '_selected_counties.xlsx')
-            ranks = rank_counties(df, state + '_selected_counties').sort_values()
+            ranks = rank_counties(df, state + '_selected_counties').sort_values(by='Relative Risk', ascending=False)
+            st.write('## Results')
             st.dataframe(ranks)
     elif task == 'State':
         state = st.selectbox("Select a state", STATES).strip()
-        # state = input("Which state are you looking for (ie: California)?]").strip()
         df = get_state_data(state)
         if st.checkbox('Show raw data'):
             st.subheader('Raw Data')
             st.dataframe(df)
+        if st.checkbox('Do cost to avoid eviction analysis?'):
+            rent_type = st.selectbox('Rent Type', ['Fair Market', 'Median'])
+            location = st.selectbox('Select a location to assume a housing distribution:', locations)
+            distribution = {
+                0: float(metro_areas.loc[location, '0_br_pct']),
+                1: float(metro_areas.loc[location, '1_br_pct']),
+                2: float(metro_areas.loc[location, '2_br_pct']),
+                3: float(metro_areas.loc[location, '3_br_pct']),
+                4: float(metro_areas.loc[location, '4_br_pct']),
+            }
+
+            if rent_type == '' or rent_type == 'Fair Market':
+                df = calculate_cost_estimate(df, rent_type='fmr', distribution=distribution)
+            elif rent_type == 'Median':
+                df = calculate_cost_estimate(df, rent_type='med', distribution=distribution)
+
         output_table(df, 'Output/' + state + '.xlsx')
         st.write('Data was saved at `' + 'Output/' + state + '.xlsx')
         ranks = rank_counties(df, state).sort_values(by='Relative Risk', ascending=False)
@@ -351,6 +420,25 @@ def init_UI():
         natl_df = pd.concat(frames)
         output_table(natl_df, 'Output/US_national.xlsx')
         st.write('Data was saved at `' + 'Output/US_national.xlsx')
+        if st.checkbox('Show raw data'):
+            st.subheader('Raw Data')
+            st.dataframe(natl_df)
+        if st.checkbox('Do cost to avoid eviction analysis?'):
+            rent_type = st.selectbox('Rent Type', ['Fair Market', 'Median'])
+            location = st.selectbox('Select a location to assume a housing distribution:', locations)
+            distribution = {
+                0: float(metro_areas.loc[location, '0_br_pct']),
+                1: float(metro_areas.loc[location, '1_br_pct']),
+                2: float(metro_areas.loc[location, '2_br_pct']),
+                3: float(metro_areas.loc[location, '3_br_pct']),
+                4: float(metro_areas.loc[location, '4_br_pct']),
+            }
+
+            if rent_type == '' or rent_type == 'Fair Market':
+                natl_df = calculate_cost_estimate(natl_df, rent_type='fmr', distribution=distribution)
+            elif rent_type == 'Median':
+                natl_df = calculate_cost_estimate(natl_df, rent_type='med', distribution=distribution)
+
         ranks = rank_counties(natl_df, 'US_national').sort_values(by='Relative Risk', ascending=False)
         st.subheader('Ranking')
         st.write('Higher values correspond to more relative risk')
@@ -390,7 +478,7 @@ if __name__ == '__main__':
             res = input('Enter the county and state to analyze (ie: Jefferson County, Colorado):')
             res = res.strip().split(',')
             cost_of_evictions = input(
-                'Run an analysis to estimate the cost to avoid evictions for your chosen county? (Y/n) ')
+                'Run an analysis to estimate the cost to avoid evictions? (Y/n) ')
             cost_of_evictions.strip()
             county = res[0].strip().lower()
             state = res[1].strip().lower()
@@ -408,7 +496,7 @@ if __name__ == '__main__':
             counties = [_ + ' county' for _ in counties if ' county' not in _]
             df = get_multiple_counties(counties, state)
             cost_of_evictions = input(
-                'Run an analysis to estimate the cost to avoid evictions for your chosen county? (Y/n) ')
+                'Run an analysis to estimate the cost to avoid evictions? (Y/n) ')
             if cost_of_evictions == 'y' or cost_of_evictions == '':
                 df = calculate_cost_estimate(df, rent_type='fmr')
 
@@ -418,6 +506,10 @@ if __name__ == '__main__':
         elif task == '3':
             state = input("Which state are you looking for? (ie: California)").strip()
             df = get_state_data(state)
+            cost_of_evictions = input(
+                'Run an analysis to estimate the cost to avoid evictions? (Y/n) ')
+            if cost_of_evictions == 'y' or cost_of_evictions == '':
+                df = calculate_cost_estimate(df, rent_type='fmr')
 
             output_table(df, 'Output/' + state + '.xlsx')
             analysis_df = rank_counties(df, state)
@@ -428,6 +520,10 @@ if __name__ == '__main__':
                 df = get_state_data(state)
                 frames.append(df)
             natl_df = pd.concat(frames)
+            cost_of_evictions = input(
+                'Run an analysis to estimate the cost to avoid evictions (Y/n) ')
+            if cost_of_evictions == 'y' or cost_of_evictions == '':
+                df = calculate_cost_estimate(natl_df, rent_type='fmr')
 
             output_table(natl_df, 'Output/US_national.xlsx')
             analysis_df = rank_counties(natl_df, 'US_national')
@@ -435,4 +531,4 @@ if __name__ == '__main__':
         else:
             raise Exception('INVALID INPUT! Enter a valid task number.')
     else:
-        init_UI()
+        run_UI()

@@ -122,6 +122,18 @@ def static_data_single_table(table_name: str, columns: list) -> pd.DataFrame:
     return df
 
 
+def generic_select_query(table_name: str, columns: list) -> pd.DataFrame:
+    cur = conn.cursor()
+    str_columns = ', '.join('"{}"'.format(c) for c in columns)
+    query = 'SELECT {} FROM {} '.format(str_columns, table_name)
+    cur.execute(query)
+    results = cur.fetchall()
+    colnames = [desc[0] for desc in cur.description]
+    df = pd.DataFrame(results, columns=colnames)
+
+    return df
+
+
 def static_data_all_table() -> pd.DataFrame:
     counties_df = counties_query()
     for table_name in static_tables:
