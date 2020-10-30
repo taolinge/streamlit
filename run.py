@@ -5,10 +5,12 @@ import os
 import sys
 
 import pandas as pd
+import numpy as np
 import sklearn.preprocessing as pre
 import streamlit as st
 import seaborn as sns
 import matplotlib.pyplot as plt
+import pydeck as pdk
 
 import api
 import queries
@@ -193,9 +195,9 @@ def get_existing_policies(df: pd.DataFrame) -> pd.DataFrame:
         temp_df = df.merge(policy_df, on='County Name')
         if not temp_df.empty and len(df) == len(temp_df):
             return temp_df
-        else:
-            print(
-                "INFO: Policy data not found. Check that you've properly filled in the Analysis Data page in `Policy Workbook.xlsx` with the counties you're analyzing.")
+        # else:
+        #     print(
+        #         "INFO: Policy data not found. Check that you've properly filled in the Analysis Data page in `Policy Workbook.xlsx` with the counties you're analyzing.")
 
     return df
 
@@ -234,7 +236,8 @@ def output_table(df: pd.DataFrame, path: str):
     df.to_excel(path)
 
 
-def calculate_cost_estimate(df: pd.DataFrame, distribution: dict, rent_type: str = 'fmr') -> pd.DataFrame:
+def calculate_cost_estimate(df: pd.DataFrame, pct_burdened: float, distribution: dict,
+                            rent_type: str = 'fmr') -> pd.DataFrame:
     if rent_type == 'fmr':
         cost_df = queries.static_data_single_table('fair_market_rents', queries.static_columns['fair_market_rents'])
     elif rent_type == 'med':
@@ -252,17 +255,18 @@ def calculate_cost_estimate(df: pd.DataFrame, distribution: dict, rent_type: str
     df = df.reset_index().merge(cost_df, how="left", on='county_id').set_index(['State', 'County Name'])
     df = df.astype(float)
     for key, value in distribution.items():
-        for pro in BURDENED_HOUSEHOLD_PROPORTION:
-            df[str(key) + '_br_cost_' + str(pro)] = value * df['fmr_0'] * (pro / 100) * (
-                    df['Resident Population (Thousands of Persons)'] * 1000) * (df['Burdened Households (%)'] / 100)
-            df[str(key) + '_br_cost_' + str(pro)] = value * df['fmr_1'] * (pro / 100) * (
-                    df['Resident Population (Thousands of Persons)'] * 1000) * (df['Burdened Households (%)'] / 100)
-            df[str(key) + '_br_cost_' + str(pro)] = value * df['fmr_2'] * (pro / 100) * (
-                    df['Resident Population (Thousands of Persons)'] * 1000) * (df['Burdened Households (%)'] / 100)
-            df[str(key) + '_br_cost_' + str(pro)] = value * df['fmr_3'] * (pro / 100) * (
-                    df['Resident Population (Thousands of Persons)'] * 1000) * (df['Burdened Households (%)'] / 100)
-            df[str(key) + '_br_cost_' + str(pro)] = value * df['fmr_4'] * (pro / 100) * (
-                    df['Resident Population (Thousands of Persons)'] * 1000) * (df['Burdened Households (%)'] / 100)
+        df['br_cost_0'] = value * df['fmr_0'] * (pct_burdened / 100) * (
+                df['Resident Population (Thousands of Persons)'] * 1000) * (df['Burdened Households (%)'] / 100)
+        df['br_cost_1'] = value * df['fmr_1'] * (pct_burdened / 100) * (
+                df['Resident Population (Thousands of Persons)'] * 1000) * (df['Burdened Households (%)'] / 100)
+        df['br_cost_2'] = value * df['fmr_2'] * (pct_burdened / 100) * (
+                df['Resident Population (Thousands of Persons)'] * 1000) * (df['Burdened Households (%)'] / 100)
+        df['br_cost_3'] = value * df['fmr_3'] * (pct_burdened / 100) * (
+                df['Resident Population (Thousands of Persons)'] * 1000) * (df['Burdened Households (%)'] / 100)
+        df['br_cost_4'] = value * df['fmr_4'] * (pct_burdened / 100) * (
+                df['Resident Population (Thousands of Persons)'] * 1000) * (df['Burdened Households (%)'] / 100)
+        df['total_cost'] = np.sum([df['br_cost_0'], df['br_cost_1'], df['br_cost_2'], df['br_cost_3'], df['br_cost_4']],
+                                  axis=0)
     return df
 
 
@@ -285,7 +289,6 @@ def print_summary(df: pd.DataFrame, output: str):
     print('Done!')
 
 
-@st.cache
 def load_distributions():
     metro_areas = queries.generic_select_query('housing_stock_distribution', [
         'location',
@@ -301,170 +304,182 @@ def load_distributions():
     return metro_areas, locations
 
 
+def visualizations(df: pd.DataFrame, state: str = None):
+    st.write('## Charts')
+    st.subheader('Map')
+
+    temp = df.copy()
+    temp.reset_index(inplace=True)
+    counties = temp['County Name'].to_list()
+    if state:
+        geom = queries.get_county_geoms(counties, state.lower())
+        geom.drop(['gid', 'statefp', 'countyfp', 'st_fp_int', 'st_nm_lwr', 'state_abbr', 'state_name', 'name'], axis=1,
+                  inplace=True)
+        df = df.merge(geom, left_on=['County Name'], right_on=['namelsad'], how='outer')
+
+        st.dataframe(df)
+        st.pydeck_chart(pdk.Deck(
+            map_style='mapbox://styles/mapbox/light-v9',
+            initial_view_state=pdk.ViewState(latitude=0, longitude=0, zoom=1, pitch=0),
+            layers=[
+                pdk.Layer('PolygonLayer',
+                          data=df,
+                          opacity=0.8,
+                          stroked=False,
+                          get_polygon="geom",
+                          )
+            ]
+        ))
+
+    st.subheader('Correlation Plot')
+    fig, ax = plt.subplots(figsize=(10, 10))
+    st.write(sns.heatmap(df.corr(), annot=True, linewidths=0.5))
+    st.pyplot(fig)
+
+
+def cost_of_evictions(df, metro_areas, locations):
+    rent_type = st.selectbox('Rent Type', ['Fair Market', 'Median'])
+    location = st.selectbox('Select a location to assume a housing distribution:', locations)
+    distribution = {
+        0: float(metro_areas.loc[location, '0_br_pct']),
+        1: float(metro_areas.loc[location, '1_br_pct']),
+        2: float(metro_areas.loc[location, '2_br_pct']),
+        3: float(metro_areas.loc[location, '3_br_pct']),
+        4: float(metro_areas.loc[location, '4_br_pct']),
+    }
+
+    pct_burdened = st.slider('Percent of Burdened Population to Support', 0, 100, value=50, step=1)
+
+    if rent_type == '' or rent_type == 'Fair Market':
+        df = calculate_cost_estimate(df, pct_burdened, rent_type='fmr', distribution=distribution)
+    elif rent_type == 'Median':
+        df = calculate_cost_estimate(df, pct_burdened, rent_type='med', distribution=distribution)
+
+    cost_df = df.reset_index()
+    cost_df.drop(columns=['State'], inplace=True)
+    cost_df.set_index('County Name', inplace=True)
+    cost_df = cost_df[['br_cost_0', 'br_cost_1', 'br_cost_2', 'br_cost_3', 'br_cost_4', 'total_cost']]
+    st.dataframe(
+        cost_df[['total_cost']])
+    st.bar_chart(cost_df['total_cost'])
+    return cost_df
+
+
 def run_UI():
-    st.write("""
-    # Eviction Data Analysis
+    st.sidebar.write("""
+    # Arup Social Data
 
     This tool supports analysis of county level data from a variety of data sources.
 
     More documentation and contribution details are at our [GitHub Repository](https://github.com/arup-group/eviction-data)
     """)
-    st.write('# Eviction Data Analysis')
-    task = st.selectbox('What type of analysis are you doing?',
-                        ['Single County', 'Multiple Counties', 'State', 'National'])
-    metro_areas, locations = load_distributions()
+    workflow = st.sidebar.selectbox('Workflow', ['Eviction Analysis', 'Data Explorer'])
+    if workflow == 'Eviction Analysis':
+        st.write('### Eviction Data Analysis')
+        task = st.selectbox('What type of analysis are you doing?',
+                            ['Single County', 'Multiple Counties', 'State', 'National'])
+        metro_areas, locations = load_distributions()
 
-    if task == 'Single County' or task == '':
-        res = st.text_input('Enter the county and state (ie: Jefferson County, Colorado):')
-        if res:
-            res = res.strip().split(',')
-            county = res[0].strip()
-            state = res[1].strip()
-            if county and state:
-                df = get_single_county(county, state)
-                st.write(df)
+        if task == 'Single County' or task == '':
+            res = st.text_input('Enter the county and state (ie: Jefferson County, Colorado):')
+            if res:
+                res = res.strip().split(',')
+                county = res[0].strip()
+                state = res[1].strip()
+                if county and state:
+                    df = get_single_county(county, state)
+                    st.write(df)
+                    if st.checkbox('Show raw data'):
+                        st.subheader('Raw Data')
+                        st.dataframe(df)
+
+                    if st.checkbox('Do cost to avoid eviction analysis?'):
+                        evictions_cost_df = cost_of_evictions(df, metro_areas, locations)
+
+        elif task == 'Multiple Counties':
+            state = st.selectbox("Select a state", STATES).strip()
+            county_list = queries.counties_query()
+            county_list = county_list[county_list['State'] == state]['County Name'].to_list()
+            counties = st.multiselect('Please specify one or more counties', county_list)
+            counties = [_.strip().lower() for _ in counties]
+            if len(counties) > 0:
+                df = get_multiple_counties(counties, state)
+
                 if st.checkbox('Show raw data'):
                     st.subheader('Raw Data')
                     st.dataframe(df)
 
                 if st.checkbox('Do cost to avoid eviction analysis?'):
-                    rent_type = st.selectbox('Rent Type', ['Fair Market', 'Median'])
-                    location = st.selectbox('Select a location to assume a housing distribution:', locations)
-                    distribution = {
-                        0: float(metro_areas.loc[location, '0_br_pct']),
-                        1: float(metro_areas.loc[location, '1_br_pct']),
-                        2: float(metro_areas.loc[location, '2_br_pct']),
-                        3: float(metro_areas.loc[location, '3_br_pct']),
-                        4: float(metro_areas.loc[location, '4_br_pct']),
-                    }
+                    evictions_cost_df = cost_of_evictions(df, metro_areas, locations)
 
-                    if rent_type == '' or rent_type == 'Fair Market':
-                        df = calculate_cost_estimate(df, rent_type='fmr', distribution=distribution)
-                    elif rent_type == 'Median':
-                        df = calculate_cost_estimate(df, rent_type='med', distribution=distribution)
-
-                output_table(df, 'Output/' + county + '.xlsx')
-                st.write('Data was saved at `' + 'Output/' + county + '.xlsx')
+                output_table(df, 'Output/' + state + '_selected_counties.xlsx')
+                st.success('Data was saved at `' + 'Output/' + state + '_selected_counties.xlsx')
+                ranks = rank_counties(df, state + '_selected_counties').sort_values(by='Relative Risk', ascending=False)
                 st.write('## Results')
-                st.dataframe(df)
-    elif task == 'Multiple Counties':
-        state = st.selectbox("Select a state", STATES).strip()
-        county_list = queries.counties_query()
-        county_list = county_list[county_list['State'] == state]['County Name'].to_list()
-        counties = st.multiselect('Please specify one or more counties', county_list)
-        counties = [_.strip().lower() for _ in counties]
-        if len(counties) > 0:
-            df = get_multiple_counties(counties, state)
+                st.dataframe(ranks)
+
+                # visualizations(df, state)
+            else:
+                st.warning('Select counties to analyze')
+                st.stop()
+        elif task == 'State':
+            state = st.selectbox("Select a state", STATES).strip()
+            df = get_state_data(state)
 
             if st.checkbox('Show raw data'):
                 st.subheader('Raw Data')
                 st.dataframe(df)
-
             if st.checkbox('Do cost to avoid eviction analysis?'):
-                rent_type = st.selectbox('Rent Type', ['Fair Market', 'Median'])
-                location = st.selectbox('Select a location to assume a housing distribution:', locations)
-                distribution = {
-                    0: float(metro_areas.loc[location, '0_br_pct']),
-                    1: float(metro_areas.loc[location, '1_br_pct']),
-                    2: float(metro_areas.loc[location, '2_br_pct']),
-                    3: float(metro_areas.loc[location, '3_br_pct']),
-                    4: float(metro_areas.loc[location, '4_br_pct']),
-                }
+                evictions_cost_df = cost_of_evictions(df, metro_areas, locations)
 
-                if rent_type == '' or rent_type == 'Fair Market':
-                    df = calculate_cost_estimate(df, rent_type='fmr', distribution=distribution)
-                elif rent_type == 'Median':
-                    df = calculate_cost_estimate(df, rent_type='med', distribution=distribution)
-            output_table(df, 'Output/' + state + '_selected_counties.xlsx')
-            st.write('Data was saved at `' + 'Output/' + state + '_selected_counties.xlsx')
-            ranks = rank_counties(df, state + '_selected_counties').sort_values(by='Relative Risk', ascending=False)
-            st.write('## Results')
-            st.dataframe(ranks)
-    elif task == 'State':
-        state = st.selectbox("Select a state", STATES).strip()
-        df = get_state_data(state)
-        if st.checkbox('Show raw data'):
-            st.subheader('Raw Data')
-            st.dataframe(df)
-        if st.checkbox('Do cost to avoid eviction analysis?'):
-            rent_type = st.selectbox('Rent Type', ['Fair Market', 'Median'])
-            location = st.selectbox('Select a location to assume a housing distribution:', locations)
-            distribution = {
-                0: float(metro_areas.loc[location, '0_br_pct']),
-                1: float(metro_areas.loc[location, '1_br_pct']),
-                2: float(metro_areas.loc[location, '2_br_pct']),
-                3: float(metro_areas.loc[location, '3_br_pct']),
-                4: float(metro_areas.loc[location, '4_br_pct']),
-            }
+            output_table(df, 'Output/' + state + '.xlsx')
+            st.success('Data was saved at `' + 'Output/' + state + '.xlsx')
+            ranks = rank_counties(df, state).sort_values(by='Relative Risk', ascending=False)
+            st.subheader('Ranking')
+            st.write('Higher values correspond to more relative risk')
+            st.write(ranks['Relative Risk'])
 
-            if rent_type == '' or rent_type == 'Fair Market':
-                df = calculate_cost_estimate(df, rent_type='fmr', distribution=distribution)
-            elif rent_type == 'Median':
-                df = calculate_cost_estimate(df, rent_type='med', distribution=distribution)
+            # visualizations(df, state)
 
-        output_table(df, 'Output/' + state + '.xlsx')
-        st.write('Data was saved at `' + 'Output/' + state + '.xlsx')
-        ranks = rank_counties(df, state).sort_values(by='Relative Risk', ascending=False)
-        st.subheader('Ranking')
-        st.write('Higher values correspond to more relative risk')
-        st.write(ranks['Relative Risk'])
-        st.write('## Charts')
-        features = st.multiselect('Features', list(df.columns))
-        chart_data = df.reset_index(level='State')[features]
-        st.write(chart_data)
-        st.bar_chart(chart_data)
+        elif task == 'National':
+            frames = []
+            for state in STATES:
+                df = get_state_data(state)
+                frames.append(df)
+            natl_df = pd.concat(frames)
+            output_table(natl_df, 'Output/US_national.xlsx')
+            st.success('Data was saved at `' + 'Output/US_national.xlsx')
+            if st.checkbox('Show raw data'):
+                st.subheader('Raw Data')
+                st.dataframe(natl_df)
+            if st.checkbox('Do cost to avoid eviction analysis?'):
+                evictions_cost_df = cost_of_evictions(natl_df, metro_areas, locations)
 
-        st.subheader('Correlation Plot')
-        fig, ax = plt.subplots(figsize=(10, 10))
-        st.write(sns.heatmap(df.corr(), annot=True, linewidths=0.5))
-        st.pyplot(fig)
-    elif task == 'National':
-        frames = []
-        for state in STATES:
-            df = get_state_data(state)
-            frames.append(df)
-        natl_df = pd.concat(frames)
-        output_table(natl_df, 'Output/US_national.xlsx')
-        st.write('Data was saved at `' + 'Output/US_national.xlsx')
-        if st.checkbox('Show raw data'):
-            st.subheader('Raw Data')
-            st.dataframe(natl_df)
-        if st.checkbox('Do cost to avoid eviction analysis?'):
-            rent_type = st.selectbox('Rent Type', ['Fair Market', 'Median'])
-            location = st.selectbox('Select a location to assume a housing distribution:', locations)
-            distribution = {
-                0: float(metro_areas.loc[location, '0_br_pct']),
-                1: float(metro_areas.loc[location, '1_br_pct']),
-                2: float(metro_areas.loc[location, '2_br_pct']),
-                3: float(metro_areas.loc[location, '3_br_pct']),
-                4: float(metro_areas.loc[location, '4_br_pct']),
-            }
-
-            if rent_type == '' or rent_type == 'Fair Market':
-                natl_df = calculate_cost_estimate(natl_df, rent_type='fmr', distribution=distribution)
-            elif rent_type == 'Median':
-                natl_df = calculate_cost_estimate(natl_df, rent_type='med', distribution=distribution)
-
-        ranks = rank_counties(natl_df, 'US_national').sort_values(by='Relative Risk', ascending=False)
-        st.subheader('Ranking')
-        st.write('Higher values correspond to more relative risk')
-        st.write(ranks['Relative Risk'])
-        st.write('## Charts')
-        features = st.multiselect('Features', list(natl_df.columns))
-        chart_data = natl_df.reset_index(level='State')[features]
-        st.write(chart_data)
-        st.bar_chart(chart_data)
-
-        st.subheader('Correlation Plot')
-        fig, ax = plt.subplots(figsize=(10, 10))
-        st.write(sns.heatmap(natl_df.corr(), annot=True, linewidths=0.5))
-        st.pyplot(fig)
-
-
+            ranks = rank_counties(natl_df, 'US_national').sort_values(by='Relative Risk', ascending=False)
+            st.subheader('Ranking')
+            st.write('Higher values correspond to more relative risk')
+            st.write(ranks['Relative Risk'])
+            # visualizations(natl_df, 'National')
+    else:
+        st.write('## Data Explorer')
+        task = st.selectbox('What type of analysis are you doing?',
+                            ['Single County', 'Multiple Counties', 'State', 'National'])
+        metro_areas, locations = load_distributions()
+        if task == 'Single County' or task == '':
+            res = st.text_input('Enter the county and state (ie: Jefferson County, Colorado):')
+            if res:
+                res = res.strip().split(',')
+                county = res[0].strip()
+                state = res[1].strip()
+                if county and state:
+                    df = get_single_county(county, state)
+                    st.write(df)
+                    if st.checkbox('Show raw data'):
+                        st.subheader('Raw Data')
+                        st.dataframe(df)
 if __name__ == '__main__':
     if not os.path.exists('Output'):
         os.makedirs('Output')
-
     opts, args = getopt.getopt(sys.argv[1:], "hm:", ["mode="])
     mode = None
 
@@ -521,6 +536,14 @@ if __name__ == '__main__':
             output_table(df, 'Output/' + state + '.xlsx')
             analysis_df = rank_counties(df, state)
             print_summary(analysis_df, 'Output/' + state + '.xlsx')
+            temp = df.copy()
+            temp.reset_index(inplace=True)
+            counties = temp['County Name'].to_list()
+            geom = queries.get_county_geoms(counties, state.lower())
+            geom.drop(['gid', 'statefp', 'countyfp', 'st_fp_int', 'st_nm_lwr', 'state_abbr', 'state_name', 'name'],
+                      axis=1, inplace=True)
+            df = df.merge(geom, left_on=['County Name'], right_on=['namelsad'], how='outer')
+
         elif task == '4':
             frames = []
             for state in STATES:
