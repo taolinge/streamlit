@@ -1,3 +1,4 @@
+import base64
 import getopt
 import itertools
 import math
@@ -6,11 +7,14 @@ import sys
 
 import pandas as pd
 import numpy as np
+import xlsxwriter
 import sklearn.preprocessing as pre
 import streamlit as st
 import seaborn as sns
 import matplotlib.pyplot as plt
 import pydeck as pdk
+import altair as alt
+from six import BytesIO
 
 import api
 import queries
@@ -240,8 +244,9 @@ def calculate_cost_estimate(df: pd.DataFrame, pct_burdened: float, distribution:
                             rent_type: str = 'fmr') -> pd.DataFrame:
     if rent_type == 'fmr':
         cost_df = queries.static_data_single_table('fair_market_rents', queries.static_columns['fair_market_rents'])
-    elif rent_type == 'med':
+    elif rent_type == 'rent50':
         cost_df = queries.static_data_single_table('median_rents', queries.static_columns['median_rents'])
+        print(cost_df)
     else:
         raise Exception(
             'Invalid input - {x} is not a valid rent type. Must be either `fmr` (Free Market Rent) or `med` (Median Rent)'.format(
@@ -255,15 +260,15 @@ def calculate_cost_estimate(df: pd.DataFrame, pct_burdened: float, distribution:
     df = df.reset_index().merge(cost_df, how="left", on='county_id').set_index(['State', 'County Name'])
     df = df.astype(float)
     for key, value in distribution.items():
-        df['br_cost_0'] = value * df['fmr_0'] * (pct_burdened / 100) * (
+        df['br_cost_0'] = value * df[f'{rent_type}_0'] * (pct_burdened / 100) * (
                 df['Resident Population (Thousands of Persons)'] * 1000) * (df['Burdened Households (%)'] / 100)
-        df['br_cost_1'] = value * df['fmr_1'] * (pct_burdened / 100) * (
+        df['br_cost_1'] = value * df[f'{rent_type}_1'] * (pct_burdened / 100) * (
                 df['Resident Population (Thousands of Persons)'] * 1000) * (df['Burdened Households (%)'] / 100)
-        df['br_cost_2'] = value * df['fmr_2'] * (pct_burdened / 100) * (
+        df['br_cost_2'] = value * df[f'{rent_type}_2'] * (pct_burdened / 100) * (
                 df['Resident Population (Thousands of Persons)'] * 1000) * (df['Burdened Households (%)'] / 100)
-        df['br_cost_3'] = value * df['fmr_3'] * (pct_burdened / 100) * (
+        df['br_cost_3'] = value * df[f'{rent_type}_3'] * (pct_burdened / 100) * (
                 df['Resident Population (Thousands of Persons)'] * 1000) * (df['Burdened Households (%)'] / 100)
-        df['br_cost_4'] = value * df['fmr_4'] * (pct_burdened / 100) * (
+        df['br_cost_4'] = value * df[f'{rent_type}_4'] * (pct_burdened / 100) * (
                 df['Resident Population (Thousands of Persons)'] * 1000) * (df['Burdened Households (%)'] / 100)
         df['total_cost'] = np.sum([df['br_cost_0'], df['br_cost_1'], df['br_cost_2'], df['br_cost_3'], df['br_cost_4']],
                                   axis=0)
@@ -337,6 +342,47 @@ def visualizations(df: pd.DataFrame, state: str = None):
     st.pyplot(fig)
 
 
+def to_excel(df: pd.DataFrame):
+    output = BytesIO()
+    writer = pd.ExcelWriter(output, engine='xlsxwriter')
+    df.to_excel(writer, sheet_name='Sheet1')
+    writer.save()
+    processed_data = output.getvalue()
+    return processed_data
+
+
+def get_table_download_link(df: pd.DataFrame, file_name: str, text: str):
+    """Generates a link allowing the data in a given panda dataframe to be downloaded
+    in:  dataframe
+    out: href string
+    """
+    val = to_excel(df)
+    b64 = base64.b64encode(val)  # val looks like b'...'
+    return f'<a href="data:application/octet-stream;base64,{b64.decode()}" download="{file_name}.xlsx">{text}</a>'
+
+def data_explorer(df):
+    feature_labels = list(
+        set(df.columns) - {'County Name', 'county_id', 'Resident Population (Thousands of Persons)'})
+    col1, col2, col3 = st.beta_columns(3)
+    with col1:
+        feature_1 = st.selectbox('X Feature', feature_labels, 0)
+    with col2:
+        feature_2 = st.selectbox('Y Feature', feature_labels, 1)
+    if feature_1 and feature_2:
+        chart_data = df.reset_index()[
+            [feature_1, feature_2, 'County Name', 'Resident Population (Thousands of Persons)']]
+        c = alt.Chart(chart_data).mark_point().encode(x=feature_1, y=feature_2, tooltip=['County Name',
+                                                                                         'Resident Population (Thousands of Persons)',
+                                                                                         feature_1, feature_2],
+                                                      color='County Name',
+                                                      size='Resident Population (Thousands of Persons)')
+        st.altair_chart(c, use_container_width=True)
+    st.subheader('Correlation Plot')
+    fig, ax = plt.subplots(figsize=(10, 10))
+    df = normalize(df)
+    st.write(sns.heatmap(df.corr(), annot=True, linewidths=0.5))
+    st.pyplot(fig)
+
 def cost_of_evictions(df, metro_areas, locations):
     rent_type = st.selectbox('Rent Type', ['Fair Market', 'Median'])
     location = st.selectbox('Select a location to assume a housing distribution:', locations)
@@ -353,14 +399,14 @@ def cost_of_evictions(df, metro_areas, locations):
     if rent_type == '' or rent_type == 'Fair Market':
         df = calculate_cost_estimate(df, pct_burdened, rent_type='fmr', distribution=distribution)
     elif rent_type == 'Median':
-        df = calculate_cost_estimate(df, pct_burdened, rent_type='med', distribution=distribution)
+        df = calculate_cost_estimate(df, pct_burdened, rent_type='rent50', distribution=distribution)
 
     cost_df = df.reset_index()
     cost_df.drop(columns=['State'], inplace=True)
     cost_df.set_index('County Name', inplace=True)
-    cost_df = cost_df[['br_cost_0', 'br_cost_1', 'br_cost_2', 'br_cost_3', 'br_cost_4', 'total_cost']]
-    st.dataframe(
-        cost_df[['total_cost']])
+    # cost_df = cost_df[['br_cost_0', 'br_cost_1', 'br_cost_2', 'br_cost_3', 'br_cost_4', 'total_cost']]
+    # st.dataframe(
+    #     cost_df[['total_cost']])
     st.bar_chart(cost_df['total_cost'])
     return cost_df
 
@@ -392,9 +438,20 @@ def run_UI():
                     if st.checkbox('Show raw data'):
                         st.subheader('Raw Data')
                         st.dataframe(df)
+                        st.markdown(get_table_download_link(df, county + '_data', 'Download raw data'),
+                                    unsafe_allow_html=True)
 
                     if st.checkbox('Do cost to avoid eviction analysis?'):
                         evictions_cost_df = cost_of_evictions(df, metro_areas, locations)
+                        if st.checkbox('Show cost data'):
+                            st.dataframe(evictions_cost_df)
+                        st.markdown(
+                            get_table_download_link(evictions_cost_df, county + '_cost_data', 'Download cost data'),
+                            unsafe_allow_html=True)
+
+                else:
+                    st.warning('Enter a valid county and state, separated by a comma')
+                    st.stop()
 
         elif task == 'Multiple Counties':
             state = st.selectbox("Select a state", STATES).strip()
@@ -408,15 +465,24 @@ def run_UI():
                 if st.checkbox('Show raw data'):
                     st.subheader('Raw Data')
                     st.dataframe(df)
+                    st.markdown(get_table_download_link(df, state + '_custom_data', 'Download raw data'),
+                                unsafe_allow_html=True)
 
                 if st.checkbox('Do cost to avoid eviction analysis?'):
                     evictions_cost_df = cost_of_evictions(df, metro_areas, locations)
+                    if st.checkbox('Show cost data'):
+                        st.dataframe(evictions_cost_df)
+                    st.markdown(
+                        get_table_download_link(evictions_cost_df, state + '_custom_cost_data', 'Download cost data'),
+                        unsafe_allow_html=True)
 
-                output_table(df, 'Output/' + state + '_selected_counties.xlsx')
-                st.success('Data was saved at `' + 'Output/' + state + '_selected_counties.xlsx')
+                # output_table(df, 'Output/' + state + '_selected_counties.xlsx')
+                # st.success('Data was saved at `' + 'Output/' + state + '_selected_counties.xlsx')
                 ranks = rank_counties(df, state + '_selected_counties').sort_values(by='Relative Risk', ascending=False)
                 st.write('## Results')
                 st.dataframe(ranks)
+                st.markdown(get_table_download_link(ranks, state + '_custom_ranking', 'Download Relative Risk ranking'),
+                            unsafe_allow_html=True)
 
                 # visualizations(df, state)
             else:
@@ -429,15 +495,23 @@ def run_UI():
             if st.checkbox('Show raw data'):
                 st.subheader('Raw Data')
                 st.dataframe(df)
+                st.markdown(get_table_download_link(df, state + '_data', 'Download raw data'), unsafe_allow_html=True)
+
             if st.checkbox('Do cost to avoid eviction analysis?'):
                 evictions_cost_df = cost_of_evictions(df, metro_areas, locations)
+                if st.checkbox('Show cost data'):
+                    st.dataframe(evictions_cost_df)
+                st.markdown(get_table_download_link(evictions_cost_df, state + '_cost_data', 'Download cost data'),
+                            unsafe_allow_html=True)
 
-            output_table(df, 'Output/' + state + '.xlsx')
-            st.success('Data was saved at `' + 'Output/' + state + '.xlsx')
+            # output_table(df, 'Output/' + state + '.xlsx')
+            # st.success('Data was saved at `' + 'Output/' + state + '.xlsx')
             ranks = rank_counties(df, state).sort_values(by='Relative Risk', ascending=False)
             st.subheader('Ranking')
             st.write('Higher values correspond to more relative risk')
             st.write(ranks['Relative Risk'])
+            st.markdown(get_table_download_link(ranks, state + '_ranking', 'Download Relative Risk ranking'),
+                        unsafe_allow_html=True)
 
             # visualizations(df, state)
 
@@ -447,18 +521,24 @@ def run_UI():
                 df = get_state_data(state)
                 frames.append(df)
             natl_df = pd.concat(frames)
-            output_table(natl_df, 'Output/US_national.xlsx')
-            st.success('Data was saved at `' + 'Output/US_national.xlsx')
             if st.checkbox('Show raw data'):
                 st.subheader('Raw Data')
                 st.dataframe(natl_df)
+                st.markdown(get_table_download_link(natl_df, 'national_data', 'Download raw data'),
+                            unsafe_allow_html=True)
+
             if st.checkbox('Do cost to avoid eviction analysis?'):
                 evictions_cost_df = cost_of_evictions(natl_df, metro_areas, locations)
+                st.markdown(get_table_download_link(evictions_cost_df, 'national_cost', 'Download cost data'),
+                            unsafe_allow_html=True)
 
             ranks = rank_counties(natl_df, 'US_national').sort_values(by='Relative Risk', ascending=False)
             st.subheader('Ranking')
             st.write('Higher values correspond to more relative risk')
             st.write(ranks['Relative Risk'])
+            st.markdown(get_table_download_link(natl_df, 'national_ranking', 'Download Relative Risk ranking'),
+                        unsafe_allow_html=True)
+
             # visualizations(natl_df, 'National')
     else:
         st.write('## Data Explorer')
@@ -477,6 +557,58 @@ def run_UI():
                     if st.checkbox('Show raw data'):
                         st.subheader('Raw Data')
                         st.dataframe(df)
+                        st.markdown(
+                            get_table_download_link(df, county + '_data', 'Download raw data'),
+                            unsafe_allow_html=True)
+                    data_explorer(df)
+
+        elif task == 'Multiple Counties':
+            state = st.selectbox("Select a state", STATES).strip()
+            county_list = queries.counties_query()
+            county_list = county_list[county_list['State'] == state]['County Name'].to_list()
+            counties = st.multiselect('Please specify one or more counties', county_list)
+            counties = [_.strip().lower() for _ in counties]
+            if len(counties) > 0:
+                df = get_multiple_counties(counties, state)
+
+                if st.checkbox('Show raw data'):
+                    st.subheader('Raw Data')
+                    st.dataframe(df)
+                    st.markdown(get_table_download_link(df, state + '_custom_data', 'Download raw data'),
+                                unsafe_allow_html=True)
+                data_explorer(df)
+            else:
+                st.warning('Select counties to analyze')
+                st.stop()
+
+        elif task == 'State':
+            state = st.selectbox("Select a state", STATES).strip()
+            df = get_state_data(state)
+
+            if st.checkbox('Show raw data'):
+                st.subheader('Raw Data')
+                st.dataframe(df)
+                st.markdown(get_table_download_link(df, state + '_data', 'Download raw data'), unsafe_allow_html=True)
+            st.write('''
+            ### Scatter Plot
+            Select two features to compare on the X and Y axes
+            ''')
+            data_explorer(df)
+
+        elif task == 'National':
+            frames = []
+            for state in STATES:
+                df = get_state_data(state)
+                frames.append(df)
+            natl_df = pd.concat(frames)
+            if st.checkbox('Show raw data'):
+                st.subheader('Raw Data')
+                st.dataframe(natl_df)
+                st.markdown(get_table_download_link(natl_df, 'national_data', 'Download raw data'),
+                            unsafe_allow_html=True)
+            data_explorer(natl_df)
+
+
 if __name__ == '__main__':
     if not os.path.exists('Output'):
         os.makedirs('Output')
