@@ -36,6 +36,8 @@ This data is the most recent data we could get, but some datasets are updated mo
 | Fair Market Rents | [HUD](https://www.huduser.gov/portal/datasets/fmr.html#2021_data) | 10/1/2020 | Represents the estimated amount (base rent + essential utilities) that a property in a given area typically rents for|
 | Median Rents | [HUD](https://www.huduser.gov/PORTAL/datasets/50per.html) | 2021 | Rent estimates at the 50th percentile (or median)  calculated for all Fair Market Rent areas|
 | Housing Stock Distributions | [US Census](https://www.census.gov/programs-surveys/ahs/data/interactive/ahstablecreator.html?s_areas=00000&s_year=2017&s_tablename=TABLE2&s_bygroup1=1&s_bygroup2=1&s_filtergroup1=1&s_filtergroup2=1) | 2017 | Distribution of housing units in the US by number of bedrooms. Defaults to the national distribution, but includes data for the top 15 metro areas in the US. Includes percentage and estimated housing units. |
+| County Geometries | [US Census](https://catalog.data.gov/dataset/tiger-line-shapefile-2017-nation-u-s-current-county-and-equivalent-national-shapefile) | 2017 | PostGIS compatible geometry data |
+| Demographics | [ArcGIS](https://hub.arcgis.com/datasets/48f9af87daa241c4b267c5931ad3b226_0) | 2017 | Not currently used in our analysis, but integration is on our roadmap |
 
 If you have datasets you'd like to see included, please create an Issue.
  
@@ -49,7 +51,7 @@ We calculate this using a custom formula to balance socioeconomic factors with t
 
 In this equation, we aim to minimize socioeconomic risk on the top of the fraction, maximize the policy response value and take 1 minus the index value calculated (to represent that better policy constitutes less relative risk), and maximize the time remaining on the bottom of the fraction. The square root of the time remaining is used to represent how additional time has diminishing returns. For example, the different between having 2 days and 2 weeks until protections expire is much different than whether policies expire in 3 months or 4 months when we think about how to prioritize one county over another.   
 
-## What is cost of evictions?
+### What is cost of evictions?
 
 To calculate the cost to avoid evictions the following calcuation was used:
 
@@ -63,7 +65,7 @@ This script uses Fair Market Rent values.  Median rent values are also available
 
 Upon script completion, an excel file will be created within the output folder displaying all values mentioned above.  If you experience problems with the script or have questions about methodologies, please reach out to a member of the development team.  
 
-## Outputs
+### Outputs
 
 - county_id: Unique ID for each county
 - fmr_[0-4]: Fair Market Rent value for a 0 bedroom house to a 4 bedroom house
@@ -93,9 +95,13 @@ In a virtual environment:
 `pip install -r requirements.txt`
 
 ### Run
-To run the main script, run:
+We suggest running using Streamlit for most use cases:
 
-`python run.py`
+`streamlit run run.py`
+
+To run as a typical Python script, run:
+
+`python run.py --mode script`
 
 The `credentials.py` file is configured to allow read-only access to an Arup-maintained database of the most recent relevant FRED data. In addition to using these Python scripts, you can connect to this database and run direct SQL queries to get the data you want.
 
