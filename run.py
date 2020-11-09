@@ -1,6 +1,7 @@
 import base64
 import getopt
 import itertools
+import json
 import math
 import os
 import sys
@@ -15,6 +16,7 @@ import matplotlib.pyplot as plt
 import pydeck as pdk
 import altair as alt
 from six import BytesIO
+import geopandas as gpd
 
 import api
 import queries
@@ -38,6 +40,27 @@ HOUSING_STOCK_DISTRIBUTION = {
 
 BURDENED_HOUSEHOLD_PROPORTION = [5, 25, 33, 50, 75]
 MODE = 'UI'
+COLOR_RANGE = [
+    [65, 182, 196],
+    [127, 205, 187],
+    [199, 233, 180],
+    [237, 248, 177],
+    [255, 255, 204],
+    [255, 237, 160],
+    [254, 217, 118],
+    [254, 178, 76],
+    [253, 141, 60],
+    [252, 78, 42],
+    [227, 26, 28],
+]
+BREAKS = [0, .1, .2, .3, .4, .5, .6, .7, .8, .9, 1]
+
+
+def color_scale(val):
+    for i, b in enumerate(BREAKS):
+        if val < b:
+            return COLOR_RANGE[i]
+    return COLOR_RANGE[i]
 
 
 def filter_state(data: pd.DataFrame, state: str) -> pd.DataFrame:
@@ -309,37 +332,102 @@ def load_distributions():
     return metro_areas, locations
 
 
-def visualizations(df: pd.DataFrame, state: str = None):
-    st.write('## Charts')
+def make_map(geo_df: pd.DataFrame, df: pd.DataFrame):
     st.subheader('Map')
 
     temp = df.copy()
     temp.reset_index(inplace=True)
+
     counties = temp['County Name'].to_list()
-    if state:
-        geom = queries.get_county_geoms(counties, state.lower())
-        geom.drop(['gid', 'statefp', 'countyfp', 'st_fp_int', 'st_nm_lwr', 'state_abbr', 'state_name', 'name'], axis=1,
-                  inplace=True)
-        df = df.merge(geom, left_on=['County Name'], right_on=['namelsad'], how='outer')
 
-        st.dataframe(df)
-        st.pydeck_chart(pdk.Deck(
-            map_style='mapbox://styles/mapbox/light-v9',
-            initial_view_state=pdk.ViewState(latitude=0, longitude=0, zoom=1, pitch=0),
-            layers=[
-                pdk.Layer('PolygonLayer',
-                          data=df,
-                          opacity=0.8,
-                          stroked=False,
-                          get_polygon="geom",
-                          )
-            ]
-        ))
+    def convert_coordinates(row):
+        for f in row['coordinates']['features']:
+            new_coords = []
+            if f['geometry']['type'] == 'MultiPolygon':
+                f['geometry']['type'] = 'Polygon'
+                combined = []
+                for i in range(len(f['geometry']['coordinates'])):
+                    combined.extend(list(f['geometry']['coordinates'][i]))
+                f['geometry']['coordinates'] = combined
+            coords = f['geometry']['coordinates']
+            for coord in coords:
+                for point in coord:
+                    new_coords.append([point[0], point[1]])
+            f['geometry']['coordinates'] = new_coords
+        return row['coordinates']
 
+    def make_geojson(geo_df: pd.DataFrame):
+        geojson = {"type": "FeatureCollection", "features": []}
+        for i, row in geo_df.iterrows():
+            feature = row['coordinates']['features'][0]
+            feature["properties"] = {"risk": row['Relative Risk'], "name": row['County Name']}
+            del feature["id"]
+            del feature["bbox"]
+            feature["geometry"]["coordinates"] = [feature["geometry"]["coordinates"]]
+            # print(feature)
+            geojson["features"].append(feature)
+
+            # if feature["geometry"]["type"] == "MultiPolygon":
+            #     print(row['County Name'])
+
+        return geojson
+
+    temp = temp[['County Name', 'Relative Risk']]
+    geo_df = geo_df.merge(temp, on='County Name')
+    geo_df['geom'] = geo_df.apply(lambda row: row['geom'].buffer(0), axis=1)
+    geo_df['coordinates'] = geo_df.apply(lambda row: gpd.GeoSeries(row['geom']).__geo_interface__, axis=1)
+    geo_df['coordinates'] = geo_df.apply(lambda row: convert_coordinates(row), axis=1)
+    geojson = make_geojson(geo_df)
+    json = pd.DataFrame(geojson)
+    geo_df["coordinates"] = json["features"].apply(lambda row: row["geometry"]["coordinates"])
+    geo_df["name"] = json["features"].apply(lambda row: row["properties"]["name"])
+    geo_df["risk"] = json["features"].apply(lambda row: row["properties"]["risk"])
+    geo_df["fill_color"] = json["features"].apply(lambda row: color_scale(row["properties"]["risk"]))
+    geo_df.drop(['geom', 'County Name', 'Relative Risk'], axis=1, inplace=True)
+
+    view_state = pdk.ViewState(
+        **{"latitude": 36, "longitude": -95, "zoom": 3, "maxZoom": 16, "pitch": 0, "bearing": 0}
+    )
+    polygon_layer = pdk.Layer(
+        "PolygonLayer",
+        geo_df,
+        get_polygon="coordinates",
+        filled=True,
+        stroked=False,
+        opacity=0.5,
+        get_fill_color='fill_color',
+        auto_highlight=True,
+        pickable=True,
+    )
+    tooltip = {"html": "<b>County:</b> {name} </br> <b>Risk:</b> {risk}"}
+
+    r = pdk.Deck(
+        layers=[polygon_layer],
+        initial_view_state=view_state,
+        map_style=pdk.map_styles.LIGHT,
+        tooltip=tooltip
+    )
+    st.pydeck_chart(r)
+
+
+def make_correlation_plot(df: pd.DataFrame):
     st.subheader('Correlation Plot')
     fig, ax = plt.subplots(figsize=(10, 10))
     st.write(sns.heatmap(df.corr(), annot=True, linewidths=0.5))
     st.pyplot(fig)
+
+
+def visualizations(df: pd.DataFrame, state: str = None):
+    st.write('## Charts')
+    if state:
+        temp = df.copy()
+        temp.reset_index(inplace=True)
+        counties = temp['County Name'].to_list()
+        if state != 'national':
+            geo_df = queries.get_county_geoms(counties, state.lower())
+            make_map(geo_df, df)
+
+    make_correlation_plot(df)
 
 
 def to_excel(df: pd.DataFrame):
@@ -360,7 +448,8 @@ def get_table_download_link(df: pd.DataFrame, file_name: str, text: str):
     b64 = base64.b64encode(val)  # val looks like b'...'
     return f'<a href="data:application/octet-stream;base64,{b64.decode()}" download="{file_name}.xlsx">{text}</a>'
 
-def data_explorer(df):
+
+def data_explorer(df: pd.DataFrame, state: str):
     feature_labels = list(
         set(df.columns) - {'County Name', 'county_id', 'Resident Population (Thousands of Persons)'})
     col1, col2, col3 = st.beta_columns(3)
@@ -377,11 +466,9 @@ def data_explorer(df):
                                                       color='County Name',
                                                       size='Resident Population (Thousands of Persons)')
         st.altair_chart(c, use_container_width=True)
-    st.subheader('Correlation Plot')
-    fig, ax = plt.subplots(figsize=(10, 10))
-    df = normalize(df)
-    st.write(sns.heatmap(df.corr(), annot=True, linewidths=0.5))
-    st.pyplot(fig)
+
+    # visualizations(df, state)
+
 
 def cost_of_evictions(df, metro_areas, locations):
     rent_type = st.selectbox('Rent Type', ['Fair Market', 'Median'])
@@ -484,7 +571,7 @@ def run_UI():
                 st.markdown(get_table_download_link(ranks, state + '_custom_ranking', 'Download Relative Risk ranking'),
                             unsafe_allow_html=True)
 
-                # visualizations(df, state)
+                visualizations(ranks, state)
             else:
                 st.warning('Select counties to analyze')
                 st.stop()
@@ -513,7 +600,7 @@ def run_UI():
             st.markdown(get_table_download_link(ranks, state + '_ranking', 'Download Relative Risk ranking'),
                         unsafe_allow_html=True)
 
-            # visualizations(df, state)
+            visualizations(ranks, state)
 
         elif task == 'National':
             frames = []
@@ -560,7 +647,7 @@ def run_UI():
                         st.markdown(
                             get_table_download_link(df, county + '_data', 'Download raw data'),
                             unsafe_allow_html=True)
-                    data_explorer(df)
+                    data_explorer(df, state)
 
         elif task == 'Multiple Counties':
             state = st.selectbox("Select a state", STATES).strip()
@@ -576,7 +663,7 @@ def run_UI():
                     st.dataframe(df)
                     st.markdown(get_table_download_link(df, state + '_custom_data', 'Download raw data'),
                                 unsafe_allow_html=True)
-                data_explorer(df)
+                data_explorer(df, state)
             else:
                 st.warning('Select counties to analyze')
                 st.stop()
@@ -593,7 +680,7 @@ def run_UI():
             ### Scatter Plot
             Select two features to compare on the X and Y axes
             ''')
-            data_explorer(df)
+            data_explorer(df, state)
 
         elif task == 'National':
             frames = []
@@ -606,7 +693,7 @@ def run_UI():
                 st.dataframe(natl_df)
                 st.markdown(get_table_download_link(natl_df, 'national_data', 'Download raw data'),
                             unsafe_allow_html=True)
-            data_explorer(natl_df)
+            data_explorer(natl_df, 'national')
 
 
 if __name__ == '__main__':
@@ -672,9 +759,7 @@ if __name__ == '__main__':
             temp.reset_index(inplace=True)
             counties = temp['County Name'].to_list()
             geom = queries.get_county_geoms(counties, state.lower())
-            geom.drop(['gid', 'statefp', 'countyfp', 'st_fp_int', 'st_nm_lwr', 'state_abbr', 'state_name', 'name'],
-                      axis=1, inplace=True)
-            df = df.merge(geom, left_on=['County Name'], right_on=['namelsad'], how='outer')
+            df = df.merge(geom, on='County Name', how='outer')
 
         elif task == '4':
             frames = []

@@ -3,6 +3,7 @@ import sys
 import psycopg2
 import pandas as pd
 from sqlalchemy import create_engine
+from shapely import wkb
 
 import credentials
 
@@ -142,16 +143,26 @@ def generic_select_query(table_name: str, columns: list) -> pd.DataFrame:
     return df
 
 
-def get_county_geoms(counties_list:list, state:str)->pd.DataFrame:
+def get_county_geoms(counties_list: list, state: str) -> pd.DataFrame:
     counties = "(" + ",".join(["'" + str(_) + "'" for _ in counties_list]) + ")"
     cur = conn.cursor()
-    query = "SELECT * FROM counties_geom WHERE namelsad in {} AND st_nm_lwr='{}';".format(counties, state)
+    query = "SELECT * FROM counties_geom WHERE cnty_name in {} AND LOWER(state)='{}';".format(counties, state)
     cur.execute(query)
     results = cur.fetchall()
     colnames = [desc[0] for desc in cur.description]
     df = pd.DataFrame(results, columns=colnames)
+    parcels = []
+    for parcel in df['geom']:
+        parcels.append(wkb.loads(parcel, hex=True))
+    geom_df = pd.DataFrame()
+    geom_df['County Name'] = df['cnty_name']
+    # geom_df['State'] = df['state']
+    geom_df['geom'] = pd.Series(parcels)
+    return geom_df
 
-    return df
+
+def list_tables():
+    return
 
 
 def static_data_all_table() -> pd.DataFrame:
@@ -210,3 +221,4 @@ if __name__ == '__main__':
             path = output_data(df)
 
     print('Successful query returned. Output at {}.'.format(path))
+    # get_county_geoms(['Boulder County', 'Arapahoe County'], 'colorado')
