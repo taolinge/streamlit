@@ -2,6 +2,8 @@ import os
 import sys
 import psycopg2
 import pandas as pd
+from sqlalchemy import create_engine
+from shapely import wkb
 
 import credentials
 
@@ -12,6 +14,9 @@ conn = psycopg2.connect(
     port=credentials.DB_PORT,
     host=credentials.DB_HOST
 )
+
+engine = create_engine(
+    f'postgresql://{credentials.DB_USER}:{credentials.DB_PASSWORD}@{credentials.DB_HOST}:{credentials.DB_PORT}/{credentials.DB_NAME}')
 
 fred_tables = [
     'burdened_households',
@@ -57,6 +62,10 @@ table_units = {
     'unemployment_rate': '%',
     'resident_population': 'Thousands of Persons',
 }
+
+
+def write_table(df: pd.DataFrame, table: str):
+    df.to_sql(table, engine, if_exists='replace', method='multi')
 
 
 def counties_query() -> pd.DataFrame:
@@ -122,6 +131,40 @@ def static_data_single_table(table_name: str, columns: list) -> pd.DataFrame:
     return df
 
 
+def generic_select_query(table_name: str, columns: list) -> pd.DataFrame:
+    cur = conn.cursor()
+    str_columns = ', '.join('"{}"'.format(c) for c in columns)
+    query = 'SELECT {} FROM {} '.format(str_columns, table_name)
+    cur.execute(query)
+    results = cur.fetchall()
+    colnames = [desc[0] for desc in cur.description]
+    df = pd.DataFrame(results, columns=colnames)
+
+    return df
+
+
+def get_county_geoms(counties_list: list, state: str) -> pd.DataFrame:
+    counties = "(" + ",".join(["'" + str(_) + "'" for _ in counties_list]) + ")"
+    cur = conn.cursor()
+    query = "SELECT * FROM counties_geom WHERE cnty_name in {} AND LOWER(state)='{}';".format(counties, state)
+    cur.execute(query)
+    results = cur.fetchall()
+    colnames = [desc[0] for desc in cur.description]
+    df = pd.DataFrame(results, columns=colnames)
+    parcels = []
+    for parcel in df['geom']:
+        parcels.append(wkb.loads(parcel, hex=True))
+    geom_df = pd.DataFrame()
+    geom_df['County Name'] = df['cnty_name']
+    # geom_df['State'] = df['state']
+    geom_df['geom'] = pd.Series(parcels)
+    return geom_df
+
+
+def list_tables():
+    return
+
+
 def static_data_all_table() -> pd.DataFrame:
     counties_df = counties_query()
     for table_name in static_tables:
@@ -143,6 +186,7 @@ def output_data(df: pd.DataFrame, table_name: str = 'fred_tables', ext: str = 'x
         print('Only .pk and .xlsx outputs are currently supported.')
         sys.exit()
     return path
+
 
 def fmr_data():
     cur = conn.cursor()
@@ -177,3 +221,4 @@ if __name__ == '__main__':
             path = output_data(df)
 
     print('Successful query returned. Output at {}.'.format(path))
+    # get_county_geoms(['Boulder County', 'Arapahoe County'], 'colorado')
