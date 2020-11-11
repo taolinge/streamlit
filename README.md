@@ -1,3 +1,5 @@
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/arup-group/eviction-data/run.py)
+
 # Arup Social Data
 This is a repository for collection and analysis of open social data. This type of data can be useful to planners, NGO's, governments, firms, and anyone trying to address social problems through data.
 
