@@ -1,6 +1,6 @@
+# Arup Social Data
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/arup-group/eviction-data/run.py)
 
-# Arup Social Data
 This is a repository for collection and analysis of open social data. This type of data can be useful to planners, NGO's, governments, firms, and anyone trying to address social problems through data.
 
 The bulk of the analysis is related to evictions as a result of COVID-19. This repository gathers data from the Federal Reserve Economic Data portal (FRED). There are a number of potential use cases we're aware of to apply that data to address evictions. This analysis allows us to compare counties side by side by their "Relative Risk" of evictions.
