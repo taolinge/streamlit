@@ -7,16 +7,6 @@ from shapely import wkb
 
 import credentials
 
-conn = psycopg2.connect(
-    dbname=credentials.DB_NAME,
-    user=credentials.DB_USER,
-    password=credentials.DB_PASSWORD,
-    port=credentials.DB_PORT,
-    host=credentials.DB_HOST
-)
-
-engine = create_engine(
-    f'postgresql://{credentials.DB_USER}:{credentials.DB_PASSWORD}@{credentials.DB_HOST}:{credentials.DB_PORT}/{credentials.DB_NAME}')
 
 fred_tables = [
     'burdened_households',
@@ -64,11 +54,28 @@ table_units = {
 }
 
 
+def init_connection():
+    conn = psycopg2.connect(
+        dbname=credentials.DB_NAME,
+        user=credentials.DB_USER,
+        password=credentials.DB_PASSWORD,
+        port=credentials.DB_PORT,
+        host=credentials.DB_HOST
+    )
+
+    engine = create_engine(
+        f'postgresql://{credentials.DB_USER}:{credentials.DB_PASSWORD}@{credentials.DB_HOST}:{credentials.DB_PORT}/{credentials.DB_NAME}')
+    return conn, engine
+
+
 def write_table(df: pd.DataFrame, table: str):
+    conn,engine=init_connection()
     df.to_sql(table, engine, if_exists='replace', method='multi')
+    conn.close()
 
 
 def counties_query() -> pd.DataFrame:
+    conn,engine=init_connection()
     cur = conn.cursor()
     cur.execute(
         'SELECT id as county_id, state as "State", name as "County Name" '
@@ -76,10 +83,12 @@ def counties_query() -> pd.DataFrame:
     )
     colnames = [desc[0] for desc in cur.description]
     results = cur.fetchall()
+    conn.close()
     return pd.DataFrame(results, columns=colnames)
 
 
 def policy_query() -> pd.DataFrame:
+    conn,engine=init_connection()
     cur = conn.cursor()
     cur.execute(
         'SELECT county_id as county_id, policy_value as "Policy Value", countdown as "Countdown" '
@@ -87,10 +96,13 @@ def policy_query() -> pd.DataFrame:
     )
     colnames = [desc[0] for desc in cur.description]
     results = cur.fetchall()
+    conn.close()
     return pd.DataFrame(results, columns=colnames)
 
 
 def latest_data_single_table(table_name: str, require_counties: bool = True) -> pd.DataFrame:
+    conn,engine=init_connection()
+
     cur = conn.cursor()
     cur.execute(
         'SELECT DISTINCT ON (county_id) '
@@ -100,6 +112,8 @@ def latest_data_single_table(table_name: str, require_counties: bool = True) -> 
                                                   table_units[table_name], table_name))
     results = cur.fetchall()
     colnames = [desc[0] for desc in cur.description]
+    conn.close()
+
     df = pd.DataFrame(results, columns=colnames)
     if require_counties:
         counties_df = counties_query()
@@ -119,6 +133,7 @@ def latest_data_all_tables() -> pd.DataFrame:
 
 
 def static_data_single_table(table_name: str, columns: list) -> pd.DataFrame:
+    conn,engine=init_connection()
     cur = conn.cursor()
     str_columns = ', '.join('"{}"'.format(c) for c in columns)
     query = 'SELECT county_id, {} FROM {} '.format(str_columns, table_name)
@@ -128,22 +143,25 @@ def static_data_single_table(table_name: str, columns: list) -> pd.DataFrame:
     df = pd.DataFrame(results, columns=colnames)
     counties_df = counties_query()
     df = counties_df.merge(df)
+    conn.close()
     return df
 
 
 def generic_select_query(table_name: str, columns: list) -> pd.DataFrame:
+    conn,engine=init_connection()
     cur = conn.cursor()
     str_columns = ', '.join('"{}"'.format(c) for c in columns)
     query = 'SELECT {} FROM {} '.format(str_columns, table_name)
     cur.execute(query)
     results = cur.fetchall()
     colnames = [desc[0] for desc in cur.description]
+    conn.close()
     df = pd.DataFrame(results, columns=colnames)
-
     return df
 
 
 def get_county_geoms(counties_list: list, state: str) -> pd.DataFrame:
+    conn,engine=init_connection()
     counties = "(" + ",".join(["'" + str(_) + "'" for _ in counties_list]) + ")"
     cur = conn.cursor()
     query = "SELECT * FROM counties_geom WHERE cnty_name in {} AND LOWER(state)='{}';".format(counties, state)
@@ -158,10 +176,14 @@ def get_county_geoms(counties_list: list, state: str) -> pd.DataFrame:
     geom_df['County Name'] = df['cnty_name']
     # geom_df['State'] = df['state']
     geom_df['geom'] = pd.Series(parcels)
+    conn.close()
     return geom_df
 
 
 def list_tables():
+    conn,engine=init_connection()
+
+    conn.close()
     return
 
 
@@ -189,6 +211,7 @@ def output_data(df: pd.DataFrame, table_name: str = 'fred_tables', ext: str = 'x
 
 
 def fmr_data():
+    conn,engine=init_connection()
     cur = conn.cursor()
     cur.execute(
         'SELECT state_full as "State", countyname as "County Name" '
@@ -196,6 +219,7 @@ def fmr_data():
     )
     colnames = [desc[0] for desc in cur.description]
     results = cur.fetchall()
+    conn.close()
     return pd.DataFrame(results, columns=colnames)
 
 
