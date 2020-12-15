@@ -10,18 +10,18 @@ import queries
 
 def clean_data(data: pd.DataFrame) -> pd.DataFrame:
     data.set_index(['State', 'County Name'], drop=True, inplace=True)
-    data['Non-Home Ownership (%)'] = 100 - pd.to_numeric(data['Home Ownership (%)'], downcast='float')
-
+    # data['Non-Home Ownership (%)'] = 100 - pd.to_numeric(data['Home Ownership (%)'], downcast='float')
+    #
     data.drop([
-        'Home Ownership (%)',
+        # 'Home Ownership (%)',
         'Burdened Households Date',
-        'Home Ownership Date',
+        # 'Home Ownership Date',
         'Income Inequality Date',
         'Population Below Poverty Line Date',
         'Single Parent Households Date',
-        'SNAP Benefits Recipients Date',
+        # 'SNAP Benefits Recipients Date',
         'Unemployment Rate Date',
-        'Resident Population Date'
+        'Resident Population Date',
     ], axis=1, inplace=True)
     data = data.loc[:, ~data.columns.str.contains('^Unnamed')]
 
@@ -56,7 +56,7 @@ def normalize(df: pd.DataFrame) -> pd.DataFrame:
     df = percent_to_population('Unemployment Rate (%)', 'Pop Unemployed', df)
     df = percent_to_population('Burdened Households (%)', 'Num Burdened Households', df)
     df = percent_to_population('Single Parent Households (%)', 'Num Single Parent Households', df)
-    df = percent_to_population('Non-Home Ownership (%)', 'Non-Home Ownership Pop', df)
+    # df = percent_to_population('Non-Home Ownership (%)', 'Non-Home Ownership Pop', df)
 
     if 'Policy Value' in list(df.columns) or 'Countdown' in list(df.columns):
         df = df.drop(['Policy Value', 'Countdown'], axis=1)
@@ -65,8 +65,21 @@ def normalize(df: pd.DataFrame) -> pd.DataFrame:
                   'Unemployment Rate (%)',
                   'Burdened Households (%)',
                   'Single Parent Households (%)',
-                  'Non-Home Ownership (%)',
+                  # 'Non-Home Ownership (%)',
                   'Resident Population (Thousands of Persons)',
+                  'Housing Units',
+                  'Vacant Units',
+                  'Median Age',
+                  'White',
+                  'Black',
+                  'Native American',
+                  'Asian',
+                  'Pacific Islander',
+                  'Hispanic',
+                  'Other',
+                  'Multiple Race',
+                  'Males',
+                  'Females',
                   ], axis=1)
 
     scaler = pre.MaxAbsScaler()
@@ -105,9 +118,9 @@ def rank_counties(df: pd.DataFrame, label: str) -> pd.DataFrame:
     df.drop(['county_id'], axis=1, inplace=True)
     analysis_df = normalize(df)
 
-    crossed = cross_features(analysis_df)
-    analysis_df['Crossed'] = crossed['Mean']
-    analysis_df = normalize_column(analysis_df, 'Crossed')
+    # crossed = cross_features(analysis_df)
+    # analysis_df['Crossed'] = crossed['Mean']
+    # analysis_df = normalize_column(analysis_df, 'Crossed')
 
     analysis_df['Relative Risk'] = analysis_df.sum(axis=1)
     max_sum = analysis_df['Relative Risk'].max()
@@ -158,7 +171,6 @@ def calculate_cost_estimate(df: pd.DataFrame, pct_burdened: float, distribution:
         df['total_cost'] = np.sum([df['br_cost_0'], df['br_cost_1'], df['br_cost_2'], df['br_cost_3'], df['br_cost_4']],
                                   axis=0)
     return df
-
 
 
 def cost_of_evictions(df, metro_areas, locations):

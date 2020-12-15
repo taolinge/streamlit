@@ -9,11 +9,11 @@ import credentials
 
 fred_tables = [
     'burdened_households',
-    'homeownership_rate',
+    # 'homeownership_rate',
     'income_inequality',
     'population_below_poverty',
     'single_parent_households',
-    'snap_benefits_recipients',
+    # 'snap_benefits_recipients',
     'unemployment_rate',
     'resident_population',
 ]
@@ -133,8 +133,8 @@ def latest_data_all_tables() -> pd.DataFrame:
     demo_df.rename({
         'id': 'county_id',
         'hse_units': 'Housing Units',
-        'vacant': 'Vacant',
-        'renter_occ': 'Renter Occupied',
+        'vacant': 'Vacant Units',
+        'renter_occ': 'Renter Occupied Units',
         'med_age': 'Median Age',
         'white': 'White',
         'black': 'Black',
@@ -147,8 +147,6 @@ def latest_data_all_tables() -> pd.DataFrame:
         'males': 'Males',
         'females': 'Females'
     }, axis=1, inplace=True)
-    print(demo_df)
-    print(counties_df)
     counties_df = counties_df.merge(demo_df)
     return counties_df
 

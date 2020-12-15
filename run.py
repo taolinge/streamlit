@@ -362,6 +362,7 @@ def run_UI():
                                                                                              ascending=False)
                 st.write('## Results')
                 st.dataframe(ranks)
+                st.write(f'Features considered {list(ranks.columns)}')
                 st.markdown(
                     utils.get_table_download_link(ranks, state + '_custom_ranking', 'Download Relative Risk ranking'),
                     unsafe_allow_html=True)
@@ -407,6 +408,7 @@ def run_UI():
             st.subheader('Ranking')
             st.write('Higher values correspond to more relative risk')
             st.write(ranks['Relative Risk'])
+            st.write(f'Features considered {list(ranks.columns)}')
             st.markdown(utils.get_table_download_link(ranks, state + '_ranking', 'Download Relative Risk ranking'),
                         unsafe_allow_html=True)
 
@@ -453,6 +455,7 @@ def run_UI():
             st.subheader('Ranking')
             st.write('Higher values correspond to more relative risk')
             st.write(ranks['Relative Risk'])
+            st.write(f'Features considered {list(ranks.columns)}')
             st.markdown(utils.get_table_download_link(natl_df, 'national_ranking', 'Download Relative Risk ranking'),
                         unsafe_allow_html=True)
 
