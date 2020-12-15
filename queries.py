@@ -148,7 +148,7 @@ def latest_data_all_tables() -> pd.DataFrame:
         'females': 'Females'
     }, axis=1, inplace=True)
     demo_df['Percent Non-White'] = (demo_df['Black'] + demo_df['Native American'] + demo_df['Asian'] + demo_df[
-        'Pacific Islander'] + demo_df['Hispanic'] + demo_df['Other'] + demo_df['Multiple Race']) / demo_df['population']
+        'Pacific Islander'] + demo_df['Hispanic'] + demo_df['Other'] + demo_df['Multiple Race']) / demo_df['population'] * 100
     demo_df.drop(['population'],axis=1, inplace=True)
     counties_df = counties_df.merge(demo_df)
     return counties_df

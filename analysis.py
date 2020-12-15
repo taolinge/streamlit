@@ -10,16 +10,12 @@ import queries
 
 def clean_data(data: pd.DataFrame) -> pd.DataFrame:
     data.set_index(['State', 'County Name'], drop=True, inplace=True)
-    # data['Non-Home Ownership (%)'] = 100 - pd.to_numeric(data['Home Ownership (%)'], downcast='float')
-    #
+
     data.drop([
-        # 'Home Ownership (%)',
         'Burdened Households Date',
-        # 'Home Ownership Date',
         'Income Inequality Date',
         'Population Below Poverty Line Date',
         'Single Parent Households Date',
-        # 'SNAP Benefits Recipients Date',
         'Unemployment Rate Date',
         'Resident Population Date',
     ], axis=1, inplace=True)
@@ -51,12 +47,11 @@ def cross_features(df: pd.DataFrame) -> pd.DataFrame:
     return crossed_df
 
 
-def normalize(df: pd.DataFrame) -> pd.DataFrame:
-    df = percent_to_population('Population Below Poverty Line (%)', 'Pop Below Poverty Level', df)
-    df = percent_to_population('Unemployment Rate (%)', 'Pop Unemployed', df)
-    df = percent_to_population('Burdened Households (%)', 'Num Burdened Households', df)
-    df = percent_to_population('Single Parent Households (%)', 'Num Single Parent Households', df)
-    # df = percent_to_population('Non-Home Ownership (%)', 'Non-Home Ownership Pop', df)
+def normalize(df: pd.DataFrame, columns_to_use: list = []) -> pd.DataFrame:
+    df = percent_to_population('Population Below Poverty Line (%)', 'Population Below Poverty Level', df)
+    df = percent_to_population('Unemployment Rate (%)', 'Population Unemployed', df)
+    df = percent_to_population('Burdened Households (%)', 'Burdened Households', df)
+    df = percent_to_population('Single Parent Households (%)', 'Single Parent Households', df)
 
     if 'Policy Value' in list(df.columns) or 'Countdown' in list(df.columns):
         df = df.drop(['Policy Value', 'Countdown'], axis=1)
@@ -65,7 +60,6 @@ def normalize(df: pd.DataFrame) -> pd.DataFrame:
                   'Unemployment Rate (%)',
                   'Burdened Households (%)',
                   'Single Parent Households (%)',
-                  # 'Non-Home Ownership (%)',
                   'Resident Population (Thousands of Persons)',
                   'Housing Units',
                   'Vacant Units',
@@ -81,6 +75,8 @@ def normalize(df: pd.DataFrame) -> pd.DataFrame:
                   'Males',
                   'Females'
                   ], axis=1)
+
+    df.rename({'Vulnerability Index': 'COVID Vulnerability Index'},axis=1, inplace=True)
 
     scaler = pre.MaxAbsScaler()
     df_scaled = pd.DataFrame(scaler.fit_transform(df), index=df.index, columns=df.columns)
