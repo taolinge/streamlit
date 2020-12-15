@@ -7,7 +7,6 @@ from shapely import wkb
 
 import credentials
 
-
 fred_tables = [
     'burdened_households',
     'homeownership_rate',
@@ -69,13 +68,13 @@ def init_connection():
 
 
 def write_table(df: pd.DataFrame, table: str):
-    conn,engine=init_connection()
+    conn, engine = init_connection()
     df.to_sql(table, engine, if_exists='replace', method='multi')
     conn.close()
 
 
 def counties_query() -> pd.DataFrame:
-    conn,engine=init_connection()
+    conn, engine = init_connection()
     cur = conn.cursor()
     cur.execute(
         'SELECT id as county_id, state as "State", name as "County Name" '
@@ -88,7 +87,7 @@ def counties_query() -> pd.DataFrame:
 
 
 def policy_query() -> pd.DataFrame:
-    conn,engine=init_connection()
+    conn, engine = init_connection()
     cur = conn.cursor()
     cur.execute(
         'SELECT county_id as county_id, policy_value as "Policy Value", countdown as "Countdown" '
@@ -101,7 +100,7 @@ def policy_query() -> pd.DataFrame:
 
 
 def latest_data_single_table(table_name: str, require_counties: bool = True) -> pd.DataFrame:
-    conn,engine=init_connection()
+    conn, engine = init_connection()
 
     cur = conn.cursor()
     cur.execute(
@@ -133,7 +132,7 @@ def latest_data_all_tables() -> pd.DataFrame:
 
 
 def static_data_single_table(table_name: str, columns: list) -> pd.DataFrame:
-    conn,engine=init_connection()
+    conn, engine = init_connection()
     cur = conn.cursor()
     str_columns = ', '.join('"{}"'.format(c) for c in columns)
     query = 'SELECT county_id, {} FROM {} '.format(str_columns, table_name)
@@ -148,7 +147,7 @@ def static_data_single_table(table_name: str, columns: list) -> pd.DataFrame:
 
 
 def generic_select_query(table_name: str, columns: list) -> pd.DataFrame:
-    conn,engine=init_connection()
+    conn, engine = init_connection()
     cur = conn.cursor()
     str_columns = ', '.join('"{}"'.format(c) for c in columns)
     query = 'SELECT {} FROM {} '.format(str_columns, table_name)
@@ -161,7 +160,7 @@ def generic_select_query(table_name: str, columns: list) -> pd.DataFrame:
 
 
 def get_county_geoms(counties_list: list, state: str) -> pd.DataFrame:
-    conn,engine=init_connection()
+    conn, engine = init_connection()
     counties = "(" + ",".join(["'" + str(_) + "'" for _ in counties_list]) + ")"
     cur = conn.cursor()
     query = "SELECT * FROM counties_geom WHERE cnty_name in {} AND LOWER(state)='{}';".format(counties, state)
@@ -181,7 +180,7 @@ def get_county_geoms(counties_list: list, state: str) -> pd.DataFrame:
 
 
 def list_tables():
-    conn,engine=init_connection()
+    conn, engine = init_connection()
 
     conn.close()
     return
@@ -211,7 +210,7 @@ def output_data(df: pd.DataFrame, table_name: str = 'fred_tables', ext: str = 'x
 
 
 def fmr_data():
-    conn,engine=init_connection()
+    conn, engine = init_connection()
     cur = conn.cursor()
     cur.execute(
         'SELECT state_full as "State", countyname as "County Name" '
