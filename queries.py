@@ -127,7 +127,29 @@ def latest_data_all_tables() -> pd.DataFrame:
         counties_df = counties_df.merge(table_output)
     chmura_df = static_data_single_table('chmura_economic_vulnerability_index', ['VulnerabilityIndex'])
     counties_df = counties_df.merge(chmura_df)
-
+    demo_df = generic_select_query('socio_demographics',
+                                   ['id', 'hse_units', 'vacant', 'renter_occ', 'med_age', 'white', 'black', 'ameri_es',
+                                    'asian', 'hawn_pi', 'hispanic', 'other', 'mult_race', 'males', 'females'])
+    demo_df.rename({
+        'id': 'county_id',
+        'hse_units': 'Housing Units',
+        'vacant': 'Vacant',
+        'renter_occ': 'Renter Occupied',
+        'med_age': 'Median Age',
+        'white': 'White',
+        'black': 'Black',
+        'ameri_es': 'Native American',
+        'asian': 'Asian',
+        'hawn_pi': 'Pacific Islander',
+        'hispanic': 'Hispanic',
+        'other': 'Other',
+        'mult_race': 'Multiple Race',
+        'males': 'Males',
+        'females': 'Females'
+    }, axis=1, inplace=True)
+    print(demo_df)
+    print(counties_df)
+    counties_df = counties_df.merge(demo_df)
     return counties_df
 
 
