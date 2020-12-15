@@ -79,7 +79,7 @@ def normalize(df: pd.DataFrame) -> pd.DataFrame:
                   'Other',
                   'Multiple Race',
                   'Males',
-                  'Females',
+                  'Females'
                   ], axis=1)
 
     scaler = pre.MaxAbsScaler()

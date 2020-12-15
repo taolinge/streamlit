@@ -129,7 +129,7 @@ def latest_data_all_tables() -> pd.DataFrame:
     counties_df = counties_df.merge(chmura_df)
     demo_df = generic_select_query('socio_demographics',
                                    ['id', 'hse_units', 'vacant', 'renter_occ', 'med_age', 'white', 'black', 'ameri_es',
-                                    'asian', 'hawn_pi', 'hispanic', 'other', 'mult_race', 'males', 'females'])
+                                    'asian', 'hawn_pi', 'hispanic', 'other', 'mult_race', 'males', 'females', 'population'])
     demo_df.rename({
         'id': 'county_id',
         'hse_units': 'Housing Units',
@@ -147,6 +147,9 @@ def latest_data_all_tables() -> pd.DataFrame:
         'males': 'Males',
         'females': 'Females'
     }, axis=1, inplace=True)
+    demo_df['Percent Non-White'] = (demo_df['Black'] + demo_df['Native American'] + demo_df['Asian'] + demo_df[
+        'Pacific Islander'] + demo_df['Hispanic'] + demo_df['Other'] + demo_df['Multiple Race']) / demo_df['population']
+    demo_df.drop(['population'],axis=1, inplace=True)
     counties_df = counties_df.merge(demo_df)
     return counties_df
 
