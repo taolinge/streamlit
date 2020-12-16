@@ -51,6 +51,7 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
         return geojson
 
     temp = temp[['County Name', map_feature]]
+    st.write(geo_df)
     geo_df = geo_df.merge(temp, on='County Name')
     geo_df['geom'] = geo_df.apply(lambda row: row['geom'].buffer(0), axis=1)
     geo_df['coordinates'] = geo_df.apply(lambda row: gpd.GeoSeries(row['geom']).__geo_interface__, axis=1)

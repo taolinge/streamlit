@@ -151,12 +151,15 @@ def eviction_visualizations(df: pd.DataFrame, state: str = None):
         temp = df.copy()
         temp.reset_index(inplace=True)
         counties = temp['County Name'].to_list()
-        if state != 'national':
+        if state.lower() != 'national':
             geo_df = queries.get_county_geoms(counties, state.lower())
             visualization.make_map(geo_df, df, 'Relative Risk')
-
-    # make_correlation_plot(df, ['Income Inequality (Ratio)', 'VulnerabilityIndex', 'Renter Occupied Units', 'Non-White Population (%)',
-    # 'Population Below Poverty Level', 'Population Unemployed', 'Burdened Households', 'Single Parent Households', 'Relative Risk'])
+        else:
+            frames = []
+            for s in STATES:
+                frames.append(queries.get_county_geoms(counties, s.lower()))
+            geo_df = pd.concat(frames)
+            visualization.make_map(geo_df, df, 'Relative Risk')
 
 
 def data_explorer(df: pd.DataFrame, state: str):
@@ -203,7 +206,7 @@ def data_explorer(df: pd.DataFrame, state: str):
                                'Population Below Poverty Line (%)', 'Single Parent Households (%)'])
 
 
-def relative_risk_ranking(df: pd.DataFrame, label:str) -> pd.DataFrame:
+def relative_risk_ranking(df: pd.DataFrame, label: str) -> pd.DataFrame:
     columns_to_consider = st.multiselect('Features to consider in ranking',
                                          list(set(df.columns) - {'county_id'}),
                                          ["Burdened Households (%)",
@@ -224,7 +227,6 @@ def relative_risk_ranking(df: pd.DataFrame, label:str) -> pd.DataFrame:
     st.subheader('Ranking')
     st.write('Higher values correspond to more relative risk')
     st.write(ranks['Relative Risk'])
-    st.write(f'Features considered {list(ranks.columns)}')
     st.markdown(utils.get_table_download_link(ranks, label + '_ranking', 'Download Relative Risk ranking'),
                 unsafe_allow_html=True)
     return ranks
@@ -315,7 +317,7 @@ def run_UI():
                  
                  As with any analysis that relies on public data, we should acknowledge that the underlying data is not 
                  perfect. Public data has the potential to continue and exacerbate the under-representation of 
-                 certain groups. This data should not be equated with the ground truth of the conditions in a community. 
+                 certain groups. This data not be equated with the ground truth of the conditions in a community. 
                  You can read more about how we think about public data [here](https://medium.com/swlh/digital-government-and-data-theater-a-very-real-cause-of-very-fake-news-fe23c0dfa0a2).
                  
                  You can read more about the data and calculations happening here on our [GitHub](https://github.com/arup-group/social-data).
@@ -408,7 +410,7 @@ def run_UI():
                         utils.get_table_download_link(evictions_cost_df, state + '_custom_cost_data',
                                                       'Download cost data'),
                         unsafe_allow_html=True)
-                ranks=relative_risk_ranking(df, state)
+                ranks = relative_risk_ranking(df, state)
                 eviction_visualizations(ranks, state)
             else:
                 st.warning('Select counties to analyze')
@@ -446,12 +448,11 @@ def run_UI():
                     utils.get_table_download_link(evictions_cost_df, state + '_cost_data', 'Download cost data'),
                     unsafe_allow_html=True)
 
-            ranks=relative_risk_ranking(df, state)
-
+            ranks = relative_risk_ranking(df, state)
             eviction_visualizations(ranks, state)
 
         elif task == 'National':
-            st.write('Analysis every county in the US can take a while! Please wait...')
+            st.warning('Analysis for every county in the US can take a while! Please wait...')
             with st.beta_expander("Caveats"):
                 st.write(
                     "There are some counties that don't show up in this analysis because of how they are named or because data is missing. We are aware of this issue.")
@@ -487,7 +488,7 @@ def run_UI():
                 st.markdown(utils.get_table_download_link(evictions_cost_df, 'national_cost', 'Download cost data'),
                             unsafe_allow_html=True)
             ranks = relative_risk_ranking(natl_df, 'National')
-            eviction_visualizations(natl_df, 'National')
+            eviction_visualizations(ranks, 'National')
     else:
         st.write('## Data Explorer')
         st.write('This interface allows you to see and interact with data in our database. ')
