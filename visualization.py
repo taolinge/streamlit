@@ -98,3 +98,11 @@ def make_correlation_plot(df: pd.DataFrame):
     fig, ax = plt.subplots(figsize=(10, 10))
     st.write(sns.heatmap(df.corr(), annot=True, linewidths=0.5))
     st.pyplot(fig)
+
+
+def make_bar_chart(df:pd.DataFrame, feature:str):
+    bar_df = pd.DataFrame(df.reset_index()[[feature, 'County Name']])
+    bar = alt.Chart(bar_df).mark_bar() \
+        .encode(x='County Name', y=feature + ':Q',
+                tooltip=['County Name', feature])
+    st.altair_chart(bar, use_container_width=True)

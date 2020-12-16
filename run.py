@@ -136,14 +136,17 @@ def load_distributions():
     return metro_areas, locations
 
 
-def make_correlation_plot(df: pd.DataFrame):
+def make_correlation_plot(df: pd.DataFrame, default_cols=[]):
     st.subheader('Correlation Plot')
     fig, ax = plt.subplots(figsize=(10, 10))
-    st.write(sns.heatmap(df.corr(), annot=True, linewidths=0.5))
+    df = df.astype('float64')
+    cols_to_compare = st.multiselect('Columns to consider', list(df.columns), default_cols)
+    if len(cols_to_compare) > 2:
+        st.write(sns.heatmap(df[cols_to_compare].corr(), annot=True, linewidths=0.5))
     st.pyplot(fig)
 
 
-def visualizations(df: pd.DataFrame, state: str = None):
+def eviction_visualizations(df: pd.DataFrame, state: str = None):
     if state:
         temp = df.copy()
         temp.reset_index(inplace=True)
@@ -152,22 +155,19 @@ def visualizations(df: pd.DataFrame, state: str = None):
             geo_df = queries.get_county_geoms(counties, state.lower())
             visualization.make_map(geo_df, df, 'Relative Risk')
 
-    make_correlation_plot(df)
+    # make_correlation_plot(df, ['Income Inequality (Ratio)', 'VulnerabilityIndex', 'Renter Occupied Units', 'Non-White Population (%)',
+    # 'Population Below Poverty Level', 'Population Unemployed', 'Burdened Households', 'Single Parent Households', 'Relative Risk'])
 
 
 def data_explorer(df: pd.DataFrame, state: str):
-    feature_labels = list(set(df.columns) - {'County Name', 'county_id', 'Resident Population (Thousands of Persons)'})
+    feature_labels = list(set(df.columns) - {'County Name', 'county_id'})
     feature_labels.sort()
     st.write('''
             ### View Feature
             Select a feature to view for each county
             ''')
     single_feature = st.selectbox('Feature', feature_labels, 0)
-    bar_df = pd.DataFrame(df.reset_index()[[single_feature, 'County Name']])
-    bar = alt.Chart(bar_df).mark_bar() \
-        .encode(x='County Name', y=single_feature + ':Q',
-                tooltip=['County Name', single_feature])
-    st.altair_chart(bar, use_container_width=True)
+    visualization.make_bar_chart(df, single_feature)
 
     if state:
         temp = df.copy()
@@ -197,7 +197,37 @@ def data_explorer(df: pd.DataFrame, state: str):
 
     st.write('### Correlation Plot')
     df.drop(['county_id'], axis=1, inplace=True)
-    make_correlation_plot(df)
+    make_correlation_plot(df, ['Burdened Households (%)', 'Unemployment Rate (%)', 'VulnerabilityIndex',
+                               'Non-White Population (%)', 'Renter Occupied Units', 'Income Inequality (Ratio)',
+                               'Median Age',
+                               'Population Below Poverty Line (%)', 'Single Parent Households (%)'])
+
+
+def relative_risk_ranking(df: pd.DataFrame, label:str) -> pd.DataFrame:
+    columns_to_consider = st.multiselect('Features to consider in ranking',
+                                         list(set(df.columns) - {'county_id'}),
+                                         ["Burdened Households (%)",
+                                          "Income Inequality (Ratio)",
+                                          "Population Below Poverty Line (%)",
+                                          "Single Parent Households (%)",
+                                          "Unemployment Rate (%)",
+                                          "Resident Population (Thousands of Persons)",
+                                          "VulnerabilityIndex",
+                                          "Housing Units",
+                                          "Vacant Units",
+                                          "Renter Occupied Units",
+                                          "Median Age",
+                                          "Non-White Population (%)"]) + ['county_id']
+    ranks = analysis.rank_counties(df[columns_to_consider], label + '_selected_counties').sort_values(
+        by='Relative Risk',
+        ascending=False)
+    st.subheader('Ranking')
+    st.write('Higher values correspond to more relative risk')
+    st.write(ranks['Relative Risk'])
+    st.write(f'Features considered {list(ranks.columns)}')
+    st.markdown(utils.get_table_download_link(ranks, label + '_ranking', 'Download Relative Risk ranking'),
+                unsafe_allow_html=True)
+    return ranks
 
 
 def cost_of_evictions(df, metro_areas, locations):
@@ -233,7 +263,7 @@ def run_UI():
         page_title="Arup Social Data",
         page_icon="🏠",
         initial_sidebar_state="expanded")
-    st.sidebar.write('# Arup Social Data')
+    st.sidebar.header('Arup Social Data')
     workflow = st.sidebar.selectbox('Workflow', ['Eviction Analysis', 'Data Explorer'])
     st.sidebar.write("""
     This tool supports analysis of United States county level data from a variety of data sources. There are two workflows: an Eviction
@@ -378,16 +408,8 @@ def run_UI():
                         utils.get_table_download_link(evictions_cost_df, state + '_custom_cost_data',
                                                       'Download cost data'),
                         unsafe_allow_html=True)
-                ranks = analysis.rank_counties(df, state + '_selected_counties').sort_values(by='Relative Risk',
-                                                                                             ascending=False)
-                st.write('## Results')
-                st.dataframe(ranks)
-                st.write(f'Features considered {list(ranks.columns)}')
-                st.markdown(
-                    utils.get_table_download_link(ranks, state + '_custom_ranking', 'Download Relative Risk ranking'),
-                    unsafe_allow_html=True)
-
-                visualizations(ranks, state)
+                ranks=relative_risk_ranking(df, state)
+                eviction_visualizations(ranks, state)
             else:
                 st.warning('Select counties to analyze')
                 st.stop()
@@ -424,15 +446,9 @@ def run_UI():
                     utils.get_table_download_link(evictions_cost_df, state + '_cost_data', 'Download cost data'),
                     unsafe_allow_html=True)
 
-            ranks = analysis.rank_counties(df, state).sort_values(by='Relative Risk', ascending=False)
-            st.subheader('Ranking')
-            st.write('Higher values correspond to more relative risk')
-            st.write(ranks['Relative Risk'])
-            st.write(f'Features considered {list(ranks.columns)}')
-            st.markdown(utils.get_table_download_link(ranks, state + '_ranking', 'Download Relative Risk ranking'),
-                        unsafe_allow_html=True)
+            ranks=relative_risk_ranking(df, state)
 
-            visualizations(ranks, state)
+            eviction_visualizations(ranks, state)
 
         elif task == 'National':
             st.write('Analysis every county in the US can take a while! Please wait...')
@@ -470,16 +486,8 @@ def run_UI():
                 evictions_cost_df = cost_of_evictions(natl_df, metro_areas, locations)
                 st.markdown(utils.get_table_download_link(evictions_cost_df, 'national_cost', 'Download cost data'),
                             unsafe_allow_html=True)
-
-            ranks = analysis.rank_counties(natl_df, 'US_national').sort_values(by='Relative Risk', ascending=False)
-            st.subheader('Ranking')
-            st.write('Higher values correspond to more relative risk')
-            st.write(ranks['Relative Risk'])
-            st.write(f'Features considered {list(ranks.columns)}')
-            st.markdown(utils.get_table_download_link(natl_df, 'national_ranking', 'Download Relative Risk ranking'),
-                        unsafe_allow_html=True)
-
-            # visualizations(natl_df, 'National')
+            ranks = relative_risk_ranking(natl_df, 'National')
+            eviction_visualizations(natl_df, 'National')
     else:
         st.write('## Data Explorer')
         st.write('This interface allows you to see and interact with data in our database. ')
