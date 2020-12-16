@@ -5,6 +5,7 @@ import seaborn as sns
 import pydeck as pdk
 import altair as alt
 import geopandas as gpd
+from sklearn import preprocessing as pre
 
 from constants import BREAKS, COLOR_RANGE
 
@@ -16,9 +17,7 @@ def color_scale(val):
     return COLOR_RANGE[i]
 
 
-def make_map(geo_df: pd.DataFrame, df: pd.DataFrame):
-    st.subheader('Map')
-
+def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
     temp = df.copy()
     temp.reset_index(inplace=True)
     counties = temp['County Name'].to_list()
@@ -43,7 +42,7 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame):
         geojson = {"type": "FeatureCollection", "features": []}
         for i, row in geo_df.iterrows():
             feature = row['coordinates']['features'][0]
-            feature["properties"] = {"risk": row['Relative Risk'], "name": row['County Name']}
+            feature["properties"] = {map_feature: row[map_feature], "name": row['County Name']}
             del feature["id"]
             del feature["bbox"]
             feature["geometry"]["coordinates"] = [feature["geometry"]["coordinates"]]
@@ -51,7 +50,7 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame):
 
         return geojson
 
-    temp = temp[['County Name', 'Relative Risk']]
+    temp = temp[['County Name', map_feature]]
     geo_df = geo_df.merge(temp, on='County Name')
     geo_df['geom'] = geo_df.apply(lambda row: row['geom'].buffer(0), axis=1)
     geo_df['coordinates'] = geo_df.apply(lambda row: gpd.GeoSeries(row['geom']).__geo_interface__, axis=1)
@@ -60,9 +59,13 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame):
     json = pd.DataFrame(geojson)
     geo_df["coordinates"] = json["features"].apply(lambda row: row["geometry"]["coordinates"])
     geo_df["name"] = json["features"].apply(lambda row: row["properties"]["name"])
-    geo_df["risk"] = json["features"].apply(lambda row: row["properties"]["risk"])
-    geo_df["fill_color"] = json["features"].apply(lambda row: color_scale(row["properties"]["risk"]))
-    geo_df.drop(['geom', 'County Name', 'Relative Risk'], axis=1, inplace=True)
+    geo_df[map_feature] = json["features"].apply(lambda row: row["properties"][map_feature])
+    scaler = pre.MaxAbsScaler()
+    norm_df = pd.DataFrame(geo_df[map_feature])
+    normalized_vals = scaler.fit_transform(norm_df)
+    colors = list(map(color_scale, normalized_vals))
+    geo_df['fill_color'] = colors
+    geo_df.drop(['geom', 'County Name'], axis=1, inplace=True)
 
     view_state = pdk.ViewState(
         **{"latitude": 36, "longitude": -95, "zoom": 3, "maxZoom": 16, "pitch": 0, "bearing": 0}
@@ -78,7 +81,8 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame):
         auto_highlight=True,
         pickable=True,
     )
-    tooltip = {"html": "<b>County:</b> {name} </br> <b>Risk:</b> {risk}"}
+    # The brackets here are expected for pdk, so string formatting is less friendly
+    tooltip = {"html": "<b>County:</b> {name} </br> <b>" + str(map_feature) + ":</b> {" + str(map_feature) + "}"}
 
     r = pdk.Deck(
         layers=[polygon_layer],

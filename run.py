@@ -150,34 +150,54 @@ def visualizations(df: pd.DataFrame, state: str = None):
         counties = temp['County Name'].to_list()
         if state != 'national':
             geo_df = queries.get_county_geoms(counties, state.lower())
-            visualization.make_map(geo_df, df)
+            visualization.make_map(geo_df, df, 'Relative Risk')
 
     make_correlation_plot(df)
 
 
 def data_explorer(df: pd.DataFrame, state: str):
+
+    feature_labels = list(set(df.columns) - {'County Name', 'county_id', 'Resident Population (Thousands of Persons)'})
+    feature_labels.sort()
     st.write('''
-    ### Scatter Plot
-    Select two features to compare on the X and Y axes
-    ''')
-    feature_labels = list(
-        set(df.columns) - {'County Name', 'county_id', 'Resident Population (Thousands of Persons)'})
+            ### View Feature
+            Select a feature to view for each county
+            ''')
+    single_feature = st.selectbox('Feature', feature_labels, 0)
+    bar_df = pd.DataFrame(df.reset_index()[[single_feature, 'County Name']])
+    # bar_df.set_index('County Name', inplace=True)
+    bar = alt.Chart(bar_df).mark_bar() \
+        .encode(x='County Name', y=single_feature + ':Q',
+                tooltip=['County Name',  single_feature])
+    st.altair_chart(bar, use_container_width=True)
+
+    if state:
+        temp = df.copy()
+        temp.reset_index(inplace=True)
+        counties = temp['County Name'].to_list()
+        if state != 'national':
+            geo_df = queries.get_county_geoms(counties, state.lower())
+            visualization.make_map(geo_df, df, single_feature)
+
+    st.write('''
+        ### Compare Features
+        Select two features to compare on the X and Y axes
+        ''')
     col1, col2, col3 = st.beta_columns(3)
     with col1:
         feature_1 = st.selectbox('X Feature', feature_labels, 0)
     with col2:
         feature_2 = st.selectbox('Y Feature', feature_labels, 1)
     if feature_1 and feature_2:
-        chart_data = df.reset_index()[
-            [feature_1, feature_2, 'County Name', 'Resident Population (Thousands of Persons)']]
-        c = alt.Chart(chart_data).mark_point().encode(x=feature_1, y=feature_2, tooltip=['County Name',
-                                                                                         'Resident Population (Thousands of Persons)',
-                                                                                         feature_1, feature_2],
-                                                      color='County Name',
-                                                      size='Resident Population (Thousands of Persons)')
-        st.altair_chart(c, use_container_width=True)
+        scatter_df = df.reset_index()[[feature_1, feature_2, 'County Name', 'Resident Population (Thousands of Persons)']]
+        scatter = alt.Chart(scatter_df).mark_point()\
+            .encode(x=feature_1+':Q', y=feature_2+':Q',
+                    tooltip=['County Name', 'Resident Population (Thousands of Persons)', feature_1, feature_2],
+                    size='Resident Population (Thousands of Persons)')
+        st.altair_chart(scatter, use_container_width=True)
 
-    # visualizations(df, state)
+    st.write('### Correlation Plot')
+    make_correlation_plot(df)
 
 
 def cost_of_evictions(df, metro_areas, locations):
@@ -213,7 +233,7 @@ def run_UI():
         page_title="Arup Social Data",
         page_icon="🏠",
         initial_sidebar_state="expanded")
-    st.write('# Arup Social Data')
+    st.sidebar.write('# Arup Social Data')
     workflow = st.sidebar.selectbox('Workflow', ['Eviction Analysis', 'Data Explorer'])
     st.sidebar.write("""
     This tool supports analysis of United States county level data from a variety of data sources. There are two workflows: an Eviction

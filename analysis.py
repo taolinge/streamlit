@@ -19,6 +19,9 @@ def clean_data(data: pd.DataFrame) -> pd.DataFrame:
         'Unemployment Rate Date',
         'Resident Population Date',
     ], axis=1, inplace=True)
+
+    data.rename({'Vulnerability Index': 'COVID Vulnerability Index'},axis=1, inplace=True)
+
     data = data.loc[:, ~data.columns.str.contains('^Unnamed')]
 
     return data
@@ -75,8 +78,6 @@ def normalize(df: pd.DataFrame, columns_to_use: list = []) -> pd.DataFrame:
                   'Males',
                   'Females'
                   ], axis=1)
-
-    df.rename({'Vulnerability Index': 'COVID Vulnerability Index'},axis=1, inplace=True)
 
     scaler = pre.MaxAbsScaler()
     df_scaled = pd.DataFrame(scaler.fit_transform(df), index=df.index, columns=df.columns)
