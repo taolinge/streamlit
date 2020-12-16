@@ -60,7 +60,7 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
     geo_df["coordinates"] = json["features"].apply(lambda row: row["geometry"]["coordinates"])
     geo_df["name"] = json["features"].apply(lambda row: row["properties"]["name"])
     geo_df[map_feature] = json["features"].apply(lambda row: row["properties"][map_feature])
-    scaler = pre.MaxAbsScaler()
+    scaler = pre.MinMaxScaler()
     norm_df = pd.DataFrame(geo_df[map_feature])
     normalized_vals = scaler.fit_transform(norm_df)
     colors = list(map(color_scale, normalized_vals))

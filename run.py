@@ -156,7 +156,6 @@ def visualizations(df: pd.DataFrame, state: str = None):
 
 
 def data_explorer(df: pd.DataFrame, state: str):
-
     feature_labels = list(set(df.columns) - {'County Name', 'county_id', 'Resident Population (Thousands of Persons)'})
     feature_labels.sort()
     st.write('''
@@ -165,10 +164,9 @@ def data_explorer(df: pd.DataFrame, state: str):
             ''')
     single_feature = st.selectbox('Feature', feature_labels, 0)
     bar_df = pd.DataFrame(df.reset_index()[[single_feature, 'County Name']])
-    # bar_df.set_index('County Name', inplace=True)
     bar = alt.Chart(bar_df).mark_bar() \
         .encode(x='County Name', y=single_feature + ':Q',
-                tooltip=['County Name',  single_feature])
+                tooltip=['County Name', single_feature])
     st.altair_chart(bar, use_container_width=True)
 
     if state:
@@ -189,14 +187,16 @@ def data_explorer(df: pd.DataFrame, state: str):
     with col2:
         feature_2 = st.selectbox('Y Feature', feature_labels, 1)
     if feature_1 and feature_2:
-        scatter_df = df.reset_index()[[feature_1, feature_2, 'County Name', 'Resident Population (Thousands of Persons)']]
-        scatter = alt.Chart(scatter_df).mark_point()\
-            .encode(x=feature_1+':Q', y=feature_2+':Q',
+        scatter_df = df.reset_index()[
+            [feature_1, feature_2, 'County Name', 'Resident Population (Thousands of Persons)']]
+        scatter = alt.Chart(scatter_df).mark_point() \
+            .encode(x=feature_1 + ':Q', y=feature_2 + ':Q',
                     tooltip=['County Name', 'Resident Population (Thousands of Persons)', feature_1, feature_2],
                     size='Resident Population (Thousands of Persons)')
         st.altair_chart(scatter, use_container_width=True)
 
     st.write('### Correlation Plot')
+    df.drop(['county_id'], axis=1, inplace=True)
     make_correlation_plot(df)
 
 
