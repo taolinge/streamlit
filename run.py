@@ -153,13 +153,13 @@ def eviction_visualizations(df: pd.DataFrame, state: str = None):
         counties = temp['County Name'].to_list()
         if state.lower() != 'national':
             geo_df = queries.get_county_geoms(counties, state.lower())
-            visualization.make_map(geo_df, df, ['Relative Risk'])
+            visualization.make_map(geo_df, df, 'Relative Risk')
         else:
             frames = []
             for s in STATES:
                 frames.append(queries.get_county_geoms(counties, s.lower()))
             geo_df = pd.concat(frames)
-            visualization.make_map(geo_df, df, ['Relative Risk'])
+            visualization.make_map(geo_df, df, 'Relative Risk')
 
 
 def data_explorer(df: pd.DataFrame, state: str):
