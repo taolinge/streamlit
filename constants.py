@@ -46,7 +46,7 @@ STATES = [
     'Vermont',
     'Virginia',
     'Washington',
-    'Washington DC',
+    # 'Washington DC',
     'West Virginia',
     'Wisconsin',
     'Wyoming'

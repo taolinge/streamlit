@@ -153,13 +153,13 @@ def eviction_visualizations(df: pd.DataFrame, state: str = None):
         counties = temp['County Name'].to_list()
         if state.lower() != 'national':
             geo_df = queries.get_county_geoms(counties, state.lower())
-            visualization.make_map(geo_df, df, 'Relative Risk')
+            visualization.make_map(geo_df, df, ['Relative Risk'])
         else:
             frames = []
             for s in STATES:
                 frames.append(queries.get_county_geoms(counties, s.lower()))
             geo_df = pd.concat(frames)
-            visualization.make_map(geo_df, df, 'Relative Risk')
+            visualization.make_map(geo_df, df, ['Relative Risk'])
 
 
 def data_explorer(df: pd.DataFrame, state: str):
@@ -171,6 +171,7 @@ def data_explorer(df: pd.DataFrame, state: str):
             ''')
     single_feature = st.selectbox('Feature', feature_labels, 0)
     visualization.make_bar_chart(df, single_feature)
+
 
     if state:
         temp = df.copy()
@@ -493,7 +494,7 @@ def run_UI():
         st.write('## Data Explorer')
         st.write('This interface allows you to see and interact with data in our database. ')
         task = st.selectbox('What type of analysis are you doing?',
-                            ['Single County', 'Multiple Counties', 'State', 'National'])
+                            ['Single County', 'Multiple Counties', 'State', 'National'], 2)
         metro_areas, locations = load_distributions()
         if task == 'Single County' or task == '':
             res = st.text_input('Enter the county and state (ie: Jefferson County, Colorado):')
