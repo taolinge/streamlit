@@ -199,7 +199,6 @@ def data_explorer(df: pd.DataFrame, state: str):
                     size='Resident Population (Thousands of Persons)')
         st.altair_chart(scatter, use_container_width=True)
 
-    st.write('### Correlation Plot')
     df.drop(['county_id'], axis=1, inplace=True)
     make_correlation_plot(df, ['Burdened Households (%)', 'Unemployment Rate (%)', 'VulnerabilityIndex',
                                'Non-White Population (%)', 'Renter Occupied Units', 'Income Inequality (Ratio)',
