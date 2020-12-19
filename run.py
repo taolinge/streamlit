@@ -172,7 +172,6 @@ def data_explorer(df: pd.DataFrame, state: str):
     single_feature = st.selectbox('Feature', feature_labels, 0)
     visualization.make_bar_chart(df, single_feature)
 
-
     if state:
         temp = df.copy()
         temp.reset_index(inplace=True)
@@ -207,7 +206,11 @@ def data_explorer(df: pd.DataFrame, state: str):
 
 
 def relative_risk_ranking(df: pd.DataFrame, label: str) -> pd.DataFrame:
-    columns_to_consider = st.multiselect('Features to consider in ranking',
+    st.subheader('Relative Risk')
+    st.write('You can select features to consider in the Relative Risk calculation. These values are normalized and'
+             ' combined to create the index value. You can add or remove features, or just use our defaults which we'
+             ' developed working with our partners.')
+    columns_to_consider = st.multiselect('Features to consider in Relative Risk',
                                          list(set(df.columns) - {'county_id'}),
                                          ["Burdened Households (%)",
                                           "Income Inequality (Ratio)",
@@ -224,8 +227,7 @@ def relative_risk_ranking(df: pd.DataFrame, label: str) -> pd.DataFrame:
     ranks = analysis.rank_counties(df[columns_to_consider], label + '_selected_counties').sort_values(
         by='Relative Risk',
         ascending=False)
-    st.subheader('Ranking')
-    st.write('Higher values correspond to more relative risk')
+    st.write('Higher values correspond to more relative risk. Values can be between 0 and 1.')
     st.write(ranks['Relative Risk'])
     st.markdown(utils.get_table_download_link(ranks, label + '_ranking', 'Download Relative Risk ranking'),
                 unsafe_allow_html=True)
@@ -233,7 +235,11 @@ def relative_risk_ranking(df: pd.DataFrame, label: str) -> pd.DataFrame:
 
 
 def cost_of_evictions(df, metro_areas, locations):
-    rent_type = st.selectbox('Rent Type', ['Fair Market', 'Median'])
+    st.write('You can use either the Fair Market or Median rents in a county for this analysis.')
+    rent_type = st.selectbox('Rent Type', ['Fair Market', 'Median'], 0)
+    st.write('This calculation is based on the combined rent for 0 bedroom to 4+ bedroom units. The distribution of '
+             'housing stock changes around the US, so you can pick a distribution similar to your locaiton or just use '
+             'the national average. You can then select a proportion of the rent-burdened population to support.')
     location = st.selectbox('Select a location to assume a housing distribution:', locations)
     distribution = {
         0: float(metro_areas.loc[location, '0_br_pct']),
@@ -242,6 +248,8 @@ def cost_of_evictions(df, metro_areas, locations):
         3: float(metro_areas.loc[location, '3_br_pct']),
         4: float(metro_areas.loc[location, '4_br_pct']),
     }
+    if st.checkbox('Show distribution (decimal values)'):
+        st.write(distribution)
 
     pct_burdened = st.slider('Percent of Burdened Population to Support', 0, 100, value=50, step=1)
 
@@ -253,10 +261,16 @@ def cost_of_evictions(df, metro_areas, locations):
     cost_df = df.reset_index()
     cost_df.drop(columns=['State'], inplace=True)
     cost_df.set_index('County Name', inplace=True)
-    # cost_df = cost_df[['br_cost_0', 'br_cost_1', 'br_cost_2', 'br_cost_3', 'br_cost_4', 'total_cost']]
-    # st.dataframe(
-    #     cost_df[['total_cost']])
+    cost_df = cost_df.round(0)
+    cost_cols = ['rent50_0', 'rent50_1', 'rent50_2', 'rent50_3', 'rent50_4', 'fmr_0', 'fmr_1', 'fmr_2', 'fmr_3',
+                 'fmr_4', 'br_cost_0', 'br_cost_1', 'br_cost_2', 'br_cost_3', 'br_cost_4', 'total_cost']
+    cost_df.drop(list(set(df.columns) - set(cost_cols)), axis=1, inplace=True)
     st.bar_chart(cost_df['total_cost'])
+    if st.checkbox('Show cost data'):
+        st.write('`fmr_*` represents the fair market rent per unit and `rent_50_*` represents the median rent per unit.'
+                 '`br_cost_*` is the total cost for the chosen housing stock distribution and percentage of the burdened population'
+                 'for each type of unit. `total_cost` is sum of the `br_cost_` for each type of housing unit.')
+        st.dataframe(cost_df)
     return cost_df
 
 
@@ -317,7 +331,7 @@ def run_UI():
                  
                  As with any analysis that relies on public data, we should acknowledge that the underlying data is not 
                  perfect. Public data has the potential to continue and exacerbate the under-representation of 
-                 certain groups. This data not be equated with the ground truth of the conditions in a community. 
+                 certain groups. This data should not be equated with the ground truth of the conditions in a community. 
                  You can read more about how we think about public data [here](https://medium.com/swlh/digital-government-and-data-theater-a-very-real-cause-of-very-fake-news-fe23c0dfa0a2).
                  
                  You can read more about the data and calculations happening here on our [GitHub](https://github.com/arup-group/social-data).
@@ -360,8 +374,6 @@ def run_UI():
 
                     if st.checkbox('Do cost to avoid eviction analysis?'):
                         evictions_cost_df = cost_of_evictions(df, metro_areas, locations)
-                        if st.checkbox('Show cost data'):
-                            st.dataframe(evictions_cost_df)
                         st.markdown(
                             utils.get_table_download_link(evictions_cost_df, county + '_cost_data',
                                                           'Download cost data'),
@@ -404,8 +416,6 @@ def run_UI():
 
                 if st.checkbox('Do cost to avoid eviction analysis?'):
                     evictions_cost_df = cost_of_evictions(df, metro_areas, locations)
-                    if st.checkbox('Show cost data'):
-                        st.dataframe(evictions_cost_df)
                     st.markdown(
                         utils.get_table_download_link(evictions_cost_df, state + '_custom_cost_data',
                                                       'Download cost data'),
@@ -442,8 +452,6 @@ def run_UI():
 
             if st.checkbox('Do cost to avoid eviction analysis?'):
                 evictions_cost_df = cost_of_evictions(df, metro_areas, locations)
-                if st.checkbox('Show cost data'):
-                    st.dataframe(evictions_cost_df)
                 st.markdown(
                     utils.get_table_download_link(evictions_cost_df, state + '_cost_data', 'Download cost data'),
                     unsafe_allow_html=True)
