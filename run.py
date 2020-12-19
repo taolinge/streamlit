@@ -138,6 +138,13 @@ def load_distributions():
 
 def make_correlation_plot(df: pd.DataFrame, default_cols=[]):
     st.subheader('Correlation Plot')
+    st.write('''
+    This plot shows how individual features in the database correlate to each other. Values range from -1 to 1. 
+    A value of 1 means that for a positive increase in one feature, there will be a increase in the other by a fixed proportion.
+    A value of -1 means that for a positive increase in one feature, there will be a decrease in the other by a fixed proportion. 
+    A value of 0 means that the two features are unrelated. In reading this chart, a higher value can be read as a 
+    stronger relationship (either postive or negative) between the two features.
+    ''')
     fig, ax = plt.subplots(figsize=(10, 10))
     df = df.astype('float64')
     cols_to_compare = st.multiselect('Columns to consider', list(df.columns), default_cols)
@@ -268,10 +275,13 @@ def cost_of_evictions(df, metro_areas, locations):
     st.bar_chart(cost_df['total_cost'])
     if st.checkbox('Show cost data'):
         st.write('`fmr_*` represents the fair market rent per unit and `rent_50_*` represents the median rent per unit.'
-                 '`br_cost_*` is the total cost for the chosen housing stock distribution and percentage of the burdened population'
-                 'for each type of unit. `total_cost` is sum of the `br_cost_` for each type of housing unit.')
+                 '`br_cost_*` is the total cost for the chosen housing stock distribution and percentage of the'
+                 ' burdened population for each type of unit. `total_cost` is sum of the `br_cost_` for each type of'
+                 ' housing unit.')
         st.dataframe(cost_df)
     return cost_df
+
+
 
 
 def run_UI():
@@ -305,7 +315,7 @@ def run_UI():
         
         Special thanks to Julieta Moradei and Kamini Ayer from New Story, Kristin Maun from the city of Tulsa, 
         Emily Walport and Irene Gleeson with Arup's Community Engagment team, and everyone else who has given feedback 
-        and helped support this work. 
+        and helped support this work. Also thanks to the team at Streamlit for their support of this work.
         
         The analysis and underlying data are provided as open source under an [MIT license](https://github.com/arup-group/social-data/blob/master/LICENSE). 
         
