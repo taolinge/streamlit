@@ -10,19 +10,18 @@ import queries
 
 def clean_data(data: pd.DataFrame) -> pd.DataFrame:
     data.set_index(['State', 'County Name'], drop=True, inplace=True)
-    data['Non-Home Ownership (%)'] = 100 - pd.to_numeric(data['Home Ownership (%)'], downcast='float')
 
     data.drop([
-        'Home Ownership (%)',
         'Burdened Households Date',
-        'Home Ownership Date',
         'Income Inequality Date',
         'Population Below Poverty Line Date',
         'Single Parent Households Date',
-        'SNAP Benefits Recipients Date',
         'Unemployment Rate Date',
-        'Resident Population Date'
+        'Resident Population Date',
     ], axis=1, inplace=True)
+
+    data.rename({'Vulnerability Index': 'COVID Vulnerability Index'}, axis=1, inplace=True)
+
     data = data.loc[:, ~data.columns.str.contains('^Unnamed')]
 
     return data
@@ -51,24 +50,31 @@ def cross_features(df: pd.DataFrame) -> pd.DataFrame:
     return crossed_df
 
 
-def normalize(df: pd.DataFrame) -> pd.DataFrame:
-    df = percent_to_population('Population Below Poverty Line (%)', 'Pop Below Poverty Level', df)
-    df = percent_to_population('Unemployment Rate (%)', 'Pop Unemployed', df)
-    df = percent_to_population('Burdened Households (%)', 'Num Burdened Households', df)
-    df = percent_to_population('Single Parent Households (%)', 'Num Single Parent Households', df)
-    df = percent_to_population('Non-Home Ownership (%)', 'Non-Home Ownership Pop', df)
+def prepare_analysis_data(df: pd.DataFrame) -> pd.DataFrame:
+    cols_to_drop = ['Population Below Poverty Line (%)',
+                    'Unemployment Rate (%)',
+                    'Burdened Households (%)',
+                    'Single Parent Households (%)',
+                    'Non-White Population (%)']
+    for col in list(df.columns):
+        if '(%)' in col:
+            if col == 'Unemployment Rate (%)':
+                df = percent_to_population('Unemployment Rate (%)', 'Population Unemployed', df)
+            else:
+                df = percent_to_population(col, col.replace(' (%)', ''), df)
 
     if 'Policy Value' in list(df.columns) or 'Countdown' in list(df.columns):
         df = df.drop(['Policy Value', 'Countdown'], axis=1)
 
-    df = df.drop(['Population Below Poverty Line (%)',
-                  'Unemployment Rate (%)',
-                  'Burdened Households (%)',
-                  'Single Parent Households (%)',
-                  'Non-Home Ownership (%)',
-                  'Resident Population (Thousands of Persons)',
-                  ], axis=1)
+    for col in cols_to_drop:
+        try:
+            df.drop([col], axis=1, inplace=True)
+        except:
+            pass
+    return df
 
+
+def normalize(df: pd.DataFrame) -> pd.DataFrame:
     scaler = pre.MaxAbsScaler()
     df_scaled = pd.DataFrame(scaler.fit_transform(df), index=df.index, columns=df.columns)
 
@@ -103,11 +109,12 @@ def priority_indicator(socioeconomic_index: float, policy_index: float, time_lef
 
 def rank_counties(df: pd.DataFrame, label: str) -> pd.DataFrame:
     df.drop(['county_id'], axis=1, inplace=True)
-    analysis_df = normalize(df)
+    analysis_df = prepare_analysis_data(df)
+    analysis_df = normalize(analysis_df)
 
-    crossed = cross_features(analysis_df)
-    analysis_df['Crossed'] = crossed['Mean']
-    analysis_df = normalize_column(analysis_df, 'Crossed')
+    # crossed = cross_features(analysis_df)
+    # analysis_df['Crossed'] = crossed['Mean']
+    # analysis_df = normalize_column(analysis_df, 'Crossed')
 
     analysis_df['Relative Risk'] = analysis_df.sum(axis=1)
     max_sum = analysis_df['Relative Risk'].max()
@@ -158,7 +165,6 @@ def calculate_cost_estimate(df: pd.DataFrame, pct_burdened: float, distribution:
         df['total_cost'] = np.sum([df['br_cost_0'], df['br_cost_1'], df['br_cost_2'], df['br_cost_3'], df['br_cost_4']],
                                   axis=0)
     return df
-
 
 
 def cost_of_evictions(df, metro_areas, locations):

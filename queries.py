@@ -4,16 +4,17 @@ import psycopg2
 import pandas as pd
 from sqlalchemy import create_engine
 from shapely import wkb
+import streamlit as st
 
 import credentials
 
 fred_tables = [
     'burdened_households',
-    'homeownership_rate',
+    # 'homeownership_rate',
     'income_inequality',
     'population_below_poverty',
     'single_parent_households',
-    'snap_benefits_recipients',
+    # 'snap_benefits_recipients',
     'unemployment_rate',
     'resident_population',
 ]
@@ -73,6 +74,7 @@ def write_table(df: pd.DataFrame, table: str):
     conn.close()
 
 
+@st.cache(suppress_st_warning=True)
 def counties_query() -> pd.DataFrame:
     conn, engine = init_connection()
     cur = conn.cursor()
@@ -86,6 +88,7 @@ def counties_query() -> pd.DataFrame:
     return pd.DataFrame(results, columns=colnames)
 
 
+@st.cache(suppress_st_warning=True)
 def policy_query() -> pd.DataFrame:
     conn, engine = init_connection()
     cur = conn.cursor()
@@ -99,6 +102,7 @@ def policy_query() -> pd.DataFrame:
     return pd.DataFrame(results, columns=colnames)
 
 
+@st.cache(suppress_st_warning=True)
 def latest_data_single_table(table_name: str, require_counties: bool = True) -> pd.DataFrame:
     conn, engine = init_connection()
 
@@ -120,6 +124,7 @@ def latest_data_single_table(table_name: str, require_counties: bool = True) -> 
     return df
 
 
+@st.cache(suppress_st_warning=True)
 def latest_data_all_tables() -> pd.DataFrame:
     counties_df = counties_query()
     for table_name in fred_tables:
@@ -127,10 +132,37 @@ def latest_data_all_tables() -> pd.DataFrame:
         counties_df = counties_df.merge(table_output)
     chmura_df = static_data_single_table('chmura_economic_vulnerability_index', ['VulnerabilityIndex'])
     counties_df = counties_df.merge(chmura_df)
+    demo_df = generic_select_query('socio_demographics',
+                                   ['id', 'hse_units', 'vacant', 'renter_occ', 'med_age', 'white', 'black', 'ameri_es',
+                                    'asian', 'hawn_pi', 'hispanic', 'other', 'mult_race', 'males', 'females',
+                                    'population'])
+    demo_df['Non-white Population'] = (demo_df['black'] + demo_df['ameri_es'] + demo_df['asian'] + demo_df[
+        'hawn_pi'] + demo_df['hispanic'] + demo_df['other'] + demo_df['mult_race'])
+    demo_df['Non-White Population (%)'] = demo_df['Non-white Population'] / demo_df['population'] * 100
+    demo_df.rename({
+        'id': 'county_id',
+        'hse_units': 'Housing Units',
+        'vacant': 'Vacant Units',
+        'renter_occ': 'Renter Occupied Units',
+        'med_age': 'Median Age',
+        'white': 'White Population',
+        'black': 'Black Population',
+        'ameri_es': 'Native American Population',
+        'asian': 'Asian Population',
+        'hawn_pi': 'Pacific Islander Population',
+        'hispanic': 'Hispanic Population',
+        'other': 'Other Population',
+        'mult_race': 'Multiple Race Population',
+        'males': 'Male Population',
+        'females': 'Female Population'
+    }, axis=1, inplace=True)
 
+    demo_df.drop(['population'], axis=1, inplace=True)
+    counties_df = counties_df.merge(demo_df)
     return counties_df
 
 
+@st.cache(suppress_st_warning=True)
 def static_data_single_table(table_name: str, columns: list) -> pd.DataFrame:
     conn, engine = init_connection()
     cur = conn.cursor()
@@ -161,9 +193,10 @@ def generic_select_query(table_name: str, columns: list) -> pd.DataFrame:
 
 def get_county_geoms(counties_list: list, state: str) -> pd.DataFrame:
     conn, engine = init_connection()
+    counties_list = [_.replace("'", "''") for _ in counties_list]
     counties = "(" + ",".join(["'" + str(_) + "'" for _ in counties_list]) + ")"
     cur = conn.cursor()
-    query = "SELECT * FROM counties_geom WHERE cnty_name in {} AND LOWER(state)='{}';".format(counties, state)
+    query = "SELECT * FROM counties_geom WHERE LOWER(state)='{}' AND cnty_name in {};".format(state, counties)
     cur.execute(query)
     results = cur.fetchall()
     colnames = [desc[0] for desc in cur.description]
@@ -173,12 +206,13 @@ def get_county_geoms(counties_list: list, state: str) -> pd.DataFrame:
         parcels.append(wkb.loads(parcel, hex=True))
     geom_df = pd.DataFrame()
     geom_df['County Name'] = df['cnty_name']
-    # geom_df['State'] = df['state']
+    geom_df['State'] = df['state']
     geom_df['geom'] = pd.Series(parcels)
     conn.close()
     return geom_df
 
 
+@st.cache(suppress_st_warning=True)
 def list_tables():
     conn, engine = init_connection()
 
@@ -186,6 +220,7 @@ def list_tables():
     return
 
 
+@st.cache(suppress_st_warning=True)
 def static_data_all_table() -> pd.DataFrame:
     counties_df = counties_query()
     for table_name in static_tables:
