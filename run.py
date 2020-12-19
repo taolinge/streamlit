@@ -510,7 +510,7 @@ def run_UI():
     else:
         st.write('## Data Explorer')
         st.write('This interface allows you to see and interact with data in our database. ')
-        task = st.selectbox('What type of analysis are you doing?',
+        task = st.selectbox('How much data do you want to look at?',
                             ['Single County', 'Multiple Counties', 'State', 'National'], 2)
         metro_areas, locations = load_distributions()
         if task == 'Single County' or task == '':
@@ -562,6 +562,7 @@ def run_UI():
             data_explorer(df, state)
 
         elif task == 'National':
+            st.warning('National analysis can take some time and be difficult to visualize at the moment.')
             frames = []
             for state in STATES:
                 df = get_state_data(state)

@@ -136,9 +136,9 @@ def latest_data_all_tables() -> pd.DataFrame:
                                    ['id', 'hse_units', 'vacant', 'renter_occ', 'med_age', 'white', 'black', 'ameri_es',
                                     'asian', 'hawn_pi', 'hispanic', 'other', 'mult_race', 'males', 'females',
                                     'population'])
-    demo_df['Non-white Population'] = (demo_df['black'] + demo_df['ameri_es'] + demo_df['asian'] + demo_df[
+    demo_df['Non-White Population'] = (demo_df['black'] + demo_df['ameri_es'] + demo_df['asian'] + demo_df[
         'hawn_pi'] + demo_df['hispanic'] + demo_df['other'] + demo_df['mult_race'])
-    demo_df['Non-White Population (%)'] = demo_df['Non-white Population'] / demo_df['population'] * 100
+    demo_df['Non-White Population (%)'] = demo_df['Non-White Population'] / demo_df['population'] * 100
     demo_df.rename({
         'id': 'county_id',
         'hse_units': 'Housing Units',
