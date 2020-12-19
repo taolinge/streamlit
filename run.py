@@ -214,9 +214,9 @@ def data_explorer(df: pd.DataFrame, state: str):
 
 def relative_risk_ranking(df: pd.DataFrame, label: str) -> pd.DataFrame:
     st.subheader('Relative Risk')
-    st.write('You can select features to consider in the Relative Risk calculation. These values are normalized and'
-             ' combined to create the index value. You can add or remove features, or just use our defaults which we'
-             ' developed working with our partners.')
+    st.write('Relative Risk is a metric to compare the potential risk of eviction between multiple counties. '
+             'Values are normalized and combined to create the Relative Risk index. '
+             'You can add or remove features, or just use our defaults which we developed working with our partners.')
     columns_to_consider = st.multiselect('Features to consider in Relative Risk',
                                          list(set(df.columns) - {'county_id'}),
                                          ["Burdened Households (%)",
@@ -289,7 +289,7 @@ def run_UI():
         page_title="Arup Social Data",
         page_icon="🏠",
         initial_sidebar_state="expanded")
-    st.sidebar.header('Arup Social Data')
+    st.sidebar.title('Arup Social Data')
     workflow = st.sidebar.selectbox('Workflow', ['Eviction Analysis', 'Data Explorer'])
     st.sidebar.write("""
     This tool supports analysis of United States county level data from a variety of data sources. There are two workflows: an Eviction
@@ -297,9 +297,10 @@ def run_UI():
      which allows you to see and interact with the data we have without doing any analysis.
      
      You can also use our Python code in a scripting environment or query our database directly. Details are at our 
-     [GitHub](https://github.com/arup-group/social-data). If you find that this interface doesn't do what you need it to,
-      you can create an issue at our GitHub repository or better yet, contribute a pull request. You can reach out to 
-      the team on LinkedIn or Twitter if you have questions or feedback.
+     [GitHub](https://github.com/arup-group/social-data). If you find bugs, please reach out or create an issue on our 
+     GitHub repository. If you find that this interface doesn't do what you need it to, you can create an feature request 
+     at our repository or better yet, contribute a pull request of your own. You can reach out to the team on LinkedIn or 
+     Twitter if you have questions or feedback.
  
     More documentation and contribution details are at our [GitHub Repository](https://github.com/arup-group/social-data).
     """)
@@ -433,7 +434,7 @@ def run_UI():
                 ranks = relative_risk_ranking(df, state)
                 eviction_visualizations(ranks, state)
             else:
-                st.warning('Select counties to analyze')
+                st.error('Select counties to analyze')
                 st.stop()
         elif task == 'State':
             state = st.selectbox("Select a state", STATES).strip()
@@ -470,7 +471,7 @@ def run_UI():
             eviction_visualizations(ranks, state)
 
         elif task == 'National':
-            st.warning('Analysis for every county in the US can take a while! Please wait...')
+            st.info('Analysis for every county in the US can take a while! Please wait...')
             with st.beta_expander("Caveats"):
                 st.write(
                     "There are some counties that don't show up in this analysis because of how they are named or because data is missing. We are aware of this issue.")
@@ -562,7 +563,7 @@ def run_UI():
             data_explorer(df, state)
 
         elif task == 'National':
-            st.warning('National analysis can take some time and be difficult to visualize at the moment.')
+            st.info('National analysis can take some time and be difficult to visualize at the moment.')
             frames = []
             for state in STATES:
                 df = get_state_data(state)
