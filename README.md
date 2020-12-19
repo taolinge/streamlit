@@ -6,23 +6,23 @@ This is a repository for collection and analysis of open social data. This type 
 The bulk of the analysis is related to evictions as a result of COVID-19. This repository gathers data from the Federal Reserve Economic Data portal (FRED). There are a number of potential use cases we're aware of to apply that data to address evictions. This analysis allows us to compare counties side by side by their "Relative Risk" of evictions.
 
 ## No code, no problem
-Not a developer? Just don't want to code today? No problem! You can test drive our web app at the link below.
+Not a developer? Just don't want to code today? No problem! You can access the data using our web app at the link below.
 
-https://share.streamlit.io/arup-group/eviction-data/run.py
+[https://share.streamlit.io/arup-group/eviction-data/run.py](https://share.streamlit.io/arup-group/eviction-data/run.py)
 
 ## Usage
-This repository currently supports three primary workflows:
+This repository currently two primary workflows:
 
-1. Gathering data for a single county in a state
-2. Gathering and comparing data for multiple counties using a Relative Risk index
-3. Gathering data for all counties in a state and comparing using a Relative Risk index
+1. Gathering data for counties in the US and comparing their Relative Risk of eviction
+2. Viewing and examining the data in the database and downloading raw data for your own analysis
 
 These workflows support a number of use cases, including:
 - Providing direct assistance to families in one or more counties
 - Driving decisions around future affordable housing projects
 - Directing policy response on the city or county level
 
-There are two ways to interact with this data.
+There are three ways to interact with this data.
+- Web interface - You can use the interactive UI either on the web or run locally
 - Python scripts - Include functions to gather, clean, and analyze data to output a relative risk ranking for multiple counties. Can be extended with your own scripts. 
 - Custom SQL Queries - SQL that you write to get the most recent data from our database and use however you want. 
 
@@ -32,11 +32,11 @@ This data is the most recent data we could get, but some datasets are updated mo
 | Feature Name | Source | Updated | Notes | 
 | ------------ | ------ | ------- | ----- |
 | Burdened Households (%) | [FRED](https://fred.stlouisfed.org/) | 1/1/2018 | People who pay more than 30 percent of their income towards rent |
-| Home Ownership (%) | [FRED](https://fred.stlouisfed.org/) | 1/1/2018 | Inverted to non-homeowners in analysis to get renters |
+| Home Ownership (%) | [FRED](https://fred.stlouisfed.org/) | 1/1/2018 | This field has been superseded by the renter occupied housing units value from the demographic data. |
 | Income Inequality (Ratio) | [FRED](https://fred.stlouisfed.org/) | 1/1/2018 | |
 | Population Below Poverty Line (%) | [FRED](https://fred.stlouisfed.org/) | 1/1/2018 | |
 | Single Parent Households (%) | [FRED](https://fred.stlouisfed.org/) | 1/1/2018 | |
-| SNAP Benefits Recipients (Persons) | [FRED](https://fred.stlouisfed.org/) | 1/1/2017 | |
+| SNAP Benefits Recipients (Persons) | [FRED](https://fred.stlouisfed.org/) | 1/1/2017 | This field is no longer used in our analysis, but exists in the database. |
 | Unemployment Rate (%) | [FRED](https://fred.stlouisfed.org/) | 6/1/2020 | |
 | Resident Population (Thousands of Persons) | [FRED](https://fred.stlouisfed.org/) | 1/1/2019 | Used to convert percentages to raw population|
 | COVID Vulnerability Index | [CHMURA](http://www.chmuraecon.com/interactive/covid-19-economic-vulnerability-index/) | 4/15/2020 | An index from CHMURA to represent how vulnerable counties across the US are to COVID-related economic effects. |
@@ -44,7 +44,7 @@ This data is the most recent data we could get, but some datasets are updated mo
 | Median Rents | [HUD](https://www.huduser.gov/PORTAL/datasets/50per.html) | 2021 | Rent estimates at the 50th percentile (or median)  calculated for all Fair Market Rent areas|
 | Housing Stock Distributions | [US Census](https://www.census.gov/programs-surveys/ahs/data/interactive/ahstablecreator.html?s_areas=00000&s_year=2017&s_tablename=TABLE2&s_bygroup1=1&s_bygroup2=1&s_filtergroup1=1&s_filtergroup2=1) | 2017 | Distribution of housing units in the US by number of bedrooms. Defaults to the national distribution, but includes data for the top 15 metro areas in the US. Includes percentage and estimated housing units. |
 | County Geometries | [US Census](https://catalog.data.gov/dataset/tiger-line-shapefile-2017-nation-u-s-current-county-and-equivalent-national-shapefile) | 2017 | PostGIS compatible geometry data |
-| Demographics | [ArcGIS](https://hub.arcgis.com/datasets/48f9af87daa241c4b267c5931ad3b226_0) | 2017 | Not currently used in our analysis, but integration is on our roadmap |
+| Demographics | [ArcGIS](https://hub.arcgis.com/datasets/48f9af87daa241c4b267c5931ad3b226_0) | 2017 | We currently pull in a number of fields here including each race & ethnicity break down, the count of males and females, median age, the number of housing units, vacant units, and renter occupied units. |
 
 If you have datasets you'd like to see included, please create an Issue.
  
@@ -73,18 +73,25 @@ This script uses Fair Market Rent values.  Median rent values are also available
 Upon script completion, an excel file will be created within the output folder displaying all values mentioned above.  If you experience problems with the script or have questions about methodologies, please reach out to a member of the development team.  
 
 ### Outputs
+These are the columns that appear in our output for Eviction Analysis and in our raw data. Units can vary between raw and outputted data as we transform percentages in to raw population estimates. In our ranking, values in each column are all normalized.
 
 - county_id: Unique ID for each county
-- fmr_[0-4]: Fair Market Rent value for a 0 bedroom house to a 4 bedroom house
-- Burdened Households (%): People who pay more than 30 percent of their income towards rent
 - Income Inequality (Ratio): The income earned by the top percentage of households and dividing that by the income earned by the poorest percentage of households.
-- Population Below Poverty Line (%): Population living below the minimum level of income deemed adequate in a particular county 
-- Single Parent Households (%): Number of households with a single parent
-- SNAP Benefits Recipients (Persons): Number of people receiving Supplemental Nutrition Assistance Progarm benefits 
-- Unemployment Rate (%): Percentage of the population unemployed
 - Resident Population (Thousands of Persons): Number of persons in a county 
 - VulnerabilityIndex: COVID Vulnerability Index, as defined by CHMURA
-- Non-Home Ownership (%): Percentage of persons who do not own a home
+- Housing Units: Total number of housing units in a county
+- Vacant Units: Number of vacant housing units in a county
+- Renter Occupied Units: Number of  housing units in a county occupied by renters. This is used in eviction analysis workflows.
+- Median Age: Median age of the county population
+- Burdened Households: Number People who pay more than 30 percent of their income towards rent
+- Population Below Poverty Line: Population living below the minimum level of income deemed adequate in a particular county 
+- Single Parent Households: Number of households with a single parent
+- Unemployed Population: Number of people unemployed in a county
+- [Race/Ethnicity] Population: Number of people by reported race/ethnicity in a county
+- Non-White Population/Percentage: The total number of people in a county who did not report as white. The percentage represents the proportion of historically minority groups in a county. 
+- Males/Females: Number of reported Males and Females in a population. (Note: there is no value for non-binary reporting in the existing ACS dataset)
+- rent_50_[0-4]: Median Rent value for a 0 bedroom house to a 4 bedroom house
+- fmr_[0-4]: Fair Market Rent value for a 0 bedroom house to a 4 bedroom house
 - [0-4]_br_cost_5: Cost of preventing evictions for a 0-4 bedroom house for 5% of burdened households
 - [0-4]_br_cost_25: Cost of preventing evictions for a 0-4 bedroom house for 25% of burdened households
 - [0-4]_br_cost_33: Cost of preventing evictions for a 0-4 bedroom house for 33% of burdened households
@@ -141,7 +148,7 @@ This page is used to collect and represent the specific policy nuanced not captu
 This page collects the results from the previous two pages in a format that can be more easily read by the Python scripts. You may need to copy the countdown and policy index values for each county you're analyzing. 
 
 ## Database Users
-The database that this repository uses is open for *read-only* access. The connection details are stored in `credentials.py` if you're using the Python workflow.
+The PostgreSQL database that this repository uses is open for *read-only* access. The connection details are stored in `credentials.py` if you're using the Python workflow.
 
 If you'd like to query the database directly using the method of your choice, you can access it using the credentials below:
 
