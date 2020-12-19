@@ -140,10 +140,10 @@ def make_correlation_plot(df: pd.DataFrame, default_cols=[]):
     st.subheader('Correlation Plot')
     st.write('''
     This plot shows how individual features in the database correlate to each other. Values range from -1 to 1. 
-    A value of 1 means that for a positive increase in one feature, there will be a increase in the other by a fixed proportion.
+    A value of 1 means that for a positive increase in one feature, there will be an increase in the other by a fixed proportion.
     A value of -1 means that for a positive increase in one feature, there will be a decrease in the other by a fixed proportion. 
-    A value of 0 means that the two features are unrelated. In reading this chart, a higher value can be read as a 
-    stronger relationship (either postive or negative) between the two features.
+    A value of 0 means that the two features are unrelated. A higher value can be read as a stronger relationship 
+    (either postive or negative) between the two features.
     ''')
     fig, ax = plt.subplots(figsize=(10, 10))
     df = df.astype('float64')
@@ -391,7 +391,7 @@ def run_UI():
                             unsafe_allow_html=True)
 
                 else:
-                    st.warning('Enter a valid county and state, separated by a comma')
+                    st.error('Enter a valid county and state, separated by a comma')
                     st.stop()
 
         elif task == 'Multiple Counties':
@@ -513,7 +513,7 @@ def run_UI():
         st.write('This interface allows you to see and interact with data in our database. ')
         task = st.selectbox('How much data do you want to look at?',
                             ['Single County', 'Multiple Counties', 'State', 'National'], 2)
-        metro_areas, locations = load_distributions()
+        # metro_areas, locations = load_distributions()
         if task == 'Single County' or task == '':
             res = st.text_input('Enter the county and state (ie: Jefferson County, Colorado):')
             if res:
@@ -547,7 +547,7 @@ def run_UI():
                                 unsafe_allow_html=True)
                 data_explorer(df, state)
             else:
-                st.warning('Select counties to analyze')
+                st.error('Select counties to analyze')
                 st.stop()
 
         elif task == 'State':
