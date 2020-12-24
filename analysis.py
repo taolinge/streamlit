@@ -28,7 +28,8 @@ def clean_data(data: pd.DataFrame) -> pd.DataFrame:
 
 
 def percent_to_population(feature: str, name: str, df: pd.DataFrame) -> pd.DataFrame:
-    df[name] = (df[feature].astype(float) / 100) * df['Resident Population (Thousands of Persons)'].astype(float) * 1000
+    pd.set_option('mode.chained_assignment', None)
+    df[name] = (df.loc[:, feature].astype(float) / 100) * df.loc[:, 'Resident Population (Thousands of Persons)'].astype(float) * 1000
     return df
 
 

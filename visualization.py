@@ -20,7 +20,7 @@ def color_scale(val):
 def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
     temp = df.copy()
     temp.reset_index(inplace=True)
-    counties = temp['County Name'].to_list()
+    # counties = temp['County Name'].to_list()
 
     geojson = utils.convert_geom(geo_df, temp, [map_feature])
     merged_df = pd.DataFrame(geojson)
