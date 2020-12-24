@@ -61,7 +61,7 @@ def convert_coordinates(row) -> list:
     return row['coordinates']
 
 
-def convert_geom(geo_df, data_df, map_features: list) -> dict:
+def convert_geom(geo_df: pd.DataFrame, data_df: pd.DataFrame, map_features: list) -> dict:
     data_df = data_df[['County Name'] + map_features]
     geo_df = geo_df.merge(data_df, on='County Name')
     geo_df['geom'] = geo_df.apply(lambda row: row['geom'].buffer(0), axis=1)
