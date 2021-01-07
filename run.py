@@ -245,7 +245,7 @@ def cost_of_evictions(df, metro_areas, locations):
     st.write('You can use either the Fair Market or Median rents in a county for this analysis.')
     rent_type = st.selectbox('Rent Type', ['Fair Market', 'Median'], 0)
     st.write('This calculation is based on the combined rent for 0 bedroom to 4+ bedroom units. The distribution of '
-             'housing stock changes around the US, so you can pick a distribution similar to your locaiton or just use '
+             'housing stock changes around the US, so you can pick a distribution similar to your location or just use '
              'the national average. You can then select a proportion of the rent-burdened population to support.')
     location = st.selectbox('Select a location to assume a housing distribution:', locations)
     distribution = {
