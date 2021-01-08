@@ -8,7 +8,7 @@ The bulk of the analysis is related to evictions as a result of COVID-19. This r
 ## No code, no problem
 Not a developer? Just don't want to code today? No problem! You can access the data using our web app at the link below.
 
-[https://share.streamlit.io/arup-group/eviction-data/run.py](https://share.streamlit.io/arup-group/eviction-data/run.py)
+[https://share.streamlit.io/arup-group/social-data/run.py](https://share.streamlit.io/arup-group/social-data/run.py)
 
 ## Usage
 This repository currently two primary workflows:
