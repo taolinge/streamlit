@@ -74,7 +74,7 @@ def write_table(df: pd.DataFrame, table: str):
     conn.close()
 
 
-@st.cache(suppress_st_warning=True, ttl=60*60)
+# @st.cache(suppress_st_warning=True, ttl=60*60)
 def counties_query() -> pd.DataFrame:
     conn, engine = init_connection()
     cur = conn.cursor()
@@ -88,7 +88,7 @@ def counties_query() -> pd.DataFrame:
     return pd.DataFrame(results, columns=colnames)
 
 
-@st.cache(suppress_st_warning=True, ttl=60*60)
+# @st.cache(suppress_st_warning=True, ttl=60*60)
 def policy_query() -> pd.DataFrame:
     conn, engine = init_connection()
     cur = conn.cursor()
@@ -102,7 +102,7 @@ def policy_query() -> pd.DataFrame:
     return pd.DataFrame(results, columns=colnames)
 
 
-@st.cache(suppress_st_warning=True, ttl=60*60)
+# @st.cache(suppress_st_warning=True, ttl=60*60)
 def latest_data_single_table(table_name: str, require_counties: bool = True) -> pd.DataFrame:
     conn, engine = init_connection()
 
@@ -124,7 +124,7 @@ def latest_data_single_table(table_name: str, require_counties: bool = True) -> 
     return df
 
 
-@st.cache(suppress_st_warning=True, ttl=60*60)
+# @st.cache(suppress_st_warning=True, ttl=60*60)
 def latest_data_all_tables() -> pd.DataFrame:
     counties_df = counties_query()
     for table_name in fred_tables:
@@ -162,7 +162,7 @@ def latest_data_all_tables() -> pd.DataFrame:
     return counties_df
 
 
-@st.cache(suppress_st_warning=True, ttl=60*60)
+# @st.cache(suppress_st_warning=True, ttl=60*60)
 def static_data_single_table(table_name: str, columns: list) -> pd.DataFrame:
     conn, engine = init_connection()
     cur = conn.cursor()
@@ -212,7 +212,7 @@ def get_county_geoms(counties_list: list, state: str) -> pd.DataFrame:
     return geom_df
 
 
-@st.cache(suppress_st_warning=True, ttl=60*60)
+# @st.cache(suppress_st_warning=True, ttl=60*60)
 def list_tables():
     conn, engine = init_connection()
 
@@ -220,7 +220,7 @@ def list_tables():
     return
 
 
-@st.cache(suppress_st_warning=True, ttl=60*60)
+# @st.cache(suppress_st_warning=True, ttl=60*60)
 def static_data_all_table() -> pd.DataFrame:
     counties_df = counties_query()
     for table_name in static_tables:
