@@ -291,6 +291,8 @@ def run_UI():
         initial_sidebar_state="expanded")
     st.sidebar.title('Arup Social Data')
     workflow = st.sidebar.selectbox('Workflow', ['Eviction Analysis', 'Data Explorer'])
+    if workflow == 'Data Explorer':
+        data_type = st.sidebar.radio("Select data boundary:", ('County Level', 'Census Tracts'), index=0)
     st.sidebar.write("""
     This tool supports analysis of United States county level data from a variety of data sources. There are two workflows: an Eviction
      Analysis workflow, which is specifically focused on evictions as a result of COVID-19, and a Data Explorer workflow,
