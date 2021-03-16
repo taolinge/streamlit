@@ -511,73 +511,84 @@ def run_UI():
             ranks = relative_risk_ranking(natl_df, 'National')
             eviction_visualizations(ranks, 'National')
     else:
-        st.write('## Data Explorer')
-        st.write('This interface allows you to see and interact with data in our database. ')
-        task = st.selectbox('How much data do you want to look at?',
-                            ['Single County', 'Multiple Counties', 'State', 'National'], 2)
-        # metro_areas, locations = load_distributions()
-        if task == 'Single County' or task == '':
-            res = st.text_input('Enter the county and state (ie: Jefferson County, Colorado):')
-            if res:
-                res = res.strip().split(',')
-                county = res[0].strip()
-                state = res[1].strip()
-                if county and state:
-                    df = get_single_county(county, state)
-                    st.write(df)
+        if data_type == 'County Level':
+            st.write('## County Data Explorer')
+            st.write('This interface allows you to see and interact with county data in our database. ')
+            task = st.selectbox('How much data do you want to look at?',
+                                ['Single County', 'Multiple Counties', 'State', 'National'], 2)
+            # metro_areas, locations = load_distributions()
+            # if datatype=counties blah blah 
+            if task == 'Single County' or task == '':
+                res = st.text_input('Enter the county and state (ie: Jefferson County, Colorado):')
+                if res:
+                    res = res.strip().split(',')
+                    county = res[0].strip()
+                    state = res[1].strip()
+                    if county and state:
+                        df = get_single_county(county, state)
+                        st.write(df)
+                        if st.checkbox('Show raw data'):
+                            st.subheader('Raw Data')
+                            st.dataframe(df)
+                            st.markdown(
+                                utils.get_table_download_link(df, county + '_data', 'Download raw data'),
+                                unsafe_allow_html=True)
+                        data_explorer(df, state)
+
+            elif task == 'Multiple Counties':
+                state = st.selectbox("Select a state", STATES).strip()
+                county_list = queries.counties_query()
+                county_list = county_list[county_list['State'] == state]['County Name'].to_list()
+                counties = st.multiselect('Please specify one or more counties', county_list)
+                counties = [_.strip().lower() for _ in counties]
+                if len(counties) > 0:
+                    df = get_multiple_counties(counties, state)
+
                     if st.checkbox('Show raw data'):
                         st.subheader('Raw Data')
                         st.dataframe(df)
-                        st.markdown(
-                            utils.get_table_download_link(df, county + '_data', 'Download raw data'),
-                            unsafe_allow_html=True)
+                        st.markdown(utils.get_table_download_link(df, state + '_custom_data', 'Download raw data'),
+                                    unsafe_allow_html=True)
                     data_explorer(df, state)
+                else:
+                    st.error('Select counties to analyze')
+                    st.stop()
 
-        elif task == 'Multiple Counties':
-            state = st.selectbox("Select a state", STATES).strip()
-            county_list = queries.counties_query()
-            county_list = county_list[county_list['State'] == state]['County Name'].to_list()
-            counties = st.multiselect('Please specify one or more counties', county_list)
-            counties = [_.strip().lower() for _ in counties]
-            if len(counties) > 0:
-                df = get_multiple_counties(counties, state)
+            elif task == 'State':
+                state = st.selectbox("Select a state", STATES).strip()
+                df = get_state_data(state)
 
                 if st.checkbox('Show raw data'):
                     st.subheader('Raw Data')
                     st.dataframe(df)
-                    st.markdown(utils.get_table_download_link(df, state + '_custom_data', 'Download raw data'),
+                    st.markdown(utils.get_table_download_link(df, state + '_data', 'Download raw data'),
                                 unsafe_allow_html=True)
+
                 data_explorer(df, state)
-            else:
-                st.error('Select counties to analyze')
-                st.stop()
 
-        elif task == 'State':
+            elif task == 'National':
+                st.info('National analysis can take some time and be difficult to visualize at the moment.')
+                frames = []
+                for state in STATES:
+                    df = get_state_data(state)
+                    frames.append(df)
+                natl_df = pd.concat(frames)
+                if st.checkbox('Show raw data'):
+                    st.subheader('Raw Data')
+                    st.dataframe(natl_df)
+                    st.markdown(utils.get_table_download_link(natl_df, 'national_data', 'Download raw data'),
+                                unsafe_allow_html=True)
+                data_explorer(natl_df, 'national')
+        
+        else:
+            st.write('## Census Tract Data Explorer')
+            st.write('This interface allows you to see and interact with census tract data in our database. ')
             state = st.selectbox("Select a state", STATES).strip()
-            df = get_state_data(state)
-
-            if st.checkbox('Show raw data'):
-                st.subheader('Raw Data')
-                st.dataframe(df)
-                st.markdown(utils.get_table_download_link(df, state + '_data', 'Download raw data'),
-                            unsafe_allow_html=True)
-
-            data_explorer(df, state)
-
-        elif task == 'National':
-            st.info('National analysis can take some time and be difficult to visualize at the moment.')
-            frames = []
-            for state in STATES:
-                df = get_state_data(state)
-                frames.append(df)
-            natl_df = pd.concat(frames)
-            if st.checkbox('Show raw data'):
-                st.subheader('Raw Data')
-                st.dataframe(natl_df)
-                st.markdown(utils.get_table_download_link(natl_df, 'national_data', 'Download raw data'),
-                            unsafe_allow_html=True)
-            data_explorer(natl_df, 'national')
-
+            county_list = queries.counties_query()
+            county_list = county_list[county_list['State'] == state]['County Name'].to_list()
+            counties = st.selectbox('Please a county', county_list)
+            counties = [_.strip().lower() for _ in counties]
+            # df = get_state_data(state)
 
 if __name__ == '__main__':
     if not os.path.exists('Output'):

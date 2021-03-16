@@ -87,6 +87,18 @@ def counties_query() -> pd.DataFrame:
     conn.close()
     return pd.DataFrame(results, columns=colnames)
 
+@st.cache(suppress_st_warning=True, ttl=60*60)
+def census_tracts_query() -> pd.DataFrame:
+    conn, engine = init_connection()
+    cur = conn.cursor()
+    cur.execute(
+        'SELECT tract_id, wkt as geom '
+        'FROM census_tracts_geom'
+    )
+    colnames = [desc[0] for desc in cur.description]
+    results = cur.fetchall()
+    conn.close()
+    return pd.DataFrame(results, columns=colnames)
 
 @st.cache(suppress_st_warning=True, ttl=60*60)
 def policy_query() -> pd.DataFrame:
