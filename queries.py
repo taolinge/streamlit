@@ -101,6 +101,32 @@ def census_tracts_query() -> pd.DataFrame:
     return pd.DataFrame(results, columns=colnames)
 
 @st.cache(suppress_st_warning=True, ttl=60*60)
+def table_names_query() -> pd.DataFrame:
+    conn, engine = init_connection()
+    cur = conn.cursor()
+    cur.execute("""SELECT table_name FROM information_schema.tables
+        WHERE table_schema = 'public'""")
+    results = cur.fetchall()
+    return pd.DataFrame(results)
+
+@st.cache(suppress_st_warning=True, ttl=60*60)
+def latest_data_census_tracts(state: str, counties: str, tables) -> pd.DataFrame:
+    conn, engine = init_connection()
+    cur = conn.cursor()
+    cur.execute(
+        'SELECT census_tracts_geom.tract_id, id_index '
+        'FROM id_index inner join census_tracts_geom on census_tracts_geom.tract_id = id_index.tract_id '
+        'WHERE id_index.county_name = "Contra Costa County"'
+    )
+    results = cur.fetchall()
+    print(results)
+    return pd.DataFrame(results)
+    print(state)
+    print(counties)
+    print(tables)
+
+
+@st.cache(suppress_st_warning=True, ttl=60*60)
 def policy_query() -> pd.DataFrame:
     conn, engine = init_connection()
     cur = conn.cursor()
@@ -270,6 +296,7 @@ def fmr_data():
 
 
 if __name__ == '__main__':
+    latest_data_census_tracts('California', 'Contra Costa County', 'median_household_income')
     args = {k: v for k, v in [i.split('=') for i in sys.argv[1:] if '=' in i]}
     table = args.get('--table', None)
     output_format = args.get('--output', None)
