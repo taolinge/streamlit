@@ -113,17 +113,14 @@ def table_names_query() -> pd.DataFrame:
 def latest_data_census_tracts(state: str, counties: str, tables) -> pd.DataFrame:
     conn, engine = init_connection()
     cur = conn.cursor()
-    cur.execute(
-        'SELECT census_tracts_geom.tract_id, id_index '
-        'FROM id_index inner join census_tracts_geom on census_tracts_geom.tract_id = id_index.tract_id '
-        'WHERE id_index.county_name = "Contra Costa County"'
-    )
+    query = f"""SELECT {tables}.*, id_index.county_name, id_index.county_id, id_index.state_name
+        FROM id_index inner join {tables} ON {tables}.tract_id = id_index.tract_id
+        WHERE id_index.county_name = '{counties}';"""
+    cur.execute(query)
     results = cur.fetchall()
-    print(results)
+    colnames = [desc[0] for desc in cur.description]
+    df = pd.DataFrame(results, columns=colnames)
     return pd.DataFrame(results)
-    print(state)
-    print(counties)
-    print(tables)
 
 
 @st.cache(suppress_st_warning=True, ttl=60*60)
@@ -296,7 +293,7 @@ def fmr_data():
 
 
 if __name__ == '__main__':
-    latest_data_census_tracts('California', 'Contra Costa County', 'median_household_income')
+    latest_data_census_tracts('California', 'Contra Costa County', 'educational_attainment')
     args = {k: v for k, v in [i.split('=') for i in sys.argv[1:] if '=' in i]}
     table = args.get('--table', None)
     output_format = args.get('--output', None)
