@@ -587,11 +587,10 @@ def run_UI():
             county_list = queries.counties_query()
             county_list = county_list[county_list['State'] == state]['County Name'].to_list()
             counties = st.selectbox('Please a county', county_list)
-            counties = [_.strip().lower() for _ in counties]
             table_list = queries.table_names_query()
             tables = st.multiselect('Please specify one or more datasets to view', table_list)
             tables = [_.strip().lower() for _ in tables]
-            data = queries.latest_data_census_tracts(state, counties, tables)
+            data = queries.latest_data_census_tracts(state, counties, tables[0])
             # df = get_state_data(state)
 
 if __name__ == '__main__':

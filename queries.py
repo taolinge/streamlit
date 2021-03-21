@@ -110,17 +110,16 @@ def table_names_query() -> pd.DataFrame:
     return pd.DataFrame(results)
 
 @st.cache(suppress_st_warning=True, ttl=60*60)
-def latest_data_census_tracts(state: str, counties: str, tables) -> pd.DataFrame:
+def latest_data_census_tracts(state: str, counties, tables) -> pd.DataFrame:
     conn, engine = init_connection()
     cur = conn.cursor()
-    query = f"""SELECT {tables}.*, id_index.county_name, id_index.county_id, id_index.state_name
-        FROM id_index inner join {tables} ON {tables}.tract_id = id_index.tract_id
-        WHERE id_index.county_name = '{counties}';"""
-    cur.execute(query)
+    cur.execute(f"""SELECT {tables}.*, id_index.county_name, id_index.county_id, id_index.state_name
+        FROM {tables} inner join id_index ON {tables}.tract_id = id_index.tract_id
+        WHERE id_index.county_name = '{counties}';""")
     results = cur.fetchall()
     colnames = [desc[0] for desc in cur.description]
     df = pd.DataFrame(results, columns=colnames)
-    return pd.DataFrame(results)
+    return df
 
 
 @st.cache(suppress_st_warning=True, ttl=60*60)
