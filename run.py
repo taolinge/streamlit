@@ -211,6 +211,48 @@ def data_explorer(df: pd.DataFrame, state: str):
                                'Median Age',
                                'Population Below Poverty Line (%)', 'Single Parent Households (%)'])
 
+def census_data_explorer(df: pd.DataFrame, county, state: str, table):
+    feature_labels = list(set(df.columns) - {'County Name', 'county_id'})
+    feature_labels.sort()
+    st.write('''
+            ### View Feature
+            Select a feature to view for each county
+            ''')
+    single_feature = st.selectbox('Feature', feature_labels, 0)
+    visualization.make_census_bar_chart(df, single_feature)
+
+    if state:
+        temp = df.copy()
+        temp.reset_index(inplace=True)
+        tracts = temp['tract_id'].to_list()
+        if state != 'national':
+            st.write(df)
+            geo_df = queries.census_tracts_geom_query(table[0], county, state.lower())
+            # visualization.make_census_map(geo_df, df, single_feature)
+
+    st.write('''
+        ### Compare Features
+        Select two features to compare on the X and Y axes
+        ''')
+    col1, col2, col3 = st.beta_columns(3)
+    with col1:
+        feature_1 = st.selectbox('X Feature', feature_labels, 0)
+    with col2:
+        feature_2 = st.selectbox('Y Feature', feature_labels, 1)
+    if feature_1 and feature_2:
+        scatter_df = df.reset_index()[
+            [feature_1, feature_2, 'county_name', 'population_25_and_over']]
+        scatter = alt.Chart(scatter_df).mark_point() \
+            .encode(x=feature_1 + ':Q', y=feature_2 + ':Q',
+                    tooltip=['county_name', 'population_25_and_over', feature_1, feature_2],
+                    size='population_25_and_over')
+        st.altair_chart(scatter, use_container_width=True)
+
+    # df.drop(['county_id'], axis=1, inplace=True)
+    # make_correlation_plot(df, ['Burdened Households (%)', 'Unemployment Rate (%)', 'VulnerabilityIndex',
+    #                            'Non-White Population (%)', 'Renter Occupied Units', 'Income Inequality (Ratio)',
+    #                            'Median Age',
+    #                            'Population Below Poverty Line (%)', 'Single Parent Households (%)'])
 
 def relative_risk_ranking(df: pd.DataFrame, label: str) -> pd.DataFrame:
     st.subheader('Relative Risk')
@@ -590,8 +632,14 @@ def run_UI():
             table_list = queries.table_names_query()
             tables = st.multiselect('Please specify one or more datasets to view', table_list)
             tables = [_.strip().lower() for _ in tables]
-            data = queries.latest_data_census_tracts(state, counties, tables[0])
-            # df = get_state_data(state)
+            if tables:
+                df = queries.latest_data_census_tracts(state, counties, tables[0])
+                if st.checkbox('Show raw data'):
+                        st.subheader('Raw Data')
+                        st.dataframe(df)
+                        st.markdown(utils.get_table_download_link(df, state + '_data', 'Download raw data'),
+                                    unsafe_allow_html=True)
+                census_data_explorer(df, counties, state, tables)
 
 if __name__ == '__main__':
     if not os.path.exists('Output'):

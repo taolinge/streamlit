@@ -88,13 +88,14 @@ def counties_query() -> pd.DataFrame:
     return pd.DataFrame(results, columns=colnames)
 
 @st.cache(suppress_st_warning=True, ttl=60*60)
-def census_tracts_query() -> pd.DataFrame:
+def census_tracts_geom_query(tables, county, state) -> pd.DataFrame:
     conn, engine = init_connection()
     cur = conn.cursor()
-    cur.execute(
-        'SELECT tract_id, wkt as geom '
-        'FROM census_tracts_geom'
-    )
+    cur.execute(f"""SELECT {tables}.*, id_index.county_name, id_index.county_id, id_index.state_name, census_tracts_geom.WKT
+        FROM {tables} 
+        INNER JOIN id_index ON {tables}.tract_id = id_index.tract_id
+        INNER JOIN census_tracts_geom ON educational_attainment.tract_id = census_tracts_geom.tract_id
+        WHERE id_index.county_name = '{county}';""")
     colnames = [desc[0] for desc in cur.description]
     results = cur.fetchall()
     conn.close()

@@ -69,3 +69,12 @@ def convert_geom(geo_df: pd.DataFrame, data_df: pd.DataFrame, map_features: list
     geo_df['coordinates'] = geo_df.apply(lambda row: convert_coordinates(row), axis=1)
     geojson = make_geojson(geo_df, map_features)
     return geojson
+
+def census_convert_geom(geo_df: pd.DataFrame, data_df: pd.DataFrame, map_features: list) -> dict:
+    data_df = data_df[['county_name'] + map_features]
+    geo_df = geo_df.merge(data_df, on='county_name')
+    geo_df['wkt'] = geo_df.apply(lambda row: row['wkt'].buffer(0), axis=1)
+    geo_df['coordinates'] = geo_df.apply(lambda row: gpd.GeoSeries(row['wkt']).__geo_interface__, axis=1)
+    geo_df['coordinates'] = geo_df.apply(lambda row: convert_coordinates(row), axis=1)
+    geojson = make_geojson(geo_df, map_features)
+    return geojson
