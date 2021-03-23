@@ -87,11 +87,11 @@ def counties_query() -> pd.DataFrame:
     conn.close()
     return pd.DataFrame(results, columns=colnames)
 
-@st.cache(suppress_st_warning=True, ttl=60*60)
+@st.cache(suppress_st_warning=True, ttl=60*60, allow_output_mutation=True)
 def census_tracts_geom_query(tables, county, state) -> pd.DataFrame:
     conn, engine = init_connection()
     cur = conn.cursor()
-    cur.execute(f"""SELECT {tables}.*, id_index.county_name, id_index.county_id, id_index.state_name, census_tracts_geom.WKT
+    cur.execute(f"""SELECT {tables}.*, id_index.county_name, id_index.county_id, id_index.state_name, census_tracts_geom.geom
         FROM {tables} 
         INNER JOIN id_index ON {tables}.tract_id = id_index.tract_id
         INNER JOIN census_tracts_geom ON {tables}.tract_id = census_tracts_geom.tract_id
@@ -99,7 +99,15 @@ def census_tracts_geom_query(tables, county, state) -> pd.DataFrame:
     colnames = [desc[0] for desc in cur.description]
     results = cur.fetchall()
     conn.close()
-    return pd.DataFrame(results, columns=colnames)
+    df = pd.DataFrame(results, columns=colnames)
+    parcels = []
+    for parcel in df['geom']:
+        parcels.append(wkb.loads(parcel, hex=True))
+    geom_df = pd.DataFrame()
+    geom_df['County Name'] = df['county_name']
+    geom_df['geom'] = pd.Series(parcels)
+    conn.close()
+    return geom_df
 
 @st.cache(suppress_st_warning=True, ttl=60*60)
 def table_names_query() -> pd.DataFrame:

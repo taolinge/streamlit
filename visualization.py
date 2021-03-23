@@ -21,10 +21,9 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
     temp = df.copy()
     temp.reset_index(inplace=True)
     # counties = temp['County Name'].to_list()
-
     geojson = utils.convert_geom(geo_df, temp, [map_feature])
-    st.write(geojson)
     merged_df = pd.DataFrame(geojson)
+    # st.write(geojson)
     geo_df["coordinates"] = merged_df["features"].apply(lambda row: row["geometry"]["coordinates"])
     geo_df["name"] = merged_df["features"].apply(lambda row: row["properties"]["name"])
     geo_df[map_feature] = merged_df["features"].apply(lambda row: row["properties"][map_feature])
@@ -65,17 +64,18 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
 def make_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
     temp = df.copy()
     temp.reset_index(inplace=True)
-    geojson = utils.census_convert_geom(geo_df, temp, [map_feature])
+    geojson = utils.convert_geom(geo_df, temp, [map_feature])
+    # st.write(geojson)
     merged_df = pd.DataFrame(geojson)
-    geo_df["wkt"] = geo_df["features"].apply(lambda row: row["geometry"]["wkt"])
-    geo_df["name"] = geo_df["features"].apply(lambda row: row["properties"]["name"])
-    geo_df[map_feature] = geo_df["features"].apply(lambda row: row["properties"][map_feature])
+    geo_df["coordinates"] = merged_df["features"].apply(lambda row: row["geometry"]["coordinates"])
+    geo_df["name"] = merged_df["features"].apply(lambda row: row["properties"]["name"])
+    geo_df[map_feature] = merged_df["features"].apply(lambda row: row["properties"][map_feature])
     scaler = pre.MinMaxScaler()
     norm_df = pd.DataFrame(geo_df[map_feature])
     normalized_vals = scaler.fit_transform(norm_df)
     colors = list(map(color_scale, normalized_vals))
     geo_df['fill_color'] = colors
-    geo_df.drop(['geom', 'county_name'], axis=1, inplace=True)
+    geo_df.drop(['geom', 'County Name'], axis=1, inplace=True)
 
     view_state = pdk.ViewState(
         **{"latitude": 36, "longitude": -95, "zoom": 3, "maxZoom": 16, "pitch": 0, "bearing": 0}

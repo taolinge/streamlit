@@ -2,7 +2,7 @@ import base64
 import pandas as pd
 from six import BytesIO
 import geopandas as gpd
-
+import streamlit as st
 
 def to_excel(df: pd.DataFrame):
     output = BytesIO()
@@ -45,6 +45,7 @@ def make_geojson(geo_df: pd.DataFrame, features: list) -> dict:
 
 
 def convert_coordinates(row) -> list:
+    # st.write(row['coordinates'])
     for f in row['coordinates']['features']:
         new_coords = []
         if f['geometry']['type'] == 'MultiPolygon':
@@ -62,6 +63,8 @@ def convert_coordinates(row) -> list:
 
 
 def convert_geom(geo_df: pd.DataFrame, data_df: pd.DataFrame, map_features: list) -> dict:
+    if 'county_name' in data_df:
+        data_df['County Name'] = data_df['county_name']
     data_df = data_df[['County Name'] + map_features]
     geo_df = geo_df.merge(data_df, on='County Name')
     geo_df['geom'] = geo_df.apply(lambda row: row['geom'].buffer(0), axis=1)
@@ -70,14 +73,12 @@ def convert_geom(geo_df: pd.DataFrame, data_df: pd.DataFrame, map_features: list
     geojson = make_geojson(geo_df, map_features)
     return geojson
 
-def census_convert_geom(df, properties, table):
-    geojson = {'type':'FeatureCollection', 'features':[]}
-    for _, row in df.iterrows():
-        feature = {'type':'Feature',
-                   'properties':{row},
-                   'geometry':{'type':'Multipolygon','coordinates':[row['wkt']]}}
-        feature['geometry']['coordinates'] = [row['wkt']]
-        # for prop in properties:
-            # feature['properties'][prop] = row[prop]
-        geojson['features'].append(feature)
+def census_convert_geom(geo_df: pd.DataFrame, data_df: pd.DataFrame, map_features: list) -> dict:
+    data_df['County Name'] = data_df['county_name']
+    data_df = data_df[['County Name'] + map_features]
+    geo_df = geo_df.merge(data_df, on='County Name')
+    geo_df['geom'] = geo_df.apply(lambda row: row['geom'].buffer(0), axis=1)
+    geo_df['coordinates'] = geo_df.apply(lambda row: gpd.GeoSeries(row['geom']).__geo_interface__, axis=1)
+    geo_df['coordinates'] = geo_df.apply(lambda row: convert_coordinates(row), axis=1)
+    geojson = make_geojson(geo_df, map_features)
     return geojson
