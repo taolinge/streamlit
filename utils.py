@@ -4,6 +4,7 @@ from six import BytesIO
 import geopandas as gpd
 import streamlit as st
 
+
 def to_excel(df: pd.DataFrame):
     output = BytesIO()
     writer = pd.ExcelWriter(output, engine='xlsxwriter')
@@ -34,6 +35,8 @@ def make_geojson(geo_df: pd.DataFrame, features: list) -> dict:
         feature = row['coordinates']['features'][0]
         props = {"name": row['County Name']}
         for f in features:
+            print(row)
+            print(f)
             props.update({f: row[f]})
         feature["properties"] = props
         del feature["id"]
@@ -45,7 +48,6 @@ def make_geojson(geo_df: pd.DataFrame, features: list) -> dict:
 
 
 def convert_coordinates(row) -> list:
-    # st.write(row['coordinates'])
     for f in row['coordinates']['features']:
         new_coords = []
         if f['geometry']['type'] == 'MultiPolygon':
@@ -63,20 +65,15 @@ def convert_coordinates(row) -> list:
 
 
 def convert_geom(geo_df: pd.DataFrame, data_df: pd.DataFrame, map_features: list) -> dict:
-    if 'county_name' in data_df:
-        data_df['County Name'] = data_df['county_name']
-    data_df = data_df[['County Name'] + map_features]
-    geo_df = geo_df.merge(data_df, on='County Name')
-    geo_df['geom'] = geo_df.apply(lambda row: row['geom'].buffer(0), axis=1)
-    geo_df['coordinates'] = geo_df.apply(lambda row: gpd.GeoSeries(row['geom']).__geo_interface__, axis=1)
-    geo_df['coordinates'] = geo_df.apply(lambda row: convert_coordinates(row), axis=1)
-    geojson = make_geojson(geo_df, map_features)
-    return geojson
+    print(data_df.columns)
+    if 'County Name' in data_df:
+        data_df = data_df[['County Name'] + map_features]
+        geo_df = geo_df.merge(data_df, on='County Name')
+    elif 'tract_id' in data_df:
+        data_df['Census Tract'] = data_df['tract_id']
+        data_df = data_df[['Census Tract'] + map_features]
+        geo_df = geo_df.merge(data_df, on='Census Tract')
 
-def census_convert_geom(geo_df: pd.DataFrame, data_df: pd.DataFrame, map_features: list) -> dict:
-    data_df['County Name'] = data_df['county_name']
-    data_df = data_df[['County Name'] + map_features]
-    geo_df = geo_df.merge(data_df, on='County Name')
     geo_df['geom'] = geo_df.apply(lambda row: row['geom'].buffer(0), axis=1)
     geo_df['coordinates'] = geo_df.apply(lambda row: gpd.GeoSeries(row['geom']).__geo_interface__, axis=1)
     geo_df['coordinates'] = geo_df.apply(lambda row: convert_coordinates(row), axis=1)

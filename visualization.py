@@ -23,7 +23,6 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
     # counties = temp['County Name'].to_list()
     geojson = utils.convert_geom(geo_df, temp, [map_feature])
     merged_df = pd.DataFrame(geojson)
-    # st.write(geojson)
     geo_df["coordinates"] = merged_df["features"].apply(lambda row: row["geometry"]["coordinates"])
     geo_df["name"] = merged_df["features"].apply(lambda row: row["properties"]["name"])
     geo_df[map_feature] = merged_df["features"].apply(lambda row: row["properties"][map_feature])
@@ -61,11 +60,11 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
     )
     st.pydeck_chart(r)
 
+
 def make_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
     temp = df.copy()
     temp.reset_index(inplace=True)
     geojson = utils.convert_geom(geo_df, temp, [map_feature])
-    # st.write(geojson)
     merged_df = pd.DataFrame(geojson)
     geo_df["coordinates"] = merged_df["features"].apply(lambda row: row["geometry"]["coordinates"])
     geo_df["name"] = merged_df["features"].apply(lambda row: row["properties"]["name"])
