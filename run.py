@@ -212,7 +212,7 @@ def data_explorer(df: pd.DataFrame, state: str):
                                'Population Below Poverty Line (%)', 'Single Parent Households (%)'])
 
 def census_data_explorer(df: pd.DataFrame, county, state: str, table):
-    feature_labels = list(set(df.columns) - {'County Name', 'county_id'})
+    feature_labels = list(set(df.columns) - {'County Name', 'county_id', 'index', 'county_name'})
     feature_labels.sort()
     st.write('''
             ### View Feature
@@ -226,7 +226,6 @@ def census_data_explorer(df: pd.DataFrame, county, state: str, table):
         temp.reset_index(inplace=True)
         tracts = temp['tract_id'].to_list()
         if state != 'national':
-            st.write(df)
             geo_df = queries.census_tracts_geom_query(table[0], county, state.lower())
             # visualization.make_census_map(geo_df, df, single_feature)
 
@@ -241,11 +240,11 @@ def census_data_explorer(df: pd.DataFrame, county, state: str, table):
         feature_2 = st.selectbox('Y Feature', feature_labels, 1)
     if feature_1 and feature_2:
         scatter_df = df.reset_index()[
-            [feature_1, feature_2, 'county_name', 'population_25_and_over']]
+            [feature_1, feature_2, 'county_name', 'tot_population_census_2010']]
         scatter = alt.Chart(scatter_df).mark_point() \
             .encode(x=feature_1 + ':Q', y=feature_2 + ':Q',
-                    tooltip=['county_name', 'population_25_and_over', feature_1, feature_2],
-                    size='population_25_and_over')
+                    tooltip=['county_name', 'tot_population_census_2010', feature_1, feature_2],
+                    size='tot_population_census_2010')
         st.altair_chart(scatter, use_container_width=True)
 
     # df.drop(['county_id'], axis=1, inplace=True)
@@ -332,7 +331,7 @@ def run_UI():
         page_icon="🏠",
         initial_sidebar_state="expanded")
     st.sidebar.title('Arup Social Data')
-    workflow = st.sidebar.selectbox('Workflow', ['Eviction Analysis', 'Data Explorer'])
+    workflow = st.sidebar.selectbox('Workflow', ['Data Explorer', 'Eviction Analysis'])
     if workflow == 'Data Explorer':
         data_type = st.sidebar.radio("Select data boundary:", ('County Level', 'Census Tracts'), index=0)
     st.sidebar.write("""

@@ -23,6 +23,7 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
     # counties = temp['County Name'].to_list()
 
     geojson = utils.convert_geom(geo_df, temp, [map_feature])
+    st.write(geojson)
     merged_df = pd.DataFrame(geojson)
     geo_df["coordinates"] = merged_df["features"].apply(lambda row: row["geometry"]["coordinates"])
     geo_df["name"] = merged_df["features"].apply(lambda row: row["properties"]["name"])
@@ -66,15 +67,15 @@ def make_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
     temp.reset_index(inplace=True)
     geojson = utils.census_convert_geom(geo_df, temp, [map_feature])
     merged_df = pd.DataFrame(geojson)
-    geo_df["coordinates"] = merged_df["features"].apply(lambda row: row["geometry"]["coordinates"])
-    geo_df["name"] = merged_df["features"].apply(lambda row: row["properties"]["name"])
-    geo_df[map_feature] = merged_df["features"].apply(lambda row: row["properties"][map_feature])
+    geo_df["wkt"] = geo_df["features"].apply(lambda row: row["geometry"]["wkt"])
+    geo_df["name"] = geo_df["features"].apply(lambda row: row["properties"]["name"])
+    geo_df[map_feature] = geo_df["features"].apply(lambda row: row["properties"][map_feature])
     scaler = pre.MinMaxScaler()
     norm_df = pd.DataFrame(geo_df[map_feature])
     normalized_vals = scaler.fit_transform(norm_df)
     colors = list(map(color_scale, normalized_vals))
     geo_df['fill_color'] = colors
-    geo_df.drop(['geom', 'County Name'], axis=1, inplace=True)
+    geo_df.drop(['geom', 'county_name'], axis=1, inplace=True)
 
     view_state = pdk.ViewState(
         **{"latitude": 36, "longitude": -95, "zoom": 3, "maxZoom": 16, "pitch": 0, "bearing": 0}
@@ -84,7 +85,7 @@ def make_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
     polygon_layer = pdk.Layer(
         "PolygonLayer",
         geo_df,
-        get_polygon="coordinates",
+        get_polygon="wkt",
         filled=True,
         stroked=False,
         opacity=0.5,
@@ -113,13 +114,12 @@ def make_correlation_plot(df: pd.DataFrame):
 
 def make_bar_chart(df: pd.DataFrame, feature: str):
     bar_df = pd.DataFrame(df.reset_index()[[feature, 'County Name']])
-    bar = alt.Chart(df).mark_bar() \
+    bar = alt.Chart(bar_df).mark_bar() \
         .encode(x='County Name', y=feature + ':Q',
                 tooltip=['County Name', feature])
     st.altair_chart(bar, use_container_width=True)
 
 def make_census_bar_chart(df: pd.DataFrame, feature: str):
-    # bar_df = pd.DataFrame(df.reset_index()[[feature, 'county_name']])
     bar = alt.Chart(df).mark_bar() \
         .encode(x='tract_id', y=feature + ':Q',
                 tooltip=['tract_id', feature])
