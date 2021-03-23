@@ -31,7 +31,12 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
     normalized_vals = scaler.fit_transform(norm_df)
     colors = list(map(color_scale, normalized_vals))
     geo_df['fill_color'] = colors
-    geo_df.drop(['geom', 'County Name'], axis=1, inplace=True)
+    if 'County Name' in geo_df.columns:
+        geo_df.drop(['geom', 'County Name'], axis=1, inplace=True)
+        tooltip = {"html": "<b>County:</b> {name} </br>" + "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "}"}
+    elif 'Census Tract' in geo_df.columns:
+        geo_df.drop(['geom', 'Census Tract'], axis=1, inplace=True)
+        tooltip = {"html": "<b>Tract:</b> {name} </br>" + "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "}"}
 
     view_state = pdk.ViewState(
         **{"latitude": 36, "longitude": -95, "zoom": 3, "maxZoom": 16, "pitch": 0, "bearing": 0}
@@ -49,8 +54,6 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
         auto_highlight=True,
         pickable=True,
     )
-    # The brackets here are expected for pdk, so string formatting is less friendly
-    tooltip = {"html": "<b>County:</b> {name} </br>" + "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "}"}
 
     r = pdk.Deck(
         layers=[polygon_layer],

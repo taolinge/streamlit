@@ -31,19 +31,28 @@ def output_table(df: pd.DataFrame, path: str):
 
 def make_geojson(geo_df: pd.DataFrame, features: list) -> dict:
     geojson = {"type": "FeatureCollection", "features": []}
-    for i, row in geo_df.iterrows():
-        feature = row['coordinates']['features'][0]
-        props = {"name": row['County Name']}
-        for f in features:
-            print(row)
-            print(f)
-            props.update({f: row[f]})
-        feature["properties"] = props
-        del feature["id"]
-        del feature["bbox"]
-        feature["geometry"]["coordinates"] = [feature["geometry"]["coordinates"]]
-        geojson["features"].append(feature)
-
+    if 'Census Tract' in geo_df.columns:
+        for i, row in geo_df.iterrows():
+            feature = row['coordinates']['features'][0]
+            props = {"name": str(row['Census Tract'])}
+            for f in features:
+                props.update({f: row[f]})
+            feature["properties"] = props
+            del feature["id"]
+            del feature["bbox"]
+            feature["geometry"]["coordinates"] = [feature["geometry"]["coordinates"]]
+            geojson["features"].append(feature)
+    else:
+        for i, row in geo_df.iterrows():
+            feature = row['coordinates']['features'][0]
+            props = {"name": row['County Name']}
+            for f in features:
+                props.update({f: row[f]})
+            feature["properties"] = props
+            del feature["id"]
+            del feature["bbox"]
+            feature["geometry"]["coordinates"] = [feature["geometry"]["coordinates"]]
+            geojson["features"].append(feature)
     return geojson
 
 
@@ -65,7 +74,6 @@ def convert_coordinates(row) -> list:
 
 
 def convert_geom(geo_df: pd.DataFrame, data_df: pd.DataFrame, map_features: list) -> dict:
-    print(data_df.columns)
     if 'County Name' in data_df:
         data_df = data_df[['County Name'] + map_features]
         geo_df = geo_df.merge(data_df, on='County Name')

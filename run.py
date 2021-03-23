@@ -211,6 +211,7 @@ def data_explorer(df: pd.DataFrame, state: str):
                                'Median Age',
                                'Population Below Poverty Line (%)', 'Single Parent Households (%)'])
 
+
 def census_data_explorer(df: pd.DataFrame, county, state: str, table):
     feature_labels = list(set(df.columns) - {'County Name', 'county_id', 'index', 'county_name'})
     feature_labels.sort()
@@ -227,8 +228,7 @@ def census_data_explorer(df: pd.DataFrame, county, state: str, table):
         tracts = temp['tract_id'].to_list()
         if state != 'national':
             geo_df = queries.census_tracts_geom_query(table[0], county, state.lower())
-            st.write(geo_df)
-            visualization.make_census_map(geo_df, df, single_feature)
+            visualization.make_map(geo_df, df, single_feature)
 
     st.write('''
         ### Compare Features
@@ -253,6 +253,7 @@ def census_data_explorer(df: pd.DataFrame, county, state: str, table):
     #                            'Non-White Population (%)', 'Renter Occupied Units', 'Income Inequality (Ratio)',
     #                            'Median Age',
     #                            'Population Below Poverty Line (%)', 'Single Parent Households (%)'])
+
 
 def relative_risk_ranking(df: pd.DataFrame, label: str) -> pd.DataFrame:
     st.subheader('Relative Risk')
@@ -322,8 +323,6 @@ def cost_of_evictions(df, metro_areas, locations):
                  ' housing unit.')
         st.dataframe(cost_df)
     return cost_df
-
-
 
 
 def run_UI():
@@ -621,7 +620,7 @@ def run_UI():
                     st.markdown(utils.get_table_download_link(natl_df, 'national_data', 'Download raw data'),
                                 unsafe_allow_html=True)
                 data_explorer(natl_df, 'national')
-        
+
         else:
             st.write('## Census Tract Data Explorer')
             st.write('This interface allows you to see and interact with census tract data in our database. ')
@@ -635,11 +634,12 @@ def run_UI():
             if tables:
                 df = queries.latest_data_census_tracts(state, counties, tables[0])
                 if st.checkbox('Show raw data'):
-                        st.subheader('Raw Data')
-                        st.dataframe(df)
-                        st.markdown(utils.get_table_download_link(df, state + '_data', 'Download raw data'),
-                                    unsafe_allow_html=True)
+                    st.subheader('Raw Data')
+                    st.dataframe(df)
+                    st.markdown(utils.get_table_download_link(df, state + '_data', 'Download raw data'),
+                                unsafe_allow_html=True)
                 census_data_explorer(df, counties, state, tables)
+
 
 if __name__ == '__main__':
     if not os.path.exists('Output'):
