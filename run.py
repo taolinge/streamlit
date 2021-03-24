@@ -227,8 +227,8 @@ def census_data_explorer(df: pd.DataFrame, county, state: str, table):
         temp.reset_index(inplace=True)
         tracts = temp['tract_id'].to_list()
         if state != 'national':
-            geo_df = queries.census_tracts_geom_query(table[0], county, state.lower())
-            visualization.make_map(geo_df, df, single_feature)
+            # geo_df = queries.census_tracts_geom_query(table[0], county, state.lower())
+            visualization.make_map(df, df, single_feature)
 
     st.write('''
         ### Compare Features
@@ -629,14 +629,23 @@ def run_UI():
             tables = st.multiselect('Please specify one or more datasets to view', table_list)
             tables = [_.strip().lower() for _ in tables]
             if tables:
-                df = queries.latest_data_census_tracts(state, counties, tables[0])
+                df = queries.latest_data_census_tracts(state, counties, tables)
+                st.write(df)
                 if st.checkbox('Show raw data'):
                     st.subheader('Raw Data')
                     st.dataframe(df)
                     st.markdown(utils.get_table_download_link(df, state + '_data', 'Download raw data'),
                                 unsafe_allow_html=True)
-                df['State'] = df['state_name']
-                df['County Name'] = df['county_name']
+                if 'state_name' in df.columns:
+                    df['State'] = df['state_name']
+                if 'county_name' in df.columns:
+                    df['County Name'] = df['county_name']
+                # for col in df.columns:
+                #     st.write(col)
+                #     if col.endswith('_y'):
+                #         df.drop([col])
+                #     if col.endswith('_x'):
+                #         df.rename(columns={col:col.rstrip('_x')}, inplace=True)
                 df.set_index(['State', 'County Name'], drop=True, inplace=True)
                 census_data_explorer(df, counties, state, tables)
 

@@ -74,7 +74,6 @@ def write_table(df: pd.DataFrame, table: str):
     conn.close()
 
 
-
 def counties_query() -> pd.DataFrame:
     conn, engine = init_connection()
     cur = conn.cursor()
@@ -118,16 +117,19 @@ def table_names_query() -> pd.DataFrame:
 def latest_data_census_tracts(state: str, county, tables) -> pd.DataFrame:
     conn, engine = init_connection()
     cur = conn.cursor()
-    cur.execute(f"""SELECT {tables}.*, id_index.county_name, id_index.county_id, id_index.state_name, resident_population_census_tract.tot_population_census_2010
-        FROM {tables} 
-        INNER JOIN id_index ON {tables}.tract_id = id_index.tract_id
-        INNER JOIN resident_population_census_tract ON {tables}.tract_id = resident_population_census_tract.tract_id
-        WHERE id_index.county_name = '{county}';""")
-    results = cur.fetchall()
-    colnames = [desc[0] for desc in cur.description]
-    df = pd.DataFrame(results, columns=colnames)
-    return df
-
+    tracts_df = census_tracts_geom_query(county)
+    for table_name in tables:
+        cur.execute(f"""SELECT {table_name}.*, id_index.county_name, id_index.county_id, id_index.state_name, resident_population_census_tract.tot_population_census_2010
+            FROM {table_name} 
+            INNER JOIN id_index ON {table_name}.tract_id = id_index.tract_id
+            INNER JOIN resident_population_census_tract ON {table_name}.tract_id = resident_population_census_tract.tract_id
+            WHERE id_index.county_name = '{county}';""")
+        results = cur.fetchall()
+        colnames = [desc[0] for desc in cur.description]
+        df = pd.DataFrame(results, columns=colnames)
+        df['Census Tract'] = df['tract_id']
+        tracts_df = tracts_df.merge(df)
+    return tracts_df
 
 
 def policy_query() -> pd.DataFrame:
@@ -141,7 +143,6 @@ def policy_query() -> pd.DataFrame:
     results = cur.fetchall()
     conn.close()
     return pd.DataFrame(results, columns=colnames)
-
 
 
 def latest_data_single_table(table_name: str, require_counties: bool = True) -> pd.DataFrame:
@@ -163,7 +164,6 @@ def latest_data_single_table(table_name: str, require_counties: bool = True) -> 
         counties_df = counties_query()
         df = counties_df.merge(df)
     return df
-
 
 
 def latest_data_all_tables() -> pd.DataFrame:
@@ -253,13 +253,12 @@ def get_county_geoms(counties_list: list, state: str) -> pd.DataFrame:
     return geom_df
 
 
-def census_tracts_geom_query(tables, county, state) -> pd.DataFrame:
+def census_tracts_geom_query(county) -> pd.DataFrame:
     conn, engine = init_connection()
     cur = conn.cursor()
-    cur.execute(f"""SELECT {tables}.*, id_index.county_name, id_index.county_id, id_index.state_name, census_tracts_geom.geom
-        FROM {tables} 
-        INNER JOIN id_index ON {tables}.tract_id = id_index.tract_id
-        INNER JOIN census_tracts_geom ON {tables}.tract_id = census_tracts_geom.tract_id
+    cur.execute(f"""SELECT id_index.county_name, id_index.county_id, id_index.state_name, census_tracts_geom.geom, census_tracts_geom.tract_id
+        FROM census_tracts_geom
+        INNER JOIN id_index ON census_tracts_geom.tract_id = id_index.tract_id
         WHERE id_index.county_name = '{county}';""")
     colnames = [desc[0] for desc in cur.description]
     results = cur.fetchall()
@@ -320,7 +319,7 @@ def fmr_data():
 
 
 if __name__ == '__main__':
-    latest_data_census_tracts('California', 'Contra Costa County', 'educational_attainment')
+    latest_data_census_tracts('California', 'Contra Costa County', ['educational_attainment', 'disability_status'])
     args = {k: v for k, v in [i.split('=') for i in sys.argv[1:] if '=' in i]}
     table = args.get('--table', None)
     output_format = args.get('--output', None)
