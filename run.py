@@ -204,7 +204,7 @@ def data_explorer(df: pd.DataFrame, state: str):
                     tooltip=['County Name', 'Resident Population (Thousands of Persons)', feature_1, feature_2],
                     size='Resident Population (Thousands of Persons)')
         st.altair_chart(scatter, use_container_width=True)
-
+      
     df.drop(['county_id'], axis=1, inplace=True)
     make_correlation_plot(df, ['Burdened Households (%)', 'Unemployment Rate (%)', 'VulnerabilityIndex',
                                'Non-White Population (%)', 'Renter Occupied Units', 'Income Inequality (Ratio)',
@@ -241,18 +241,18 @@ def census_data_explorer(df: pd.DataFrame, county, state: str, table):
         feature_2 = st.selectbox('Y Feature', feature_labels, 1)
     if feature_1 and feature_2:
         scatter_df = df.reset_index()[
-            [feature_1, feature_2, 'county_name', 'tot_population_census_2010']]
+            [feature_1, feature_2, 'tract_id', 'tot_population_census_2010']]
         scatter = alt.Chart(scatter_df).mark_point() \
             .encode(x=feature_1 + ':Q', y=feature_2 + ':Q',
-                    tooltip=['county_name', 'tot_population_census_2010', feature_1, feature_2],
+                    tooltip=['tract_id', 'tot_population_census_2010', feature_1, feature_2],
                     size='tot_population_census_2010')
         st.altair_chart(scatter, use_container_width=True)
 
-    # df.drop(['county_id'], axis=1, inplace=True)
-    # make_correlation_plot(df, ['Burdened Households (%)', 'Unemployment Rate (%)', 'VulnerabilityIndex',
-    #                            'Non-White Population (%)', 'Renter Occupied Units', 'Income Inequality (Ratio)',
-    #                            'Median Age',
-    #                            'Population Below Poverty Line (%)', 'Single Parent Households (%)'])
+    df.drop(['county_id', 'county_name', 'state_name', 'index', 'tract_id', 'tot_population_census_2010'], axis=1, inplace=True)
+    display_columns = []
+    for col in df.columns:
+        display_columns.append(col)  
+    make_correlation_plot(df, display_columns)
 
 
 def relative_risk_ranking(df: pd.DataFrame, label: str) -> pd.DataFrame:
@@ -557,8 +557,6 @@ def run_UI():
             st.write('This interface allows you to see and interact with county data in our database. ')
             task = st.selectbox('How much data do you want to look at?',
                                 ['Single County', 'Multiple Counties', 'State', 'National'], 2)
-            # metro_areas, locations = load_distributions()
-            # if datatype=counties blah blah 
             if task == 'Single County' or task == '':
                 res = st.text_input('Enter the county and state (ie: Jefferson County, Colorado):')
                 if res:
@@ -567,7 +565,6 @@ def run_UI():
                     state = res[1].strip()
                     if county and state:
                         df = get_single_county(county, state)
-                        st.write(df)
                         if st.checkbox('Show raw data'):
                             st.subheader('Raw Data')
                             st.dataframe(df)
@@ -638,6 +635,9 @@ def run_UI():
                     st.dataframe(df)
                     st.markdown(utils.get_table_download_link(df, state + '_data', 'Download raw data'),
                                 unsafe_allow_html=True)
+                df['State'] = df['state_name']
+                df['County Name'] = df['county_name']
+                df.set_index(['State', 'County Name'], drop=True, inplace=True)
                 census_data_explorer(df, counties, state, tables)
 
 

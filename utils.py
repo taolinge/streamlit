@@ -74,7 +74,7 @@ def convert_coordinates(row) -> list:
 
 
 def convert_geom(geo_df: pd.DataFrame, data_df: pd.DataFrame, map_features: list) -> dict:
-    if 'County Name' in data_df:
+    if 'tract_id' not in data_df:
         data_df = data_df[['County Name'] + map_features]
         geo_df = geo_df.merge(data_df, on='County Name')
     elif 'tract_id' in data_df:
