@@ -203,7 +203,6 @@ def latest_data_all_tables() -> pd.DataFrame:
     return counties_df
 
 
-
 def static_data_single_table(table_name: str, columns: list) -> pd.DataFrame:
     conn, engine = init_connection()
     cur = conn.cursor()
@@ -279,7 +278,6 @@ def list_tables():
 
     conn.close()
     return
-
 
 
 def static_data_all_table() -> pd.DataFrame:
