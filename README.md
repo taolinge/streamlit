@@ -103,6 +103,9 @@ To calculate the total cost of evictions for a single month, simply add the cost
 ## Python Users
 We've done our previous analyses in Python, and have built data gathering, cleaning, and analysis functions.
 
+The `credentials.py` file is configured to allow read-only access to an Arup-maintained database of the most recent relevant FRED data. In addition to using these Python scripts, you can connect to this database and run direct SQL queries to get the data you want.
+
+
 ### Install
 In a virtual environment:
 
@@ -117,7 +120,14 @@ To run as a typical Python script, run:
 
 `python run.py --mode script`
 
-The `credentials.py` file is configured to allow read-only access to an Arup-maintained database of the most recent relevant FRED data. In addition to using these Python scripts, you can connect to this database and run direct SQL queries to get the data you want.
+### Docker
+You can also install and run the application locally using Docker:
+
+`docker build . -t app`
+
+`docker run -p 8501:8501 app:latest`
+
+You can access the app on `http://localhost:8501`, even if it shows it's running on different IPs.
 
 ### FRED Queries
 You can get the most recent Federal Reserve Economic Data (FRED) using the following commands:

@@ -74,7 +74,7 @@ def write_table(df: pd.DataFrame, table: str):
     conn.close()
 
 
-# @st.cache(suppress_st_warning=True, ttl=60*60)
+
 def counties_query() -> pd.DataFrame:
     conn, engine = init_connection()
     cur = conn.cursor()
@@ -88,7 +88,48 @@ def counties_query() -> pd.DataFrame:
     return pd.DataFrame(results, columns=colnames)
 
 
-# @st.cache(suppress_st_warning=True, ttl=60*60)
+def table_names_query() -> pd.DataFrame:
+    conn, engine = init_connection()
+    cur = conn.cursor()
+    cur.execute("""SELECT table_name FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name='educational_attainment'
+        OR table_name='disability_status'
+        OR table_name='employment_status'
+        OR table_name='english_proficiency'
+        OR table_name='family_type'
+        OR table_name='hispanic_or_latino_origin_by_race'
+        OR table_name='household_job_availability'
+        OR table_name='household_technology_availability'
+        OR table_name='household_vehicle_availability'
+        OR table_name='housing_units_in_structure'
+        OR table_name='level_of_urbanicity'
+        OR table_name='occupants_per_bedroom'
+        OR table_name='poverty_status'
+        OR table_name='resident_population_census_tract'
+        OR table_name='sex_by_age'
+        OR table_name='sex_of_workers_by_vehicles_available'
+        OR table_name='trip_miles'
+        OR table_name='walkability_index'""")
+    results = cur.fetchall()
+    return pd.DataFrame(results)
+
+
+def latest_data_census_tracts(state: str, county, tables) -> pd.DataFrame:
+    conn, engine = init_connection()
+    cur = conn.cursor()
+    cur.execute(f"""SELECT {tables}.*, id_index.county_name, id_index.county_id, id_index.state_name, resident_population_census_tract.tot_population_census_2010
+        FROM {tables} 
+        INNER JOIN id_index ON {tables}.tract_id = id_index.tract_id
+        INNER JOIN resident_population_census_tract ON {tables}.tract_id = resident_population_census_tract.tract_id
+        WHERE id_index.county_name = '{county}' AND id_index.state_name = '{state}';""")
+    results = cur.fetchall()
+    colnames = [desc[0] for desc in cur.description]
+    df = pd.DataFrame(results, columns=colnames)
+    return df
+
+
+
 def policy_query() -> pd.DataFrame:
     conn, engine = init_connection()
     cur = conn.cursor()
@@ -102,7 +143,7 @@ def policy_query() -> pd.DataFrame:
     return pd.DataFrame(results, columns=colnames)
 
 
-# @st.cache(suppress_st_warning=True, ttl=60*60)
+
 def latest_data_single_table(table_name: str, require_counties: bool = True) -> pd.DataFrame:
     conn, engine = init_connection()
 
@@ -124,7 +165,7 @@ def latest_data_single_table(table_name: str, require_counties: bool = True) -> 
     return df
 
 
-# @st.cache(suppress_st_warning=True, ttl=60*60)
+
 def latest_data_all_tables() -> pd.DataFrame:
     counties_df = counties_query()
     for table_name in fred_tables:
@@ -162,7 +203,7 @@ def latest_data_all_tables() -> pd.DataFrame:
     return counties_df
 
 
-# @st.cache(suppress_st_warning=True, ttl=60*60)
+
 def static_data_single_table(table_name: str, columns: list) -> pd.DataFrame:
     conn, engine = init_connection()
     cur = conn.cursor()
@@ -212,7 +253,28 @@ def get_county_geoms(counties_list: list, state: str) -> pd.DataFrame:
     return geom_df
 
 
-# @st.cache(suppress_st_warning=True, ttl=60*60)
+def census_tracts_geom_query(tables, county, state) -> pd.DataFrame:
+    conn, engine = init_connection()
+    cur = conn.cursor()
+    cur.execute(f"""SELECT {tables}.*, id_index.county_name, id_index.county_id, id_index.state_name, census_tracts_geom.geom
+        FROM {tables} 
+        INNER JOIN id_index ON {tables}.tract_id = id_index.tract_id
+        INNER JOIN census_tracts_geom ON {tables}.tract_id = census_tracts_geom.tract_id
+        WHERE id_index.county_name = '{county}' AND id_index.state_name = '{state}';""")
+    colnames = [desc[0] for desc in cur.description]
+    results = cur.fetchall()
+    conn.close()
+    df = pd.DataFrame(results, columns=colnames)
+    parcels = []
+    for parcel in df['geom']:
+        parcels.append(wkb.loads(parcel, hex=True))
+    geom_df = pd.DataFrame()
+    geom_df['Census Tract'] = df['tract_id']
+    geom_df['geom'] = pd.Series(parcels)
+    conn.close()
+    return geom_df
+
+
 def list_tables():
     conn, engine = init_connection()
 
@@ -220,7 +282,7 @@ def list_tables():
     return
 
 
-# @st.cache(suppress_st_warning=True, ttl=60*60)
+
 def static_data_all_table() -> pd.DataFrame:
     counties_df = counties_query()
     for table_name in static_tables:
@@ -258,6 +320,7 @@ def fmr_data():
 
 
 if __name__ == '__main__':
+    census_tracts_geom_query('educational_attainment', 'Fairfield County', 'Connecticut')
     args = {k: v for k, v in [i.split('=') for i in sys.argv[1:] if '=' in i]}
     table = args.get('--table', None)
     output_format = args.get('--output', None)

@@ -131,3 +131,6 @@ dmypy.json
 
 #Output Query Files
 Output/
+
+#idea
+.idea/

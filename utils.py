@@ -2,6 +2,7 @@ import base64
 import pandas as pd
 from six import BytesIO
 import geopandas as gpd
+import streamlit as st
 
 
 def to_excel(df: pd.DataFrame):
@@ -30,17 +31,28 @@ def output_table(df: pd.DataFrame, path: str):
 
 def make_geojson(geo_df: pd.DataFrame, features: list) -> dict:
     geojson = {"type": "FeatureCollection", "features": []}
-    for i, row in geo_df.iterrows():
-        feature = row['coordinates']['features'][0]
-        props = {"name": row['County Name']}
-        for f in features:
-            props.update({f: row[f]})
-        feature["properties"] = props
-        del feature["id"]
-        del feature["bbox"]
-        feature["geometry"]["coordinates"] = [feature["geometry"]["coordinates"]]
-        geojson["features"].append(feature)
-
+    if 'Census Tract' in geo_df.columns:
+        for i, row in geo_df.iterrows():
+            feature = row['coordinates']['features'][0]
+            props = {"name": str(row['Census Tract'])}
+            for f in features:
+                props.update({f: row[f]})
+            feature["properties"] = props
+            del feature["id"]
+            del feature["bbox"]
+            feature["geometry"]["coordinates"] = [feature["geometry"]["coordinates"]]
+            geojson["features"].append(feature)
+    else:
+        for i, row in geo_df.iterrows():
+            feature = row['coordinates']['features'][0]
+            props = {"name": row['County Name']}
+            for f in features:
+                props.update({f: row[f]})
+            feature["properties"] = props
+            del feature["id"]
+            del feature["bbox"]
+            feature["geometry"]["coordinates"] = [feature["geometry"]["coordinates"]]
+            geojson["features"].append(feature)
     return geojson
 
 
@@ -62,8 +74,14 @@ def convert_coordinates(row) -> list:
 
 
 def convert_geom(geo_df: pd.DataFrame, data_df: pd.DataFrame, map_features: list) -> dict:
-    data_df = data_df[['County Name'] + map_features]
-    geo_df = geo_df.merge(data_df, on='County Name')
+    if 'tract_id' not in data_df:
+        data_df = data_df[['County Name'] + map_features]
+        geo_df = geo_df.merge(data_df, on='County Name')
+    elif 'tract_id' in data_df:
+        data_df['Census Tract'] = data_df['tract_id']
+        data_df = data_df[['Census Tract'] + map_features]
+        geo_df = geo_df.merge(data_df, on='Census Tract')
+
     geo_df['geom'] = geo_df.apply(lambda row: row['geom'].buffer(0), axis=1)
     geo_df['coordinates'] = geo_df.apply(lambda row: gpd.GeoSeries(row['geom']).__geo_interface__, axis=1)
     geo_df['coordinates'] = geo_df.apply(lambda row: convert_coordinates(row), axis=1)
