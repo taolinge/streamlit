@@ -227,7 +227,7 @@ def census_data_explorer(df: pd.DataFrame, county, state: str, table):
         temp.reset_index(inplace=True)
         tracts = temp['tract_id'].to_list()
         if state != 'national':
-            geo_df = queries.census_tracts_geom_query(table[0], county, state.lower())
+            geo_df = queries.census_tracts_geom_query(table[0], county, state)
             visualization.make_map(geo_df, df, single_feature)
 
     st.write('''

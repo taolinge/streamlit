@@ -122,7 +122,7 @@ def latest_data_census_tracts(state: str, county, tables) -> pd.DataFrame:
         FROM {tables} 
         INNER JOIN id_index ON {tables}.tract_id = id_index.tract_id
         INNER JOIN resident_population_census_tract ON {tables}.tract_id = resident_population_census_tract.tract_id
-        WHERE id_index.county_name = '{county}';""")
+        WHERE id_index.county_name = '{county}' AND id_index.state_name = '{state}';""")
     results = cur.fetchall()
     colnames = [desc[0] for desc in cur.description]
     df = pd.DataFrame(results, columns=colnames)
@@ -260,7 +260,7 @@ def census_tracts_geom_query(tables, county, state) -> pd.DataFrame:
         FROM {tables} 
         INNER JOIN id_index ON {tables}.tract_id = id_index.tract_id
         INNER JOIN census_tracts_geom ON {tables}.tract_id = census_tracts_geom.tract_id
-        WHERE id_index.county_name = '{county}';""")
+        WHERE id_index.county_name = '{county}' AND id_index.state_name = '{state}';""")
     colnames = [desc[0] for desc in cur.description]
     results = cur.fetchall()
     conn.close()
@@ -320,7 +320,7 @@ def fmr_data():
 
 
 if __name__ == '__main__':
-    latest_data_census_tracts('California', 'Contra Costa County', 'educational_attainment')
+    census_tracts_geom_query('educational_attainment', 'Fairfield County', 'connecticut')
     args = {k: v for k, v in [i.split('=') for i in sys.argv[1:] if '=' in i]}
     table = args.get('--table', None)
     output_format = args.get('--output', None)
