@@ -32,7 +32,7 @@ class DataSet(object):
 
     def unique_values(self, column: str):
         uniques = list(self.data[column].unique())
-        print(uniques)
+        # print(uniques)
 
         return uniques
 

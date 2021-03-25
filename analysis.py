@@ -139,7 +139,6 @@ def calculate_cost_estimate(df: pd.DataFrame, pct_burdened: float, distribution:
         cost_df = queries.static_data_single_table('fair_market_rents', queries.static_columns['fair_market_rents'])
     elif rent_type == 'rent50':
         cost_df = queries.static_data_single_table('median_rents', queries.static_columns['median_rents'])
-        print(cost_df)
     else:
         raise Exception(
             'Invalid input - {x} is not a valid rent type. Must be either `fmr` (Free Market Rent) or `med` (Median Rent)'.format(
