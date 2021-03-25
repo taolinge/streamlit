@@ -74,7 +74,6 @@ def write_table(df: pd.DataFrame, table: str):
     conn.close()
 
 
-
 def counties_query() -> pd.DataFrame:
     conn, engine = init_connection()
     cur = conn.cursor()
@@ -143,7 +142,6 @@ def policy_query() -> pd.DataFrame:
     return pd.DataFrame(results, columns=colnames)
 
 
-
 def latest_data_single_table(table_name: str, require_counties: bool = True) -> pd.DataFrame:
     conn, engine = init_connection()
 
@@ -163,7 +161,6 @@ def latest_data_single_table(table_name: str, require_counties: bool = True) -> 
         counties_df = counties_query()
         df = counties_df.merge(df)
     return df
-
 
 
 def latest_data_all_tables() -> pd.DataFrame:
@@ -201,7 +198,6 @@ def latest_data_all_tables() -> pd.DataFrame:
     demo_df.drop(['population'], axis=1, inplace=True)
     counties_df = counties_df.merge(demo_df)
     return counties_df
-
 
 
 def static_data_single_table(table_name: str, columns: list) -> pd.DataFrame:
@@ -280,7 +276,6 @@ def list_tables():
 
     conn.close()
     return
-
 
 
 def static_data_all_table() -> pd.DataFrame:
