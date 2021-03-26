@@ -74,6 +74,10 @@ def write_table(df: pd.DataFrame, table: str):
     conn.close()
 
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> develop
 def counties_query() -> pd.DataFrame:
     conn, engine = init_connection()
     cur = conn.cursor()
@@ -142,6 +146,10 @@ def policy_query() -> pd.DataFrame:
     return pd.DataFrame(results, columns=colnames)
 
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> develop
 def latest_data_single_table(table_name: str, require_counties: bool = True) -> pd.DataFrame:
     conn, engine = init_connection()
 
@@ -163,6 +171,12 @@ def latest_data_single_table(table_name: str, require_counties: bool = True) -> 
     return df
 
 
+<<<<<<< HEAD
+=======
+
+def latest_data_all_tables() -> pd.DataFrame:
+    counties_df = counties_query()
+>>>>>>> develop
     for table_name in fred_tables:
         counties_df = counties_df.merge(table_output)
     chmura_df = static_data_single_table('chmura_economic_vulnerability_index', ['VulnerabilityIndex'])
@@ -197,6 +211,10 @@ def latest_data_single_table(table_name: str, require_counties: bool = True) -> 
     return counties_df
 
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> develop
 def static_data_single_table(table_name: str, columns: list) -> pd.DataFrame:
     conn, engine = init_connection()
     cur = conn.cursor()
@@ -275,6 +293,10 @@ def list_tables():
     return
 
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> develop
 def static_data_all_table() -> pd.DataFrame:
     counties_df = counties_query()
     for table_name in static_tables:
@@ -312,7 +334,7 @@ def fmr_data():
 
 
 if __name__ == '__main__':
-    census_tracts_geom_query('educational_attainment', 'Fairfield County', 'connecticut')
+    census_tracts_geom_query('educational_attainment', 'Fairfield County', 'Connecticut')
     args = {k: v for k, v in [i.split('=') for i in sys.argv[1:] if '=' in i]}
     table = args.get('--table', None)
     output_format = args.get('--output', None)
