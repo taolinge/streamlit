@@ -4,8 +4,6 @@ import sys
 
 import pandas as pd
 import streamlit as st
-import seaborn as sns
-import matplotlib.pyplot as plt
 import altair as alt
 
 import queries
@@ -136,23 +134,6 @@ def load_distributions():
     return metro_areas, locations
 
 
-def make_correlation_plot(df: pd.DataFrame, default_cols=[]):
-    st.subheader('Correlation Plot')
-    st.write('''
-    This plot shows how individual features in the database correlate to each other. Values range from -1 to 1. 
-    A value of 1 means that for a positive increase in one feature, there will be an increase in the other by a fixed proportion.
-    A value of -1 means that for a positive increase in one feature, there will be a decrease in the other by a fixed proportion. 
-    A value of 0 means that the two features are unrelated. A higher value can be read as a stronger relationship 
-    (either postive or negative) between the two features.
-    ''')
-    fig, ax = plt.subplots(figsize=(10, 10))
-    df = df.astype('float64')
-    cols_to_compare = st.multiselect('Columns to consider', list(df.columns), default_cols)
-    if len(cols_to_compare) > 2:
-        st.write(sns.heatmap(df[cols_to_compare].corr(), annot=True, linewidths=0.5))
-    st.pyplot(fig)
-
-
 def eviction_visualizations(df: pd.DataFrame, state: str = None):
     if state:
         temp = df.copy()
@@ -206,7 +187,7 @@ def data_explorer(df: pd.DataFrame, state: str):
         st.altair_chart(scatter, use_container_width=True)
       
     df.drop(['county_id'], axis=1, inplace=True)
-    make_correlation_plot(df, ['Burdened Households (%)', 'Unemployment Rate (%)', 'VulnerabilityIndex',
+    visualization.make_correlation_plot(df, ['Burdened Households (%)', 'Unemployment Rate (%)', 'VulnerabilityIndex',
                                'Non-White Population (%)', 'Renter Occupied Units', 'Income Inequality (Ratio)',
                                'Median Age',
                                'Population Below Poverty Line (%)', 'Single Parent Households (%)'])
@@ -252,7 +233,7 @@ def census_data_explorer(df: pd.DataFrame, county, state: str, table):
     display_columns = []
     for col in df.columns:
         display_columns.append(col)  
-    make_correlation_plot(df, display_columns)
+    visualization.make_correlation_plot(df, display_columns)
 
 
 def relative_risk_ranking(df: pd.DataFrame, label: str) -> pd.DataFrame:
@@ -350,11 +331,13 @@ def run_UI():
     with st.sidebar.beta_expander("Credits"):
         """
         This app is the result of hard work by our team:
-        - Angela Wilson
+        - [Angela Wilson 🐦](https://twitter.com/AngelaWilson925) 
         - Sam Lustado
         - Lingyi Chen
         - Kevin McGee
         - [Jared Stock 🐦](https://twitter.com/jaredstock) 
+        - Jen Combs
+        - Zoe Temco
     
         
         Special thanks to Julieta Moradei and Kamini Ayer from New Story, Kristin Maun from the city of Tulsa, 
