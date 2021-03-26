@@ -204,12 +204,55 @@ def data_explorer(df: pd.DataFrame, state: str):
                     tooltip=['County Name', 'Resident Population (Thousands of Persons)', feature_1, feature_2],
                     size='Resident Population (Thousands of Persons)')
         st.altair_chart(scatter, use_container_width=True)
-
+      
     df.drop(['county_id'], axis=1, inplace=True)
     make_correlation_plot(df, ['Burdened Households (%)', 'Unemployment Rate (%)', 'VulnerabilityIndex',
                                'Non-White Population (%)', 'Renter Occupied Units', 'Income Inequality (Ratio)',
                                'Median Age',
                                'Population Below Poverty Line (%)', 'Single Parent Households (%)'])
+
+
+def census_data_explorer(df: pd.DataFrame, county, state: str, table):
+    feature_labels = list(set(df.columns) - {'County Name', 'county_id', 'index', 'county_name'})
+    feature_labels.sort()
+    st.write('''
+            ### View Feature
+            Select a feature to view for each county
+            ''')
+    single_feature = st.selectbox('Feature', feature_labels, 0)
+    visualization.make_census_bar_chart(df, single_feature)
+
+    if state:
+        temp = df.copy()
+        temp.reset_index(inplace=True)
+        tracts = temp['tract_id'].to_list()
+        if state != 'national':
+            geo_df = queries.census_tracts_geom_query(table[0], county, state)
+            visualization.make_map(geo_df, df, single_feature)
+
+    st.write('''
+        ### Compare Features
+        Select two features to compare on the X and Y axes
+        ''')
+    col1, col2, col3 = st.beta_columns(3)
+    with col1:
+        feature_1 = st.selectbox('X Feature', feature_labels, 0)
+    with col2:
+        feature_2 = st.selectbox('Y Feature', feature_labels, 1)
+    if feature_1 and feature_2:
+        scatter_df = df.reset_index()[
+            [feature_1, feature_2, 'tract_id', 'tot_population_census_2010']]
+        scatter = alt.Chart(scatter_df).mark_point() \
+            .encode(x=feature_1 + ':Q', y=feature_2 + ':Q',
+                    tooltip=['tract_id', 'tot_population_census_2010', feature_1, feature_2],
+                    size='tot_population_census_2010')
+        st.altair_chart(scatter, use_container_width=True)
+
+    df.drop(['county_id', 'county_name', 'state_name', 'index', 'tract_id', 'tot_population_census_2010'], axis=1, inplace=True)
+    display_columns = []
+    for col in df.columns:
+        display_columns.append(col)  
+    make_correlation_plot(df, display_columns)
 
 
 def relative_risk_ranking(df: pd.DataFrame, label: str) -> pd.DataFrame:
@@ -282,15 +325,15 @@ def cost_of_evictions(df, metro_areas, locations):
     return cost_df
 
 
-
-
 def run_UI():
     st.set_page_config(
         page_title="Arup Social Data",
         page_icon="🏠",
         initial_sidebar_state="expanded")
     st.sidebar.title('Arup Social Data')
-    workflow = st.sidebar.selectbox('Workflow', ['Eviction Analysis', 'Data Explorer'])
+    workflow = st.sidebar.selectbox('Workflow', ['Data Explorer', 'Eviction Analysis'])
+    if workflow == 'Data Explorer':
+        data_type = st.sidebar.radio("Select data boundary:", ('County Level', 'Census Tracts'), index=0)
     st.sidebar.write("""
     This tool supports analysis of United States county level data from a variety of data sources. There are two workflows: an Eviction
      Analysis workflow, which is specifically focused on evictions as a result of COVID-19, and a Data Explorer workflow,
@@ -509,72 +552,96 @@ def run_UI():
             ranks = relative_risk_ranking(natl_df, 'National')
             eviction_visualizations(ranks, 'National')
     else:
-        st.write('## Data Explorer')
-        st.write('This interface allows you to see and interact with data in our database. ')
-        task = st.selectbox('How much data do you want to look at?',
-                            ['Single County', 'Multiple Counties', 'State', 'National'], 2)
-        # metro_areas, locations = load_distributions()
-        if task == 'Single County' or task == '':
-            res = st.text_input('Enter the county and state (ie: Jefferson County, Colorado):')
-            if res:
-                res = res.strip().split(',')
-                county = res[0].strip()
-                state = res[1].strip()
-                if county and state:
-                    df = get_single_county(county, state)
-                    st.write(df)
+        if data_type == 'County Level':
+            st.write('## County Data Explorer')
+            st.write('This interface allows you to see and interact with county data in our database. ')
+            task = st.selectbox('How much data do you want to look at?',
+                                ['Single County', 'Multiple Counties', 'State', 'National'], 2)
+            if task == 'Single County' or task == '':
+                res = st.text_input('Enter the county and state (ie: Jefferson County, Colorado):')
+                if res:
+                    res = res.strip().split(',')
+                    county = res[0].strip()
+                    state = res[1].strip()
+                    if county and state:
+                        df = get_single_county(county, state)
+                        if st.checkbox('Show raw data'):
+                            st.subheader('Raw Data')
+                            st.dataframe(df)
+                            st.markdown(
+                                utils.get_table_download_link(df, county + '_data', 'Download raw data'),
+                                unsafe_allow_html=True)
+                        data_explorer(df, state)
+
+            elif task == 'Multiple Counties':
+                state = st.selectbox("Select a state", STATES).strip()
+                county_list = queries.counties_query()
+                county_list = county_list[county_list['State'] == state]['County Name'].to_list()
+                counties = st.multiselect('Please specify one or more counties', county_list)
+                counties = [_.strip().lower() for _ in counties]
+                if len(counties) > 0:
+                    df = get_multiple_counties(counties, state)
+
                     if st.checkbox('Show raw data'):
                         st.subheader('Raw Data')
                         st.dataframe(df)
-                        st.markdown(
-                            utils.get_table_download_link(df, county + '_data', 'Download raw data'),
-                            unsafe_allow_html=True)
+                        st.markdown(utils.get_table_download_link(df, state + '_custom_data', 'Download raw data'),
+                                    unsafe_allow_html=True)
                     data_explorer(df, state)
+                else:
+                    st.error('Select counties to analyze')
+                    st.stop()
 
-        elif task == 'Multiple Counties':
-            state = st.selectbox("Select a state", STATES).strip()
-            county_list = queries.counties_query()
-            county_list = county_list[county_list['State'] == state]['County Name'].to_list()
-            counties = st.multiselect('Please specify one or more counties', county_list)
-            counties = [_.strip().lower() for _ in counties]
-            if len(counties) > 0:
-                df = get_multiple_counties(counties, state)
+            elif task == 'State':
+                state = st.selectbox("Select a state", STATES).strip()
+                df = get_state_data(state)
 
                 if st.checkbox('Show raw data'):
                     st.subheader('Raw Data')
                     st.dataframe(df)
-                    st.markdown(utils.get_table_download_link(df, state + '_custom_data', 'Download raw data'),
+                    st.markdown(utils.get_table_download_link(df, state + '_data', 'Download raw data'),
                                 unsafe_allow_html=True)
+
                 data_explorer(df, state)
-            else:
-                st.error('Select counties to analyze')
-                st.stop()
 
-        elif task == 'State':
+            elif task == 'National':
+                st.info('National analysis can take some time and be difficult to visualize at the moment.')
+                frames = []
+                for state in STATES:
+                    df = get_state_data(state)
+                    frames.append(df)
+                natl_df = pd.concat(frames)
+                if st.checkbox('Show raw data'):
+                    st.subheader('Raw Data')
+                    st.dataframe(natl_df)
+                    st.markdown(utils.get_table_download_link(natl_df, 'national_data', 'Download raw data'),
+                                unsafe_allow_html=True)
+                data_explorer(natl_df, 'national')
+
+        else:
+            st.write('## Census Tract Data Explorer')
+            st.write("""
+                This interface allows you to see and interact with census tract data in our database. The census tract data explorer
+                is in development and there are known bugs.  
+            """)
             state = st.selectbox("Select a state", STATES).strip()
-            df = get_state_data(state)
-
-            if st.checkbox('Show raw data'):
-                st.subheader('Raw Data')
-                st.dataframe(df)
-                st.markdown(utils.get_table_download_link(df, state + '_data', 'Download raw data'),
-                            unsafe_allow_html=True)
-
-            data_explorer(df, state)
-
-        elif task == 'National':
-            st.info('National analysis can take some time and be difficult to visualize at the moment.')
-            frames = []
-            for state in STATES:
-                df = get_state_data(state)
-                frames.append(df)
-            natl_df = pd.concat(frames)
-            if st.checkbox('Show raw data'):
-                st.subheader('Raw Data')
-                st.dataframe(natl_df)
-                st.markdown(utils.get_table_download_link(natl_df, 'national_data', 'Download raw data'),
-                            unsafe_allow_html=True)
-            data_explorer(natl_df, 'national')
+            county_list = queries.counties_query()
+            county_list = county_list[county_list['State'] == state]['County Name'].to_list()
+            counties = st.selectbox('Please a county', county_list)
+            table_list = queries.table_names_query()
+            tables = st.multiselect('Please specify one or more datasets to view', table_list)
+            tables = [_.strip().lower() for _ in tables]
+            if tables:
+                df = queries.latest_data_census_tracts(state, counties, tables[0])
+                if st.checkbox('Show raw data'):
+                    st.subheader('Raw Data')
+                    st.dataframe(df)
+                    st.markdown(utils.get_table_download_link(df, state + '_data', 'Download raw data'),
+                                unsafe_allow_html=True)
+                df['State'] = df['state_name']
+                df['County Name'] = df['county_name']
+                df.set_index(['State', 'County Name'], drop=True, inplace=True)
+                census_data_explorer(df, counties, state, tables)
 
 
 if __name__ == '__main__':
