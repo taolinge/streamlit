@@ -24,13 +24,9 @@ defusedxml==0.7.1
 entrypoints==0.3
 enum-compat==0.0.3
 et-xmlfile==1.0.1
-<<<<<<< HEAD
-geopandas==0.8.1
-=======
 Fiona==1.8.18
 geojson==2.5.0
 geopandas==0.9.0
->>>>>>> master
 gitdb==4.0.5
 GitPython==3.1.14
 greenlet==1.0.0
@@ -70,14 +66,6 @@ parso==0.8.1
 pathtools==0.1.2
 pexpect==4.8.0
 pickleshare==0.7.5
-<<<<<<< HEAD
-Pillow==7.2.0
-prometheus-client==0.8.0
-prompt-toolkit==3.0.8
-protobuf==3.13.0
-psycopg2-binary==2.8.5
-ptyprocess==0.6.0
-=======
 Pillow==8.1.2
 prometheus-client==0.9.0
 prompt-toolkit==3.0.17
@@ -85,23 +73,11 @@ protobuf==3.15.6
 psycopg2-binary==2.8.6
 ptyprocess==0.7.0
 pyarrow==3.0.0
->>>>>>> master
 pycparser==2.20
 pydeck==0.6.1
 Pygments==2.8.1
 pyinstaller-hooks-contrib==2021.1
 pyparsing==2.4.7
-<<<<<<< HEAD
-pyrsistent==0.16.0
-python-dateutil==2.8.1
-pytz==2020.1
-PyYAML==5.3.1
-pyzmq==19.0.2
-requests==2.24.0
-s3transfer==0.3.3
-scikit-learn==0.23.2
-seaborn==0.11.0
-=======
 pyproj==3.0.1
 pyrsistent==0.17.3
 python-dateutil==2.8.1
@@ -113,7 +89,6 @@ s3transfer==0.3.4
 scikit-learn==0.24.1
 scipy==1.6.1
 seaborn==0.11.1
->>>>>>> master
 Send2Trash==1.5.0
 Shapely==1.7.1
 six==1.15.0

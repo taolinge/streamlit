@@ -620,7 +620,10 @@ def run_UI():
 
         else:
             st.write('## Census Tract Data Explorer')
-            st.write('This interface allows you to see and interact with census tract data in our database. ')
+            st.write("""
+                This interface allows you to see and interact with census tract data in our database. The census tract data explorer
+                is in development and there are known bugs.  Please check back for continuous improvements.  
+            """)
             state = st.selectbox("Select a state", STATES).strip()
             county_list = queries.counties_query()
             county_list = county_list[county_list['State'] == state]['County Name'].to_list()

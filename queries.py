@@ -252,13 +252,14 @@ def get_county_geoms(counties_list: list, state: str) -> pd.DataFrame:
     return geom_df
 
 
-def census_tracts_geom_query(county) -> pd.DataFrame:
+def census_tracts_geom_query(tables, county, state) -> pd.DataFrame:
     conn, engine = init_connection()
     cur = conn.cursor()
-    cur.execute(f"""SELECT id_index.county_name, id_index.county_id, id_index.state_name, census_tracts_geom.geom, census_tracts_geom.tract_id
-        FROM census_tracts_geom
-        INNER JOIN id_index ON census_tracts_geom.tract_id = id_index.tract_id
-        WHERE id_index.county_name = '{county}';""")
+    cur.execute(f"""SELECT {tables}.*, id_index.county_name, id_index.county_id, id_index.state_name, census_tracts_geom.geom
+        FROM {tables} 
+        INNER JOIN id_index ON {tables}.tract_id = id_index.tract_id
+        INNER JOIN census_tracts_geom ON {tables}.tract_id = census_tracts_geom.tract_id
+        WHERE id_index.county_name = '{county}' AND id_index.state_name = '{state}';""")
     colnames = [desc[0] for desc in cur.description]
     results = cur.fetchall()
     conn.close()
