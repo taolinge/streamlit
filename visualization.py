@@ -75,41 +75,36 @@ def make_correlation_plot(df: pd.DataFrame, default_cols=[]):
     ''')
     cols_to_compare = st.multiselect('Columns to consider', list(df.columns), default_cols)
     if len(cols_to_compare) > 2:
-        df_corr=df[cols_to_compare].corr().stack().reset_index().rename(
+        df_corr = df[cols_to_compare].corr().stack().reset_index().rename(
             columns={0: 'correlation', 'level_0': 'variable', 'level_1': 'variable2'})
         df_corr['correlation_label'] = df_corr['correlation'].map('{:.2f}'.format)
         st.write(df_corr)
-        # st.write(sns.heatmap(, annot=True, linewidths=0.5))
 
-    base = alt.Chart(df_corr).encode(
-        x='variable2:O',
-        y='variable:O'
-    )
-
-    # Text layer with correlation labels
-    # Colors are for easier readability
-    text = base.mark_text().encode(
-        text='correlation_label',
-        color=alt.condition(
-            alt.datum.correlation > 0.5,
-            alt.value('white'),
-            alt.value('black')
+        base = alt.Chart(df_corr).encode(
+            x='variable2:O',
+            y='variable:O'
         )
-    )
 
-    # The correlation heatmap itself
-    cor_plot = base.mark_rect().encode(
-        color='correlation:Q',
-    ).properties(
-    width=700,
-    height=700
-)
+        # Text layer with correlation labels
+        # Colors are for easier readability
+        text = base.mark_text().encode(
+            text='correlation_label',
+            color=alt.condition(
+                alt.datum.correlation > 0.5,
+                alt.value('white'),
+                alt.value('black')
+            )
+        )
 
-    st.altair_chart(cor_plot+text)
+        # The correlation heatmap itself
+        cor_plot = base.mark_rect().encode(
+            color='correlation:Q',
+        ).properties(
+            width=700,
+            height=700
+        )
 
-    # fig, ax = plt.subplots(figsize=(10, 10))
-    # st.write(sns.heatmap(df.corr(), annot=True, linewidths=0.5))
-    # st.pyplot(fig)
+        st.altair_chart(cor_plot + text)
 
 
 def make_bar_chart(df: pd.DataFrame, feature: str):

@@ -331,11 +331,13 @@ def run_UI():
     with st.sidebar.beta_expander("Credits"):
         """
         This app is the result of hard work by our team:
-        - Angela Wilson
+        - [Angela Wilson 🐦](https://twitter.com/AngelaWilson925) 
         - Sam Lustado
         - Lingyi Chen
         - Kevin McGee
         - [Jared Stock 🐦](https://twitter.com/jaredstock) 
+        - Jen Combs
+        - Zoe Temco
     
         
         Special thanks to Julieta Moradei and Kamini Ayer from New Story, Kristin Maun from the city of Tulsa, 
