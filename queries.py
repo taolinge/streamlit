@@ -74,10 +74,6 @@ def write_table(df: pd.DataFrame, table: str):
     conn.close()
 
 
-<<<<<<< HEAD
-=======
-
->>>>>>> develop
 def counties_query() -> pd.DataFrame:
     conn, engine = init_connection()
     cur = conn.cursor()
@@ -146,10 +142,6 @@ def policy_query() -> pd.DataFrame:
     return pd.DataFrame(results, columns=colnames)
 
 
-<<<<<<< HEAD
-=======
-
->>>>>>> develop
 def latest_data_single_table(table_name: str, require_counties: bool = True) -> pd.DataFrame:
     conn, engine = init_connection()
 
@@ -171,13 +163,11 @@ def latest_data_single_table(table_name: str, require_counties: bool = True) -> 
     return df
 
 
-<<<<<<< HEAD
-=======
 
 def latest_data_all_tables() -> pd.DataFrame:
     counties_df = counties_query()
->>>>>>> develop
     for table_name in fred_tables:
+        table_output = latest_data_single_table(table_name, require_counties=False)
         counties_df = counties_df.merge(table_output)
     chmura_df = static_data_single_table('chmura_economic_vulnerability_index', ['VulnerabilityIndex'])
     counties_df = counties_df.merge(chmura_df)
@@ -211,10 +201,6 @@ def latest_data_all_tables() -> pd.DataFrame:
     return counties_df
 
 
-<<<<<<< HEAD
-=======
-
->>>>>>> develop
 def static_data_single_table(table_name: str, columns: list) -> pd.DataFrame:
     conn, engine = init_connection()
     cur = conn.cursor()
