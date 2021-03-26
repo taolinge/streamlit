@@ -293,10 +293,6 @@ def list_tables():
     return
 
 
-<<<<<<< HEAD
-=======
-
->>>>>>> develop
 def static_data_all_table() -> pd.DataFrame:
     counties_df = counties_query()
     for table_name in static_tables:
