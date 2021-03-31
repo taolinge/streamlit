@@ -10,7 +10,7 @@ Not a developer? Just don't want to code today? No problem! You can access the d
 
 [https://share.streamlit.io/arup-group/social-data/run.py](https://share.streamlit.io/arup-group/social-data/run.py)
 
-## Python Users
+## Python Usage
 We've done our previous analyses in Python, and have built data gathering, cleaning, and analysis functions.
 
 The `credentials.py` file is configured to allow read-only access to an Arup-maintained database of the most recent relevant FRED data. In addition to using these Python scripts, you can connect to this database and run direct SQL queries to get the data you want.
@@ -39,7 +39,7 @@ You can also install and run the application locally using Docker:
 
 You can access the app on `http://localhost:8501`.
 
-### Database Users
+## Database Usage
 The PostgreSQL database that this repository uses is open for *read-only* access. The connection details are stored in `credentials.py` if you're using the Python workflow.
 
 If you'd like to query the database directly using the method of your choice, you can access it using the credentials below:
@@ -52,7 +52,7 @@ DB_USER = readuser
 DB_PASSWORD = password
 ```
 
-## Usage
+## Workflows
 This repository currently two primary workflows:
 
 1. Viewing and examining the data in the database and downloading raw data for your own analysis
@@ -70,25 +70,51 @@ There are three ways to interact with this data.
 - Python scripts - Include functions to gather, clean, and analyze data to output a relative risk ranking for multiple counties. Can be extended with your own scripts. 
 - Custom SQL Queries - SQL that you write to get the most recent data from our database and use however you want. 
 
-### About the data
+## About the data
+We currently have almost 40 tables in the database, representing over 2 million rows of data.
+
 This data is the most recent data we could get, but some datasets are updated more frequently than others. You can see the date that the data was updated in `all_tables.xlsx`. We refresh the data monthly on the first of the month. Some datasets are at the county level and some are at the census tract level. The following datasets are currently in the database:
 
-| Feature Name | Source | Updated | Notes | 
-| ------------ | ------ | ------- | ----- |
-| Burdened Households (%) | [FRED](https://fred.stlouisfed.org/) | 1/1/2018 | People who pay more than 30 percent of their income towards rent |
-| Home Ownership (%) | [FRED](https://fred.stlouisfed.org/) | 1/1/2018 | This field has been superseded by the renter occupied housing units value from the demographic data. |
-| Income Inequality (Ratio) | [FRED](https://fred.stlouisfed.org/) | 1/1/2018 | |
-| Population Below Poverty Line (%) | [FRED](https://fred.stlouisfed.org/) | 1/1/2018 | |
-| Single Parent Households (%) | [FRED](https://fred.stlouisfed.org/) | 1/1/2018 | |
-| SNAP Benefits Recipients (Persons) | [FRED](https://fred.stlouisfed.org/) | 1/1/2017 | This field is no longer used in our analysis, but exists in the database. |
-| Unemployment Rate (%) | [FRED](https://fred.stlouisfed.org/) | 6/1/2020 | |
-| Resident Population (Thousands of Persons) | [FRED](https://fred.stlouisfed.org/) | 1/1/2019 | Used to convert percentages to raw population|
-| COVID Vulnerability Index | [CHMURA](http://www.chmuraecon.com/interactive/covid-19-economic-vulnerability-index/) | 4/15/2020 | An index from CHMURA to represent how vulnerable counties across the US are to COVID-related economic effects. |
-| Fair Market Rents | [HUD](https://www.huduser.gov/portal/datasets/fmr.html#2021_data) | 10/1/2020 | Represents the estimated amount (base rent + essential utilities) that a property in a given area typically rents for|
-| Median Rents | [HUD](https://www.huduser.gov/PORTAL/datasets/50per.html) | 2021 | Rent estimates at the 50th percentile (or median)  calculated for all Fair Market Rent areas|
-| Housing Stock Distributions | [US Census](https://www.census.gov/programs-surveys/ahs/data/interactive/ahstablecreator.html?s_areas=00000&s_year=2017&s_tablename=TABLE2&s_bygroup1=1&s_bygroup2=1&s_filtergroup1=1&s_filtergroup2=1) | 2017 | Distribution of housing units in the US by number of bedrooms. Defaults to the national distribution, but includes data for the top 15 metro areas in the US. Includes percentage and estimated housing units. |
-| County Geometries | [US Census](https://catalog.data.gov/dataset/tiger-line-shapefile-2017-nation-u-s-current-county-and-equivalent-national-shapefile) | 2017 | PostGIS compatible geometry data |
-| Demographics | [ArcGIS](https://hub.arcgis.com/datasets/48f9af87daa241c4b267c5931ad3b226_0) | 2017 | We currently pull in a number of fields here including each race & ethnicity break down, the count of males and females, median age, the number of housing units, vacant units, and renter occupied units. |
+| Feature Name | Resolution | Source | Updated | Notes | 
+| ------------ | ---------- | ------ | ------- | ----- |
+| ID Index | All | -- | 2021 | Arup-developed index of State, County, and Census tract IDs to query between tables |
+| Burdened Households (%) | County | [FRED](https://fred.stlouisfed.org/) | 1/1/2018 | People who pay more than 30 percent of their income towards rent |
+| Home Ownership (%) | County | [FRED](https://fred.stlouisfed.org/) | 1/1/2018 | This field has been superseded by the renter occupied housing units value from the demographic data. |
+| Income Inequality (Ratio) | County | [FRED](https://fred.stlouisfed.org/) | 1/1/2018 | |
+| Population Below Poverty Line (%) | County | [FRED](https://fred.stlouisfed.org/) | 1/1/2018 | |
+| Single Parent Households (%) | County | [FRED](https://fred.stlouisfed.org/) | 1/1/2018 | |
+| SNAP Benefits Recipients (Persons) | County | [FRED](https://fred.stlouisfed.org/) | 1/1/2017 | This field is no longer used in our analysis, but exists in the database. |
+| Unemployment Rate (%) | County | [FRED](https://fred.stlouisfed.org/) | 6/1/2020 | |
+| Resident Population (Thousands of Persons) | County | [FRED](https://fred.stlouisfed.org/) | 1/1/2019 | Used to convert percentages to raw population|
+| Resident Population | Census Tract | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
+| COVID Vulnerability Index | County | [CHMURA](http://www.chmuraecon.com/interactive/covid-19-economic-vulnerability-index/) | 4/15/2020 | An index from CHMURA to represent how vulnerable counties across the US are to COVID-related economic effects. |
+| Fair Market Rents | County | [HUD](https://www.huduser.gov/portal/datasets/fmr.html#2021_data) | 10/1/2020 | Represents the estimated amount (base rent + essential utilities) that a property in a given area typically rents for|
+| Median Rents | County | [HUD](https://www.huduser.gov/PORTAL/datasets/50per.html) | 2021 | Rent estimates at the 50th percentile (or median)  calculated for all Fair Market Rent areas|
+| Housing Stock Distributions | County | [US Census](https://www.census.gov/programs-surveys/ahs/data/interactive/ahstablecreator.html?s_areas=00000&s_year=2017&s_tablename=TABLE2&s_bygroup1=1&s_bygroup2=1&s_filtergroup1=1&s_filtergroup2=1) | 2017 | Distribution of housing units in the US by number of bedrooms. Defaults to the national distribution, but includes data for the top 15 metro areas in the US. Includes percentage and estimated housing units. |
+| County Geometries | County | [US Census](https://catalog.data.gov/dataset/tiger-line-shapefile-2017-nation-u-s-current-county-and-equivalent-national-shapefile) | 2017 | PostGIS compatible geometry data |
+| Socio-Demographics | County | [ArcGIS](https://hub.arcgis.com/datasets/48f9af87daa241c4b267c5931ad3b226_0) | 2017 | A collection of fields including each race & ethnicity break down, the count of males and females, median age, the number of housing units, vacant units, renter occupied units, and more. |
+| Census Tract Geometries | Census Tracts | -- | 2010 | |
+| English Proficiency | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
+| Group Quarters Population | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
+| Housing Units in Structure | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
+| Occupants per Bedroom | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
+| Median Household Income | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
+| Employment Status | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
+| Per Capita Income | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
+| Disability Status | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
+| Poverty Status | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
+| Family Type | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
+| Educational Attainment | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
+| Hispanic or Latino Origin by Race | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
+| Sex by Age | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
+| Sex of Workers by Vehicles Available | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
+| Household Job Availability | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2013 | |
+| Household Technology Availability | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs)| 2013 | |
+| Household Vehicle Availability | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs)| 2013 | |
+| National Walkability Index | Census Tracts | [EPA](https://www.epa.gov/smartgrowth/smart-location-mapping#SLD) | 2012 | |
+| Trip Miles | Census Tracts | [BTS](https://www.bts.gov/latch/latch-data) | 2013 | |
+| Level of Urbanicity | Census Tracts | [EPA](https://www.epa.gov/smartgrowth/smart-location-mapping#SLD) | 2013 | |
+
 
 If you have datasets you'd like to see included, please create an Issue.
  
