@@ -213,7 +213,7 @@ def data_explorer(df: pd.DataFrame, state: str):
 
 
 def census_data_explorer(df: pd.DataFrame, county, state: str, table):
-    feature_labels = list(set(df.columns) - {'County Name', 'county_id', 'index', 'county_name'})
+    feature_labels = list(set(df.columns) - {'County Name', 'county_id', 'index', 'county_name', 'Census Tract'})
     feature_labels.sort()
     st.write('''
             ### View Feature
@@ -223,11 +223,7 @@ def census_data_explorer(df: pd.DataFrame, county, state: str, table):
     visualization.make_census_bar_chart(df, single_feature)
 
     if state:
-        temp = df.copy()
-        temp.reset_index(inplace=True)
-        tracts = temp['tract_id'].to_list()
         if state != 'national':
-            # geo_df = queries.census_tracts_geom_query(table[0], county, state.lower())
             visualization.make_map(df, df, single_feature)
 
     st.write('''
@@ -240,18 +236,17 @@ def census_data_explorer(df: pd.DataFrame, county, state: str, table):
     with col2:
         feature_2 = st.selectbox('Y Feature', feature_labels, 1)
     if feature_1 and feature_2:
-        scatter_df = df.reset_index()[
+        scatter_df = df.reset_index(drop=True)[
             [feature_1, feature_2, 'tract_id', 'tot_population_census_2010']]
         scatter = alt.Chart(scatter_df).mark_point() \
             .encode(x=feature_1 + ':Q', y=feature_2 + ':Q',
                     tooltip=['tract_id', 'tot_population_census_2010', feature_1, feature_2],
                     size='tot_population_census_2010')
         st.altair_chart(scatter, use_container_width=True)
-
-    df.drop(['county_id', 'county_name', 'state_name', 'index', 'tract_id', 'tot_population_census_2010'], axis=1, inplace=True)
+    df.drop(['county_id', 'county_name', 'state_name', 'index', 'tract_id', 'tot_population_census_2010', 'Census Tract', 'State', 'level_0', 'coordinates', 'name', 'fill_color'], axis=1, inplace=True)
     display_columns = []
     for col in df.columns:
-        display_columns.append(col)  
+        display_columns.append(col) 
     make_correlation_plot(df, display_columns)
 
 
@@ -633,7 +628,6 @@ def run_UI():
             tables = [_.strip().lower() for _ in tables]
             if tables:
                 df = queries.latest_data_census_tracts(state, counties, tables)
-                st.write(df)
                 if st.checkbox('Show raw data'):
                     st.subheader('Raw Data')
                     st.dataframe(df)
@@ -643,12 +637,6 @@ def run_UI():
                     df['State'] = df['state_name']
                 if 'county_name' in df.columns:
                     df['County Name'] = df['county_name']
-                # for col in df.columns:
-                #     st.write(col)
-                #     if col.endswith('_y'):
-                #         df.drop([col])
-                #     if col.endswith('_x'):
-                #         df.rename(columns={col:col.rstrip('_x')}, inplace=True)
                 df.set_index(['State', 'County Name'], drop=True, inplace=True)
                 census_data_explorer(df, counties, state, tables)
 

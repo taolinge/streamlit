@@ -117,13 +117,13 @@ def table_names_query() -> pd.DataFrame:
 def latest_data_census_tracts(state: str, county, tables) -> pd.DataFrame:
     conn, engine = init_connection()
     cur = conn.cursor()
-    tracts_df = census_tracts_geom_query(county)
+    tracts_df = census_tracts_geom_query(county, state)
     for table_name in tables:
         cur.execute(f"""SELECT {table_name}.*, id_index.county_name, id_index.county_id, id_index.state_name, resident_population_census_tract.tot_population_census_2010
             FROM {table_name} 
             INNER JOIN id_index ON {table_name}.tract_id = id_index.tract_id
             INNER JOIN resident_population_census_tract ON {table_name}.tract_id = resident_population_census_tract.tract_id
-            WHERE id_index.county_name = '{county}';""")
+            WHERE id_index.county_name = '{county}' AND id_index.state_name = '{state}';""")
         results = cur.fetchall()
         colnames = [desc[0] for desc in cur.description]
         df = pd.DataFrame(results, columns=colnames)
@@ -252,14 +252,15 @@ def get_county_geoms(counties_list: list, state: str) -> pd.DataFrame:
     return geom_df
 
 
-def census_tracts_geom_query(tables, county, state) -> pd.DataFrame:
+def census_tracts_geom_query(county, state) -> pd.DataFrame:
     conn, engine = init_connection()
     cur = conn.cursor()
-    cur.execute(f"""SELECT {tables}.*, id_index.county_name, id_index.county_id, id_index.state_name, census_tracts_geom.geom
-        FROM {tables} 
-        INNER JOIN id_index ON {tables}.tract_id = id_index.tract_id
-        INNER JOIN census_tracts_geom ON {tables}.tract_id = census_tracts_geom.tract_id
-        WHERE id_index.county_name = '{county}' AND id_index.state_name = '{state}';""")
+    cur.execute(f"""
+        SELECT id_index.county_name, id_index.state_name, census_tracts_geom.tract_id, census_tracts_geom.geom
+        FROM id_index
+        INNER JOIN census_tracts_geom ON census_tracts_geom.tract_id=id_index.tract_id
+        WHERE id_index.county_name = '{county}' AND id_index.state_name = '{state}';
+    """)
     colnames = [desc[0] for desc in cur.description]
     results = cur.fetchall()
     conn.close()

@@ -42,7 +42,7 @@ def make_geojson(geo_df: pd.DataFrame, features: list) -> dict:
             del feature["bbox"]
             feature["geometry"]["coordinates"] = [feature["geometry"]["coordinates"]]
             geojson["features"].append(feature)
-    else:
+    elif 'Census Tract' not in geo_df.columns:
         for i, row in geo_df.iterrows():
             feature = row['coordinates']['features'][0]
             props = {"name": row['County Name']}
@@ -53,7 +53,6 @@ def make_geojson(geo_df: pd.DataFrame, features: list) -> dict:
             del feature["bbox"]
             feature["geometry"]["coordinates"] = [feature["geometry"]["coordinates"]]
             geojson["features"].append(feature)
-    st.write(geojson)
     return geojson
 
 
@@ -78,20 +77,9 @@ def convert_geom(geo_df: pd.DataFrame, data_df: pd.DataFrame, map_features: list
     if 'tract_id' not in data_df:
         data_df = data_df[['County Name'] + map_features]
         geo_df = geo_df.merge(data_df, on='County Name')
-        for col in geo_df.columns:
-            if col.endswith('_y'):
-                geo_df.drop([col])
-            if col.endswith('_x'):
-                geo_df.rename(columns={col:col.rstrip('_x')}, inplace=True)
     elif 'tract_id' in data_df:
-        geo_df['Census Tract'] = data_df['tract_id']
         geo_df = data_df[['Census Tract']]
         geo_df = geo_df.merge(data_df, on='Census Tract')
-        for col in geo_df.columns:
-            if col.endswith('_y'):
-                geo_df.drop([col])
-            if col.endswith('_x'):
-                geo_df.rename(columns={col:col.rstrip('_x')}, inplace=True)
     geo_df['geom'] = geo_df.apply(lambda row: row['geom'].buffer(0), axis=1)
     geo_df['coordinates'] = geo_df.apply(lambda row: gpd.GeoSeries(row['geom']).__geo_interface__, axis=1)
     geo_df['coordinates'] = geo_df.apply(lambda row: convert_coordinates(row), axis=1)
