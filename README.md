@@ -10,11 +10,55 @@ Not a developer? Just don't want to code today? No problem! You can access the d
 
 [https://share.streamlit.io/arup-group/social-data/run.py](https://share.streamlit.io/arup-group/social-data/run.py)
 
+## Python Users
+We've done our previous analyses in Python, and have built data gathering, cleaning, and analysis functions.
+
+The `credentials.py` file is configured to allow read-only access to an Arup-maintained database of the most recent relevant FRED data. In addition to using these Python scripts, you can connect to this database and run direct SQL queries to get the data you want.
+
+
+### Install
+In a virtual environment:
+
+`pip install -r requirements.txt`
+
+### Run
+We suggest running using Streamlit for most use cases:
+
+`streamlit run run.py`
+
+To run as a typical Python script, run:
+
+`python run.py --mode script`
+
+### Docker
+You can also install and run the application locally using Docker:
+
+`docker build . -t app`
+
+`docker-compose up -d`
+
+You can access the app on `http://localhost:8501`.
+
+### Database Users
+The PostgreSQL database that this repository uses is open for *read-only* access. The connection details are stored in `credentials.py` if you're using the Python workflow.
+
+If you'd like to query the database directly using the method of your choice, you can access it using the credentials below:
+
+```
+DB_HOST = ade-eviction.ccgup3bgyakw.us-east-1.rds.amazonaws.com
+DB_NAME = eviction_data
+DB_PORT = 5432
+DB_USER = readuser
+DB_PASSWORD = password
+```
+
 ## Usage
 This repository currently two primary workflows:
 
-1. Gathering data for counties in the US and comparing their Relative Risk of eviction
-2. Viewing and examining the data in the database and downloading raw data for your own analysis
+1. Viewing and examining the data in the database and downloading raw data for your own analysis
+2. Gathering data for counties in the US and comparing their Relative Risk of eviction
+
+Currently we support census tract level data for the Data Exploration workflow
 
 These workflows support a number of use cases, including:
 - Providing direct assistance to families in one or more counties
@@ -27,7 +71,7 @@ There are three ways to interact with this data.
 - Custom SQL Queries - SQL that you write to get the most recent data from our database and use however you want. 
 
 ### About the data
-This data is the most recent data we could get, but some datasets are updated more frequently than others. You can see the date that the data was updated in `all_tables.xlsx`. We refresh the data monthly on the first of the month. All datasets are at the county level. The following datasets are currently in the database:
+This data is the most recent data we could get, but some datasets are updated more frequently than others. You can see the date that the data was updated in `all_tables.xlsx`. We refresh the data monthly on the first of the month. Some datasets are at the county level and some are at the census tract level. The following datasets are currently in the database:
 
 | Feature Name | Source | Updated | Notes | 
 | ------------ | ------ | ------- | ----- |
@@ -72,63 +116,6 @@ This script uses Fair Market Rent values.  Median rent values are also available
 
 Upon script completion, an excel file will be created within the output folder displaying all values mentioned above.  If you experience problems with the script or have questions about methodologies, please reach out to a member of the development team.  
 
-### Outputs
-These are the columns that appear in our output for Eviction Analysis and in our raw data. Units can vary between raw and outputted data as we transform percentages in to raw population estimates. In our ranking, values in each column are all normalized.
-
-- county_id: Unique ID for each county
-- Income Inequality (Ratio): The income earned by the top percentage of households and dividing that by the income earned by the poorest percentage of households.
-- Resident Population (Thousands of Persons): Number of persons in a county 
-- VulnerabilityIndex: COVID Vulnerability Index, as defined by CHMURA
-- Housing Units: Total number of housing units in a county
-- Vacant Units: Number of vacant housing units in a county
-- Renter Occupied Units: Number of  housing units in a county occupied by renters. This is used in eviction analysis workflows.
-- Median Age: Median age of the county population
-- Burdened Households: Number People who pay more than 30 percent of their income towards rent
-- Population Below Poverty Line: Population living below the minimum level of income deemed adequate in a particular county 
-- Single Parent Households: Number of households with a single parent
-- Unemployed Population: Number of people unemployed in a county
-- [Race/Ethnicity] Population: Number of people by reported race/ethnicity in a county
-- Non-White Population/Percentage: The total number of people in a county who did not report as white. The percentage represents the proportion of historically minority groups in a county. 
-- Males/Females: Number of reported Males and Females in a population. (Note: there is no value for non-binary reporting in the existing ACS dataset)
-- rent_50_[0-4]: Median Rent value for a 0 bedroom house to a 4 bedroom house
-- fmr_[0-4]: Fair Market Rent value for a 0 bedroom house to a 4 bedroom house
-- [0-4]_br_cost_5: Cost of preventing evictions for a 0-4 bedroom house for 5% of burdened households
-- [0-4]_br_cost_25: Cost of preventing evictions for a 0-4 bedroom house for 25% of burdened households
-- [0-4]_br_cost_33: Cost of preventing evictions for a 0-4 bedroom house for 33% of burdened households
-- [0-4]_br_cost_50: Cost of preventing evictions for a 0-4 bedroom house for 50% of burdened households
-- [0-4]_br_cost_75: Cost of preventing evictions for a 0-4 bedroom house for 75% of burdened households
-
-To calculate the total cost of evictions for a single month, simply add the costs for each housing type for a particular proportion.  
-
-## Python Users
-We've done our previous analyses in Python, and have built data gathering, cleaning, and analysis functions.
-
-The `credentials.py` file is configured to allow read-only access to an Arup-maintained database of the most recent relevant FRED data. In addition to using these Python scripts, you can connect to this database and run direct SQL queries to get the data you want.
-
-
-### Install
-In a virtual environment:
-
-`pip install -r requirements.txt`
-
-### Run
-We suggest running using Streamlit for most use cases:
-
-`streamlit run run.py`
-
-To run as a typical Python script, run:
-
-`python run.py --mode script`
-
-### Docker
-You can also install and run the application locally using Docker:
-
-`docker build . -t app`
-
-`docker run -p 8501:8501 app:latest`
-
-You can access the app on `http://localhost:8501`, even if it shows it's running on different IPs.
-
 ### FRED Queries
 You can get the most recent Federal Reserve Economic Data (FRED) using the following commands:
 
@@ -157,18 +144,6 @@ This page is used to collect and represent the specific policy nuanced not captu
 #### Analysis Data
 This page collects the results from the previous two pages in a format that can be more easily read by the Python scripts. You may need to copy the countdown and policy index values for each county you're analyzing. 
 
-## Database Users
-The PostgreSQL database that this repository uses is open for *read-only* access. The connection details are stored in `credentials.py` if you're using the Python workflow.
-
-If you'd like to query the database directly using the method of your choice, you can access it using the credentials below:
-
-```
-DB_HOST = ade-eviction.ccgup3bgyakw.us-east-1.rds.amazonaws.com
-DB_NAME = eviction_data
-DB_PORT = 5432
-DB_USER = readuser
-DB_PASSWORD = password
-```
 
 ## Contributing
 We would love for you to use this code, build on it, and share with others. See [our contribution guide](CONTRIBUTING.md) and [code of conduct](CODE_OF_CONDUCT.md)  for more information.
@@ -185,7 +160,7 @@ Policy data is some of the most useful, but also the hardest to get. We've share
 For now, to submit your data, open an issue in this repository and submit your policy data (countdown and/or policy ranking) for the county or counties you're looking at. 
 
 ### Other Data Sources
-If there are data sources you'd like to see included in this, please reach out through the Issues tab. We are aware of a few blind spots in our current data, including the existing state of homelessness in a county and the county demographics. We are also interested in getting data beyond the county level. 
+If there are data sources you'd like to see included in this, please reach out through the Issues tab.
 
 ## License
 This repository and the underlying data is [MIT licensed](LICENSE).
