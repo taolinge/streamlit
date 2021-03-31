@@ -17,6 +17,21 @@ The `credentials.py` file is configured to allow read-only access to an Arup-mai
 
 
 ### Install
+This project relies on GDAL for geospatial things, which means you'll need to install GDAL on your machine (sorry, Windows people). 
+
+Mac users (using homebrew):
+
+`brew install gdal`
+
+Windows users (based on [this](https://sandbox.idre.ucla.edu/sandbox/tutorials/installing-gdal-for-windows)):
+
+1. [Get and install](https://www.gisinternals.com/release.php) appropriate binary for your machine
+2. Add PATH and environment variables like in [this article](https://jingwen-z.github.io/how-to-install-python-module-fiona-on-windows-os/)
+3. Install [Visual C++ Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2019) if you haven't already
+4. Install Fiona from the appropriate whl file [here](https://www.lfd.uci.edu/~gohlke/pythonlibs/#fiona)
+5. In your virtual environment: `pip install <path/to/fiona.whl>`
+
+
 In a virtual environment:
 
 `pip install -r requirements.txt`
