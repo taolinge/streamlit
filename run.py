@@ -622,7 +622,7 @@ def run_UI():
             state = st.selectbox("Select a state", STATES).strip()
             county_list = queries.counties_query()
             county_list = county_list[county_list['State'] == state]['County Name'].to_list()
-            counties = st.selectbox('Please a county', county_list)
+            counties = st.multiselect('Please a county', county_list)
             table_list = queries.table_names_query()
             tables = st.multiselect('Please specify one or more datasets to view', table_list)
             tables = [_.strip().lower() for _ in tables]

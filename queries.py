@@ -114,16 +114,20 @@ def table_names_query() -> pd.DataFrame:
     return pd.DataFrame(results)
 
 
-def latest_data_census_tracts(state: str, county, tables) -> pd.DataFrame:
+def latest_data_census_tracts(state: str, counties, tables) -> pd.DataFrame:
     conn, engine = init_connection()
     cur = conn.cursor()
-    tracts_df = census_tracts_geom_query(county, state)
+    tracts_df = census_tracts_geom_query(counties, state)
+    if len(counties) > 1:
+        where_clause = 'WHERE id_index.state_name = ' + "'" + state + "'" + ' ' + 'AND id_index.county_name IN ' + str(tuple(counties))
+    if len(counties) == 1:
+        where_clause = 'WHERE id_index.state_name = ' + "'" + state + "'" + ' ' + 'AND id_index.county_name IN (' + "'" + counties[0] + "'" + ')'
     for table_name in tables:
         cur.execute(f"""SELECT {table_name}.*, id_index.county_name, id_index.county_id, id_index.state_name, resident_population_census_tract.tot_population_census_2010
             FROM {table_name} 
             INNER JOIN id_index ON {table_name}.tract_id = id_index.tract_id
             INNER JOIN resident_population_census_tract ON {table_name}.tract_id = resident_population_census_tract.tract_id
-            WHERE id_index.county_name = '{county}' AND id_index.state_name = '{state}';""")
+            {where_clause};""")
         results = cur.fetchall()
         colnames = [desc[0] for desc in cur.description]
         df = pd.DataFrame(results, columns=colnames)
@@ -252,14 +256,18 @@ def get_county_geoms(counties_list: list, state: str) -> pd.DataFrame:
     return geom_df
 
 
-def census_tracts_geom_query(county, state) -> pd.DataFrame:
+def census_tracts_geom_query(counties, state) -> pd.DataFrame:
     conn, engine = init_connection()
     cur = conn.cursor()
+    if len(counties) > 1:
+        where_clause = 'WHERE id_index.state_name = ' + "'" + state + "'" + ' ' + 'AND id_index.county_name IN ' + str(tuple(counties))
+    if len(counties) == 1:
+        where_clause = 'WHERE id_index.state_name = ' + "'" + state + "'" + ' ' + 'AND id_index.county_name IN (' + "'" + counties[0] + "'" + ')'
     cur.execute(f"""
         SELECT id_index.county_name, id_index.state_name, census_tracts_geom.tract_id, census_tracts_geom.geom
         FROM id_index
         INNER JOIN census_tracts_geom ON census_tracts_geom.tract_id=id_index.tract_id
-        WHERE id_index.county_name = '{county}' AND id_index.state_name = '{state}';
+        {where_clause};
     """)
     colnames = [desc[0] for desc in cur.description]
     results = cur.fetchall()
@@ -319,7 +327,7 @@ def fmr_data():
 
 
 if __name__ == '__main__':
-    latest_data_census_tracts('California', 'Contra Costa County', ['educational_attainment', 'disability_status'])
+    latest_data_census_tracts('California', ['Contra Costa County'], ['educational_attainment', 'disability_status'])
     args = {k: v for k, v in [i.split('=') for i in sys.argv[1:] if '=' in i]}
     table = args.get('--table', None)
     output_format = args.get('--output', None)
