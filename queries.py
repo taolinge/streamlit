@@ -132,7 +132,8 @@ def latest_data_census_tracts(state: str, counties, tables) -> pd.DataFrame:
         colnames = [desc[0] for desc in cur.description]
         df = pd.DataFrame(results, columns=colnames)
         df['Census Tract'] = df['tract_id']
-        tracts_df = tracts_df.merge(df)
+        tracts_df = tracts_df.merge(df, on="Census Tract", how="left", suffixes=('', '_y'))
+        tracts_df.drop(tracts_df.filter(regex='_y$').columns.tolist(),axis=1, inplace=True)
     return tracts_df
 
 
@@ -327,7 +328,7 @@ def fmr_data():
 
 
 if __name__ == '__main__':
-    latest_data_census_tracts('California', ['Contra Costa County'], ['educational_attainment', 'disability_status'])
+    latest_data_census_tracts('California', ['Contra Costa County'], ['household_technology_availability', 'disability_status'])
     args = {k: v for k, v in [i.split('=') for i in sys.argv[1:] if '=' in i]}
     table = args.get('--table', None)
     output_format = args.get('--output', None)

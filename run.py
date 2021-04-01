@@ -194,7 +194,7 @@ def data_explorer(df: pd.DataFrame, state: str):
 
 
 def census_data_explorer(df: pd.DataFrame, county, state: str, table):
-    feature_labels = list(set(df.columns) - {'County Name', 'county_id', 'index', 'county_name', 'Census Tract'})
+    feature_labels = list(set(df.columns) - {'County Name', 'county_id', 'index', 'county_name', 'Census Tract', 'geom', 'state_id', 'state_name', 'tract', 'tract_id'})
     feature_labels.sort()
     st.write('''
             ### View Feature
@@ -617,8 +617,10 @@ def run_UI():
                     st.markdown(utils.get_table_download_link(df, state + '_data', 'Download raw data'),
                                 unsafe_allow_html=True)
                 if 'state_name' in df.columns:
+                    df = df.loc[:,~df.columns.duplicated()]
                     df['State'] = df['state_name']
                 if 'county_name' in df.columns:
+                    df = df.loc[:,~df.columns.duplicated()]
                     df['County Name'] = df['county_name']
                 df.set_index(['State', 'County Name'], drop=True, inplace=True)
                 census_data_explorer(df, counties, state, tables)
