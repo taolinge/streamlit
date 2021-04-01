@@ -1,7 +1,5 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 import pydeck as pdk
 import altair as alt
 from sklearn import preprocessing as pre
@@ -37,7 +35,8 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
     geo_df['fill_color'] = colors
     if 'County Name' in geo_df.columns:
         geo_df.drop(['geom', 'County Name'], axis=1, inplace=True)
-        tooltip = {"html": "<b>County:</b> {name} </br>" + "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "}"}
+        tooltip = {
+            "html": "<b>County:</b> {name} </br>" + "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "}"}
     elif 'Census Tract' in geo_df.columns:
         geo_df.drop(['geom', 'Census Tract'], axis=1, inplace=True)
         tooltip = {"html": "<b>Tract:</b> {name} </br>" + "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "}"}
@@ -67,11 +66,48 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
     )
     st.pydeck_chart(r)
 
-def make_correlation_plot(df: pd.DataFrame):
+
+def make_correlation_plot(df: pd.DataFrame, default_cols=[]):
+    df = df.astype('float64')
     st.subheader('Correlation Plot')
-    fig, ax = plt.subplots(figsize=(10, 10))
-    st.write(sns.heatmap(df.corr(), annot=True, linewidths=0.5))
-    st.pyplot(fig)
+    st.write('''
+    This plot shows how individual features in the database correlate to each other. Values range from -1 to 1. 
+    A value of 1 means that for a positive increase in one feature, there will be an increase in the other by a fixed proportion.
+    A value of -1 means that for a positive increase in one feature, there will be a decrease in the other by a fixed proportion. 
+    A value of 0 means that the two features are unrelated. A higher value can be read as a stronger relationship 
+    (either postive or negative) between the two features.
+    ''')
+    cols_to_compare = st.multiselect('Columns to consider', list(df.columns), default_cols)
+    if len(cols_to_compare) > 2:
+        df_corr = df[cols_to_compare].corr().stack().reset_index().rename(
+            columns={0: 'correlation', 'level_0': 'variable', 'level_1': 'variable2'})
+        df_corr['correlation_label'] = df_corr['correlation'].map('{:.2f}'.format)
+
+        base = alt.Chart(df_corr).encode(
+            x='variable2:O',
+            y='variable:O'
+        )
+
+        # Text layer with correlation labels
+        # Colors are for easier readability
+        text = base.mark_text().encode(
+            text='correlation_label',
+            color=alt.condition(
+                alt.datum.correlation > 0.5,
+                alt.value('white'),
+                alt.value('black')
+            )
+        )
+
+        # The correlation heatmap itself
+        cor_plot = base.mark_rect().encode(
+            color='correlation:Q',
+        ).properties(
+            width=700,
+            height=700
+        )
+
+        st.altair_chart(cor_plot + text)
 
 
 def make_bar_chart(df: pd.DataFrame, feature: str):
@@ -80,6 +116,7 @@ def make_bar_chart(df: pd.DataFrame, feature: str):
         .encode(x='County Name', y=feature + ':Q',
                 tooltip=['County Name', feature])
     st.altair_chart(bar, use_container_width=True)
+
 
 def make_census_bar_chart(df: pd.DataFrame, feature: str):
     bar = alt.Chart(df).mark_bar() \

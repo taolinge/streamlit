@@ -2,8 +2,6 @@ import base64
 import pandas as pd
 from six import BytesIO
 import geopandas as gpd
-import streamlit as st
-
 
 def to_excel(df: pd.DataFrame):
     output = BytesIO()
