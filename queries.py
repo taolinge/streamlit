@@ -114,19 +114,27 @@ def table_names_query() -> pd.DataFrame:
     return pd.DataFrame(results)
 
 
-def latest_data_census_tracts(state: str, county, tables) -> pd.DataFrame:
+def latest_data_census_tracts(state: str, counties, tables) -> pd.DataFrame:
     conn, engine = init_connection()
     cur = conn.cursor()
-    cur.execute(f"""SELECT {tables}.*, id_index.county_name, id_index.county_id, id_index.state_name, resident_population_census_tract.tot_population_census_2010
-        FROM {tables} 
-        INNER JOIN id_index ON {tables}.tract_id = id_index.tract_id
-        INNER JOIN resident_population_census_tract ON {tables}.tract_id = resident_population_census_tract.tract_id
-        WHERE id_index.county_name = '{county}' AND id_index.state_name = '{state}';""")
-    results = cur.fetchall()
-    colnames = [desc[0] for desc in cur.description]
-    df = pd.DataFrame(results, columns=colnames)
-    return df
-
+    tracts_df = census_tracts_geom_query(counties, state)
+    if len(counties) > 1:
+        where_clause = 'WHERE id_index.state_name = ' + "'" + state + "'" + ' ' + 'AND id_index.county_name IN ' + str(tuple(counties))
+    if len(counties) == 1:
+        where_clause = 'WHERE id_index.state_name = ' + "'" + state + "'" + ' ' + 'AND id_index.county_name IN (' + "'" + counties[0] + "'" + ')'
+    for table_name in tables:
+        cur.execute(f"""SELECT {table_name}.*, id_index.county_name, id_index.county_id, id_index.state_name, resident_population_census_tract.tot_population_census_2010
+            FROM {table_name} 
+            INNER JOIN id_index ON {table_name}.tract_id = id_index.tract_id
+            INNER JOIN resident_population_census_tract ON {table_name}.tract_id = resident_population_census_tract.tract_id
+            {where_clause};""")
+        results = cur.fetchall()
+        colnames = [desc[0] for desc in cur.description]
+        df = pd.DataFrame(results, columns=colnames)
+        df['Census Tract'] = df['tract_id']
+        tracts_df = tracts_df.merge(df, on="Census Tract", how="left", suffixes=('', '_y'))
+        tracts_df.drop(tracts_df.filter(regex='_y$').columns.tolist(),axis=1, inplace=True)
+    return tracts_df
 
 
 def policy_query() -> pd.DataFrame:
@@ -161,7 +169,6 @@ def latest_data_single_table(table_name: str, require_counties: bool = True) -> 
         counties_df = counties_query()
         df = counties_df.merge(df)
     return df
-
 
 
 def latest_data_all_tables() -> pd.DataFrame:
@@ -250,14 +257,19 @@ def get_county_geoms(counties_list: list, state: str) -> pd.DataFrame:
     return geom_df
 
 
-def census_tracts_geom_query(tables, county, state) -> pd.DataFrame:
+def census_tracts_geom_query(counties, state) -> pd.DataFrame:
     conn, engine = init_connection()
     cur = conn.cursor()
-    cur.execute(f"""SELECT {tables}.*, id_index.county_name, id_index.county_id, id_index.state_name, census_tracts_geom.geom
-        FROM {tables} 
-        INNER JOIN id_index ON {tables}.tract_id = id_index.tract_id
-        INNER JOIN census_tracts_geom ON {tables}.tract_id = census_tracts_geom.tract_id
-        WHERE id_index.county_name = '{county}' AND id_index.state_name = '{state}';""")
+    if len(counties) > 1:
+        where_clause = 'WHERE id_index.state_name = ' + "'" + state + "'" + ' ' + 'AND id_index.county_name IN ' + str(tuple(counties))
+    if len(counties) == 1:
+        where_clause = 'WHERE id_index.state_name = ' + "'" + state + "'" + ' ' + 'AND id_index.county_name IN (' + "'" + counties[0] + "'" + ')'
+    cur.execute(f"""
+        SELECT id_index.county_name, id_index.state_name, census_tracts_geom.tract_id, census_tracts_geom.geom
+        FROM id_index
+        INNER JOIN census_tracts_geom ON census_tracts_geom.tract_id=id_index.tract_id
+        {where_clause};
+    """)
     colnames = [desc[0] for desc in cur.description]
     results = cur.fetchall()
     conn.close()
@@ -316,7 +328,7 @@ def fmr_data():
 
 
 if __name__ == '__main__':
-    census_tracts_geom_query('educational_attainment', 'Fairfield County', 'Connecticut')
+    latest_data_census_tracts('California', ['Contra Costa County'], ['household_technology_availability', 'disability_status'])
     args = {k: v for k, v in [i.split('=') for i in sys.argv[1:] if '=' in i]}
     table = args.get('--table', None)
     output_format = args.get('--output', None)

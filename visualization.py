@@ -18,6 +18,10 @@ def color_scale(val):
 def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
     temp = df.copy()
     temp.reset_index(inplace=True)
+    if 'Census Tract' in geo_df.columns:
+        geo_df.reset_index(inplace=True)
+    if 'Census Tract' in df.columns:
+        df.reset_index(inplace=True)
     # counties = temp['County Name'].to_list()
     geojson = utils.convert_geom(geo_df, temp, [map_feature])
     merged_df = pd.DataFrame(geojson)
@@ -78,7 +82,6 @@ def make_correlation_plot(df: pd.DataFrame, default_cols=[]):
         df_corr = df[cols_to_compare].corr().stack().reset_index().rename(
             columns={0: 'correlation', 'level_0': 'variable', 'level_1': 'variable2'})
         df_corr['correlation_label'] = df_corr['correlation'].map('{:.2f}'.format)
-        st.write(df_corr)
 
         base = alt.Chart(df_corr).encode(
             x='variable2:O',
