@@ -606,24 +606,25 @@ def run_UI():
             county_list = queries.counties_query()
             county_list = county_list[county_list['State'] == state]['County Name'].to_list()
             counties = st.multiselect('Please a county', county_list)
-            table_list = queries.table_names_query()
-            tables = st.multiselect('Please specify one or more datasets to view', table_list)
-            tables = [_.strip().lower() for _ in tables]
-            if tables:
-                df = queries.latest_data_census_tracts(state, counties, tables)
-                if st.checkbox('Show raw data'):
-                    st.subheader('Raw Data')
-                    st.dataframe(df)
-                    st.markdown(utils.get_table_download_link(df, state + '_data', 'Download raw data'),
-                                unsafe_allow_html=True)
-                if 'state_name' in df.columns:
-                    df = df.loc[:,~df.columns.duplicated()]
-                    df['State'] = df['state_name']
-                if 'county_name' in df.columns:
-                    df = df.loc[:,~df.columns.duplicated()]
-                    df['County Name'] = df['county_name']
-                df.set_index(['State', 'County Name'], drop=True, inplace=True)
-                census_data_explorer(df, counties, state, tables)
+            if counties:
+                table_list = queries.table_names_query()
+                tables = st.multiselect('Please specify one or more datasets to view', table_list)
+                tables = [_.strip().lower() for _ in tables]
+                if tables:
+                    df = queries.latest_data_census_tracts(state, counties, tables)
+                    if st.checkbox('Show raw data'):
+                        st.subheader('Raw Data')
+                        st.dataframe(df)
+                        st.markdown(utils.get_table_download_link(df, state + '_data', 'Download raw data'),
+                                    unsafe_allow_html=True)
+                    if 'state_name' in df.columns:
+                        df = df.loc[:,~df.columns.duplicated()]
+                        df['State'] = df['state_name']
+                    if 'county_name' in df.columns:
+                        df = df.loc[:,~df.columns.duplicated()]
+                        df['County Name'] = df['county_name']
+                    df.set_index(['State', 'County Name'], drop=True, inplace=True)
+                    census_data_explorer(df, counties, state, tables)
 
 
 if __name__ == '__main__':
