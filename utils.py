@@ -40,7 +40,7 @@ def make_geojson(geo_df: pd.DataFrame, features: list) -> dict:
             del feature["bbox"]
             feature["geometry"]["coordinates"] = [feature["geometry"]["coordinates"]]
             geojson["features"].append(feature)
-    else:
+    elif 'Census Tract' not in geo_df.columns:
         for i, row in geo_df.iterrows():
             feature = row['coordinates']['features'][0]
             props = {"name": row['County Name']}
@@ -76,10 +76,8 @@ def convert_geom(geo_df: pd.DataFrame, data_df: pd.DataFrame, map_features: list
         data_df = data_df[['County Name'] + map_features]
         geo_df = geo_df.merge(data_df, on='County Name')
     elif 'tract_id' in data_df:
-        data_df['Census Tract'] = data_df['tract_id']
-        data_df = data_df[['Census Tract'] + map_features]
+        geo_df = data_df[['Census Tract']]
         geo_df = geo_df.merge(data_df, on='Census Tract')
-
     geo_df['geom'] = geo_df.apply(lambda row: row['geom'].buffer(0), axis=1)
     geo_df['coordinates'] = geo_df.apply(lambda row: gpd.GeoSeries(row['geom']).__geo_interface__, axis=1)
     geo_df['coordinates'] = geo_df.apply(lambda row: convert_coordinates(row), axis=1)
