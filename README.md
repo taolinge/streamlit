@@ -48,7 +48,7 @@ To run as a typical Python script, run:
 ### Docker
 You can also install and run the application locally using Docker:
 
-`docker build . -t app`
+`docker build . -t streamlit-social-data`
 
 `docker-compose up -d`
 
