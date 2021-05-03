@@ -17,14 +17,16 @@ def color_scale(val):
 
 def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
     temp = df.copy()
+
     temp.reset_index(inplace=True)
     if 'Census Tract' in geo_df.columns:
         geo_df.reset_index(inplace=True)
     if 'Census Tract' in df.columns:
         df.reset_index(inplace=True)
-    # counties = temp['County Name'].to_list()
     geojson = utils.convert_geom(geo_df, temp, [map_feature])
+
     merged_df = pd.DataFrame(geojson)
+
     geo_df["coordinates"] = merged_df["features"].apply(lambda row: row["geometry"]["coordinates"])
     geo_df["name"] = merged_df["features"].apply(lambda row: row["properties"]["name"])
     geo_df[map_feature] = merged_df["features"].apply(lambda row: row["properties"][map_feature])
@@ -33,13 +35,15 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
     normalized_vals = scaler.fit_transform(norm_df)
     colors = list(map(color_scale, normalized_vals))
     geo_df['fill_color'] = colors
-    if 'County Name' in geo_df.columns:
+
+    if 'Census Tract' in set(geo_df.columns):
+        keep_cols = ['coordinates', 'name', 'fill_color', map_feature]
+        geo_df.drop(list(set(geo_df.columns) - set(keep_cols)), axis=1, inplace=True)
+        tooltip = {"html": "<b>Tract:</b> {name} </br>" + "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "}"}
+    elif 'County Name' in set(geo_df.columns):
         geo_df.drop(['geom', 'County Name'], axis=1, inplace=True)
         tooltip = {
             "html": "<b>County:</b> {name} </br>" + "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "}"}
-    elif 'Census Tract' in geo_df.columns:
-        geo_df.drop(['geom', 'Census Tract'], axis=1, inplace=True)
-        tooltip = {"html": "<b>Tract:</b> {name} </br>" + "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "}"}
 
     view_state = pdk.ViewState(
         **{"latitude": 36, "longitude": -95, "zoom": 3, "maxZoom": 16, "pitch": 0, "bearing": 0}

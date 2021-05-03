@@ -53,6 +53,27 @@ table_units = {
     'resident_population': 'Thousands of Persons',
 }
 
+CENSUS_TABLES = [
+    'educational_attainment',
+    'disability_status',
+    'employment_status',
+    'english_proficiency',
+    'family_type',
+    'hispanic_or_latino_origin_by_race',
+    # 'household_job_availability',
+    'household_technology_availability',
+    'household_vehicle_availability',
+    'housing_units_in_structure',
+    'level_of_urbanicity',
+    'occupants_per_bedroom',
+    'poverty_status',
+    'resident_population_census_tract',
+    'sex_by_age',
+    'sex_of_workers_by_vehicles_available',
+    'trip_miles',
+    'walkability_index'
+]
+
 
 def init_connection():
     conn = psycopg2.connect(
@@ -87,31 +108,15 @@ def counties_query() -> pd.DataFrame:
     return pd.DataFrame(results, columns=colnames)
 
 
-def table_names_query() -> pd.DataFrame:
+def table_names_query() -> list:
     conn, engine = init_connection()
     cur = conn.cursor()
     cur.execute("""SELECT table_name FROM information_schema.tables
         WHERE table_schema = 'public'
-        AND table_name='educational_attainment'
-        OR table_name='disability_status'
-        OR table_name='employment_status'
-        OR table_name='english_proficiency'
-        OR table_name='family_type'
-        OR table_name='hispanic_or_latino_origin_by_race'
-        OR table_name='household_job_availability'
-        OR table_name='household_technology_availability'
-        OR table_name='household_vehicle_availability'
-        OR table_name='housing_units_in_structure'
-        OR table_name='level_of_urbanicity'
-        OR table_name='occupants_per_bedroom'
-        OR table_name='poverty_status'
-        OR table_name='resident_population_census_tract'
-        OR table_name='sex_by_age'
-        OR table_name='sex_of_workers_by_vehicles_available'
-        OR table_name='trip_miles'
-        OR table_name='walkability_index'""")
+        """)
     results = cur.fetchall()
-    return pd.DataFrame(results)
+    res = [_[0] for _ in results]
+    return res
 
 
 def latest_data_census_tracts(state: str, counties, tables) -> pd.DataFrame:
@@ -119,9 +124,12 @@ def latest_data_census_tracts(state: str, counties, tables) -> pd.DataFrame:
     cur = conn.cursor()
     tracts_df = census_tracts_geom_query(counties, state)
     if len(counties) > 1:
-        where_clause = 'WHERE id_index.state_name = ' + "'" + state + "'" + ' ' + 'AND id_index.county_name IN ' + str(tuple(counties))
+        # where_clause = 'WHERE id_index.state_name = ' + "'" + state + "'" + ' ' + 'AND id_index.county_name IN ' + str(tuple(counties))
+        where_clause = 'WHERE id_index.state_name = ' + "'" + state + "'" + ' ' + 'AND id_index.county_name IN ' + str(
+            tuple(counties))
     if len(counties) == 1:
-        where_clause = 'WHERE id_index.state_name = ' + "'" + state + "'" + ' ' + 'AND id_index.county_name IN (' + "'" + counties[0] + "'" + ')'
+        # where_clause = 'WHERE id_index.state_name = ' + "'" + state + "'" + ' ' + 'AND id_index.county_name IN (' + "'" + counties[0] + "'" + ')'
+        where_clause = f"WHERE id_index.state_name ='{state}' AND id_index.county_name IN ('{counties[0]}')"
     for table_name in tables:
         cur.execute(f"""SELECT {table_name}.*, id_index.county_name, id_index.county_id, id_index.state_name, resident_population_census_tract.tot_population_census_2010
             FROM {table_name} 
@@ -132,8 +140,10 @@ def latest_data_census_tracts(state: str, counties, tables) -> pd.DataFrame:
         colnames = [desc[0] for desc in cur.description]
         df = pd.DataFrame(results, columns=colnames)
         df['Census Tract'] = df['tract_id']
-        tracts_df = tracts_df.merge(df, on="Census Tract", how="left", suffixes=('', '_y'))
-        tracts_df.drop(tracts_df.filter(regex='_y$').columns.tolist(),axis=1, inplace=True)
+        tracts_df = tracts_df.merge(df, on="Census Tract", how="inner", suffixes=('', '_y'))
+        tracts_df.drop(tracts_df.filter(regex='_y$').columns.tolist(), axis=1, inplace=True)
+        tracts_df = tracts_df.loc[:, ~tracts_df.columns.duplicated()]
+
     return tracts_df
 
 
@@ -261,9 +271,11 @@ def census_tracts_geom_query(counties, state) -> pd.DataFrame:
     conn, engine = init_connection()
     cur = conn.cursor()
     if len(counties) > 1:
-        where_clause = 'WHERE id_index.state_name = ' + "'" + state + "'" + ' ' + 'AND id_index.county_name IN ' + str(tuple(counties))
+        where_clause = 'WHERE id_index.state_name = ' + "'" + state + "'" + ' ' + 'AND id_index.county_name IN ' + str(
+            tuple(counties))
     if len(counties) == 1:
-        where_clause = 'WHERE id_index.state_name = ' + "'" + state + "'" + ' ' + 'AND id_index.county_name IN (' + "'" + counties[0] + "'" + ')'
+        where_clause = 'WHERE id_index.state_name = ' + "'" + state + "'" + ' ' + 'AND id_index.county_name IN (' + "'" + \
+                       counties[0] + "'" + ')'
     cur.execute(f"""
         SELECT id_index.county_name, id_index.state_name, census_tracts_geom.tract_id, census_tracts_geom.geom
         FROM id_index
@@ -328,7 +340,8 @@ def fmr_data():
 
 
 if __name__ == '__main__':
-    latest_data_census_tracts('California', ['Contra Costa County'], ['household_technology_availability', 'disability_status'])
+    latest_data_census_tracts('California', ['Contra Costa County'],
+                              ['household_technology_availability', 'disability_status'])
     args = {k: v for k, v in [i.split('=') for i in sys.argv[1:] if '=' in i]}
     table = args.get('--table', None)
     output_format = args.get('--output', None)

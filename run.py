@@ -185,16 +185,19 @@ def data_explorer(df: pd.DataFrame, state: str):
                     tooltip=['County Name', 'Resident Population (Thousands of Persons)', feature_1, feature_2],
                     size='Resident Population (Thousands of Persons)')
         st.altair_chart(scatter, use_container_width=True)
-      
+
     df.drop(['county_id'], axis=1, inplace=True)
     visualization.make_correlation_plot(df, ['Burdened Households (%)', 'Unemployment Rate (%)', 'VulnerabilityIndex',
-                               'Non-White Population (%)', 'Renter Occupied Units', 'Income Inequality (Ratio)',
-                               'Median Age',
-                               'Population Below Poverty Line (%)', 'Single Parent Households (%)'])
+                                             'Non-White Population (%)', 'Renter Occupied Units',
+                                             'Income Inequality (Ratio)',
+                                             'Median Age',
+                                             'Population Below Poverty Line (%)', 'Single Parent Households (%)'])
 
 
-def census_data_explorer(df: pd.DataFrame, county, state: str, table):
-    feature_labels = list(set(df.columns) - {'County Name', 'county_id', 'index', 'county_name', 'Census Tract', 'geom', 'state_id', 'state_name', 'tract', 'tract_id'})
+def census_data_explorer(df: pd.DataFrame, county:list, state: str):
+    feature_labels = list(
+        set(df.columns) - {'County Name', 'county_id', 'index', 'county_name', 'Census Tract', 'geom', 'state_id',
+                           'state_name', 'tract', 'tract_id'})
     feature_labels.sort()
     st.write('''
             ### View Feature
@@ -205,7 +208,9 @@ def census_data_explorer(df: pd.DataFrame, county, state: str, table):
 
     if state:
         if state != 'national':
-            visualization.make_map(df, df, single_feature)
+            geo_df=df.copy()
+            geo_df=geo_df[['geom', 'Census Tract', 'tract_id']]
+            visualization.make_map(geo_df, df, single_feature)
 
     st.write('''
         ### Compare Features
@@ -224,10 +229,10 @@ def census_data_explorer(df: pd.DataFrame, county, state: str, table):
                     tooltip=['tract_id', 'tot_population_census_2010', feature_1, feature_2],
                     size='tot_population_census_2010')
         st.altair_chart(scatter, use_container_width=True)
-    df.drop(['county_id', 'county_name', 'state_name', 'index', 'tract_id', 'tot_population_census_2010', 'Census Tract', 'State', 'level_0', 'coordinates', 'name', 'fill_color'], axis=1, inplace=True)
+    df.drop(list(set(df.columns)-set(feature_labels)), axis=1, inplace=True)
     display_columns = []
     for col in df.columns:
-        display_columns.append(col)  
+        display_columns.append(col)
     visualization.make_correlation_plot(df, display_columns)
 
 
@@ -595,7 +600,6 @@ def run_UI():
                     st.markdown(utils.get_table_download_link(natl_df, 'national_data', 'Download raw data'),
                                 unsafe_allow_html=True)
                 data_explorer(natl_df, 'national')
-
         else:
             st.write('## Census Tract Data Explorer')
             st.write("""
@@ -607,8 +611,8 @@ def run_UI():
             county_list = county_list[county_list['State'] == state]['County Name'].to_list()
             counties = st.multiselect('Please a county', county_list)
             if counties:
-                table_list = queries.table_names_query()
-                tables = st.multiselect('Please specify one or more datasets to view', table_list)
+                # todo: fix tract_ids in database for ignored tables
+                tables = st.multiselect('Please specify one or more datasets to view', queries.CENSUS_TABLES)
                 tables = [_.strip().lower() for _ in tables]
                 if tables:
                     df = queries.latest_data_census_tracts(state, counties, tables)
@@ -618,13 +622,13 @@ def run_UI():
                         st.markdown(utils.get_table_download_link(df, state + '_data', 'Download raw data'),
                                     unsafe_allow_html=True)
                     if 'state_name' in df.columns:
-                        df = df.loc[:,~df.columns.duplicated()]
+                        df = df.loc[:, ~df.columns.duplicated()]
                         df['State'] = df['state_name']
                     if 'county_name' in df.columns:
-                        df = df.loc[:,~df.columns.duplicated()]
+                        df = df.loc[:, ~df.columns.duplicated()]
                         df['County Name'] = df['county_name']
                     df.set_index(['State', 'County Name'], drop=True, inplace=True)
-                    census_data_explorer(df, counties, state, tables)
+                    census_data_explorer(df, counties, state)
 
 
 if __name__ == '__main__':
