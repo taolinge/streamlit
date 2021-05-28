@@ -611,7 +611,6 @@ def run_UI():
             county_list = county_list[county_list['State'] == state]['County Name'].to_list()
             counties = st.multiselect('Please a county', county_list)
             if counties:
-                # todo: fix tract_ids in database for ignored tables
                 tables = st.multiselect('Please specify one or more datasets to view', queries.CENSUS_TABLES)
                 tables = [_.strip().lower() for _ in tables]
                 if tables:

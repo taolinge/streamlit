@@ -60,7 +60,7 @@ CENSUS_TABLES = [
     'english_proficiency',
     'family_type',
     'hispanic_or_latino_origin_by_race',
-    # 'household_job_availability',
+    'household_job_availability',
     'household_technology_availability',
     'household_vehicle_availability',
     'housing_units_in_structure',
