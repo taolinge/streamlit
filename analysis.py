@@ -8,25 +8,6 @@ import streamlit as st
 import queries
 
 
-def clean_data(data: pd.DataFrame) -> pd.DataFrame:
-    data.set_index(['State', 'County Name'], drop=True, inplace=True)
-
-    data.drop([
-        'Burdened Households Date',
-        'Income Inequality Date',
-        'Population Below Poverty Line Date',
-        'Single Parent Households Date',
-        'Unemployment Rate Date',
-        'Resident Population Date',
-    ], axis=1, inplace=True)
-
-    data.rename({'Vulnerability Index': 'COVID Vulnerability Index'}, axis=1, inplace=True)
-
-    data = data.loc[:, ~data.columns.str.contains('^Unnamed')]
-
-    return data
-
-
 def percent_to_population(feature: str, name: str, df: pd.DataFrame) -> pd.DataFrame:
     pd.set_option('mode.chained_assignment', None)
     df[name] = (df.loc[:, feature].astype(float) / 100) * df.loc[:, 'Resident Population (Thousands of Persons)'].astype(float) * 1000
@@ -136,9 +117,9 @@ def rank_counties(df: pd.DataFrame, label: str) -> pd.DataFrame:
 def calculate_cost_estimate(df: pd.DataFrame, pct_burdened: float, distribution: dict,
                             rent_type: str = 'fmr') -> pd.DataFrame:
     if rent_type == 'fmr':
-        cost_df = queries.static_data_single_table('fair_market_rents', queries.static_columns['fair_market_rents'])
+        cost_df = queries.static_data_single_table('fair_market_rents', queries.STATIC_COLUMNS['fair_market_rents'])
     elif rent_type == 'rent50':
-        cost_df = queries.static_data_single_table('median_rents', queries.static_columns['median_rents'])
+        cost_df = queries.static_data_single_table('median_rents', queries.STATIC_COLUMNS['median_rents'])
     else:
         raise Exception(
             'Invalid input - {x} is not a valid rent type. Must be either `fmr` (Free Market Rent) or `med` (Median Rent)'.format(

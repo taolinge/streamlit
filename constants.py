@@ -7,6 +7,7 @@ STATES = [
     'Colorado',
     'Connecticut',
     'Delaware',
+    'District of Columbia',
     'Florida',
     'Georgia',
     'Hawaii',
@@ -46,7 +47,6 @@ STATES = [
     'Vermont',
     'Virginia',
     'Washington',
-    # 'Washington DC',
     'West Virginia',
     'Wisconsin',
     'Wyoming'

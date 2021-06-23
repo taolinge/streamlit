@@ -16,14 +16,11 @@ def color_scale(val):
 
 
 def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
-    temp = df.copy()
-
-    temp.reset_index(inplace=True)
     if 'Census Tract' in geo_df.columns:
         geo_df.reset_index(inplace=True)
     if 'Census Tract' in df.columns:
         df.reset_index(inplace=True)
-    geojson = utils.convert_geom(geo_df, temp, [map_feature])
+    geojson = utils.convert_geom(geo_df, df, [map_feature])
 
     merged_df = pd.DataFrame(geojson)
 
@@ -56,7 +53,7 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
         get_polygon="coordinates",
         filled=True,
         stroked=False,
-        opacity=0.5,
+        opacity=0.15,
         get_fill_color='fill_color',
         auto_highlight=True,
         pickable=True,
@@ -71,7 +68,7 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
     st.pydeck_chart(r)
 
 
-def make_correlation_plot(df: pd.DataFrame, default_cols=[]):
+def make_correlation_plot(df: pd.DataFrame, feature_cols):
     df = df.astype('float64')
     st.subheader('Correlation Plot')
     st.write('''
@@ -79,9 +76,9 @@ def make_correlation_plot(df: pd.DataFrame, default_cols=[]):
     A value of 1 means that for a positive increase in one feature, there will be an increase in the other by a fixed proportion.
     A value of -1 means that for a positive increase in one feature, there will be a decrease in the other by a fixed proportion. 
     A value of 0 means that the two features are unrelated. A higher value can be read as a stronger relationship 
-    (either postive or negative) between the two features.
+    (either positive or negative) between the two features.
     ''')
-    cols_to_compare = st.multiselect('Columns to consider', list(df.columns), default_cols)
+    cols_to_compare = st.multiselect('Columns to consider', list(df.columns), feature_cols)
     if len(cols_to_compare) > 2:
         df_corr = df[cols_to_compare].corr().stack().reset_index().rename(
             columns={0: 'correlation', 'level_0': 'variable', 'level_1': 'variable2'})
@@ -115,10 +112,10 @@ def make_correlation_plot(df: pd.DataFrame, default_cols=[]):
 
 
 def make_bar_chart(df: pd.DataFrame, feature: str):
-    bar_df = pd.DataFrame(df.reset_index()[[feature, 'County Name']])
+    bar_df = pd.DataFrame(df[[feature, 'County Name']])
     bar = alt.Chart(bar_df).mark_bar() \
         .encode(x='County Name', y=feature + ':Q',
-                tooltip=['County Name', feature])
+                tooltip=['County Name', feature]).interactive()
     st.altair_chart(bar, use_container_width=True)
 
 
@@ -127,3 +124,22 @@ def make_census_bar_chart(df: pd.DataFrame, feature: str):
         .encode(x='tract_id', y=feature + ':Q',
                 tooltip=['tract_id', feature])
     st.altair_chart(bar, use_container_width=True)
+
+
+def make_scatter_plot_counties(df: pd.DataFrame, feature_1: str, feature_2: str):
+    scatter_df = df[[feature_1, feature_2, 'County Name', 'Resident Population (Thousands of Persons)']]
+    scatter = alt.Chart(scatter_df).mark_point() \
+        .encode(x=feature_1 + ':Q', y=feature_2 + ':Q',
+                tooltip=['County Name', 'Resident Population (Thousands of Persons)', feature_1, feature_2],
+                size='Resident Population (Thousands of Persons)').interactive()
+    st.altair_chart(scatter, use_container_width=True)
+
+
+def make_scatter_plot_census_tracts(df: pd.DataFrame, feature_1: str, feature_2: str):
+    scatter_df = df.reset_index(drop=True)[
+        [feature_1, feature_2, 'tract_id', 'tot_population_census_2010']]
+    scatter = alt.Chart(scatter_df).mark_point() \
+        .encode(x=feature_1 + ':Q', y=feature_2 + ':Q',
+                tooltip=['tract_id', 'tot_population_census_2010', feature_1, feature_2],
+                size='tot_population_census_2010').interactive()
+    st.altair_chart(scatter, use_container_width=True)
