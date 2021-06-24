@@ -13,7 +13,7 @@ def to_excel(df: pd.DataFrame):
     return processed_data
 
 
-def get_table_download_link(df: pd.DataFrame, file_name: str, text: str):
+def get_table_download_link(df: pd.DataFrame, file_name: str, text: str) -> str:
     """Generates a link allowing the data in a given panda dataframe to be downloaded
     in:  dataframe
     out: href string

@@ -4,7 +4,6 @@ import geopandas as gpd
 from sqlalchemy import create_engine
 import psycopg2
 
-# engine = create_engine(f'postgresql+psycopg2://postgres:iHCDlGesnQZ99QZiERiY@ade-eviction.ccgup3bgyakw.us-east-1.rds.amazonaws.com:5432/eviction_data')
 engine = create_engine(f'postgresql+psycopg2://postgres:Password@localhost:5432/test_counties')
 
 
@@ -21,8 +20,6 @@ def fix_chmura_counties():
             except KeyError:
                 print(row['state'], row['name'])
         # print(ch_df.loc[row['state'],row['name']])
-    print(ch_df.shape)
-    print(ch_df.head())
     queries.write_table(ch_df, 'chmura_economic_vulnerability_index')
     return
 
@@ -31,7 +28,6 @@ def populate_table(path: str, name: str):
     df = pd.read_csv(path)
     df.drop(['index'], inplace=True, axis=1)
     df.to_sql(name, engine, if_exists='replace', method='multi', index=False)
-    print(df.head())
 
 
 def import_geojson():

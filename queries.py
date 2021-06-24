@@ -14,16 +14,16 @@ FRED_TABLES = [
     # 'homeownership_rate',
     'income_inequality',
     'population_below_poverty',
+    'resident_population',
     'single_parent_households',
     'snap_benefits_recipients',
     'unemployment_rate',
-    'resident_population',
 ]
 
 STATIC_TABLES = [
     'chmura_economic_vulnerability_index',
-    'median_rents',
     'fair_market_rents'
+    'median_rents',
 ]
 
 STATIC_COLUMNS = {
@@ -54,50 +54,46 @@ TABLE_UNITS = {
     'resident_population': 'Thousands of Persons',
 }
 
-CENSUS_TABLES = [
-    'educational_attainment',
-    'disability_status',
-    'employment_status',
-    'english_proficiency',
-    'family_type',
-    'hispanic_or_latino_origin_by_race',
-    'household_job_availability',
-    'household_technology_availability',
-    'household_vehicle_availability',
-    'housing_units_in_structure',
-    'level_of_urbanicity',
-    'occupants_per_bedroom',
-    'poverty_status',
-    'resident_population_census_tract',
-    'sex_by_age',
-    'sex_of_workers_by_vehicles_available',
-    'trip_miles',
-    'walkability_index'
-]
+CENSUS_TABLES = ['disability_status',
+                 'educational_attainment',
+                 'employment_status',
+                 'english_proficiency',
+                 'family_type',
+                 'hispanic_or_latino_origin_by_race',
+                 'household_job_availability',
+                 'household_technology_availability',
+                 'household_vehicle_availability',
+                 'housing_units_in_structure',
+                 'level_of_urbanicity',
+                 'occupants_per_bedroom',
+                 'poverty_status',
+                 'resident_population_census_tract',
+                 'sex_by_age',
+                 'sex_of_workers_by_vehicles_available',
+                 'trip_miles',
+                 'walkability_index']
 
 
+
+@st.cache(allow_output_mutation=True, hash_funcs={"_thread.RLock": lambda _: None})
+def init_engine():
+    engine = create_engine(f'postgresql://{credentials.DB_USER}:{credentials.DB_PASSWORD}@{credentials.DB_HOST}:{credentials.DB_PORT}/{credentials.DB_NAME}')
+    return engine
+
+
+@st.cache(allow_output_mutation=True, hash_funcs={"_thread.RLock": lambda _: None})
 def init_connection():
-    conn = psycopg2.connect(
-        dbname=credentials.DB_NAME,
-        user=credentials.DB_USER,
-        password=credentials.DB_PASSWORD,
-        port=credentials.DB_PORT,
-        host=credentials.DB_HOST
-    )
-
-    engine = create_engine(
-        f'postgresql://{credentials.DB_USER}:{credentials.DB_PASSWORD}@{credentials.DB_HOST}:{credentials.DB_PORT}/{credentials.DB_NAME}')
-    return conn, engine
+    conn = psycopg2.connect(**st.secrets["postgres"])
+    return conn
 
 
 def write_table(df: pd.DataFrame, table: str):
-    conn, engine = init_connection()
+    engine = init_engine()
     df.to_sql(table, engine, if_exists='replace', method='multi')
-    conn.close()
 
 
 def counties_query() -> pd.DataFrame:
-    conn, engine = init_connection()
+    conn = init_connection()
     cur = conn.cursor()
     cur.execute(
         'SELECT id as county_id, state as "State", name as "County Name" '
@@ -105,24 +101,27 @@ def counties_query() -> pd.DataFrame:
     )
     colnames = [desc[0] for desc in cur.description]
     results = cur.fetchall()
-    conn.close()
+    conn.commit()
+
     return pd.DataFrame(results, columns=colnames)
 
 
 def table_names_query() -> list:
-    conn, engine = init_connection()
+    conn = init_connection()
     cur = conn.cursor()
     cur.execute("""SELECT table_name FROM information_schema.tables
         WHERE table_schema = 'public'
         """)
     results = cur.fetchall()
+    conn.commit()
+
     res = [_[0] for _ in results]
     return res
 
 
-@st.cache(ttl=3600)
+@st.cache(ttl=1200,hash_funcs={"_thread.RLock": lambda _: None})
 def latest_data_census_tracts(state: str, counties: list, tables: list) -> pd.DataFrame:
-    conn, engine = init_connection()
+    conn = init_connection()
     cur = conn.cursor()
     tracts_df = census_tracts_geom_query(counties, state)
     counties_str = str(tuple(counties)).replace(',)', ')')
@@ -136,6 +135,8 @@ def latest_data_census_tracts(state: str, counties: list, tables: list) -> pd.Da
             INNER JOIN resident_population_census_tract ON {table_name}.tract_id = resident_population_census_tract.tract_id
             {where_clause};""")
         results = cur.fetchall()
+        conn.commit()
+
         colnames = [desc[0] for desc in cur.description]
         df = pd.DataFrame(results, columns=colnames)
         df['Census Tract'] = df['tract_id']
@@ -162,7 +163,7 @@ def load_distributions() -> tuple:
 
 
 def policy_query() -> pd.DataFrame:
-    conn, engine = init_connection()
+    conn = init_connection()
     cur = conn.cursor()
     cur.execute(
         'SELECT county_id as county_id, policy_value as "Policy Value", countdown as "Countdown" '
@@ -170,13 +171,14 @@ def policy_query() -> pd.DataFrame:
     )
     colnames = [desc[0] for desc in cur.description]
     results = cur.fetchall()
-    conn.close()
+    conn.commit()
+
+
     return pd.DataFrame(results, columns=colnames)
 
 
 def latest_data_single_table(table_name: str, require_counties: bool = True) -> pd.DataFrame:
-    conn, engine = init_connection()
-
+    conn = init_connection()
     cur = conn.cursor()
     cur.execute(
         'SELECT DISTINCT ON (county_id) '
@@ -185,8 +187,9 @@ def latest_data_single_table(table_name: str, require_counties: bool = True) -> 
         'ORDER BY county_id , "date" DESC'.format(TABLE_HEADERS[table_name], TABLE_HEADERS[table_name],
                                                   TABLE_UNITS[table_name], table_name))
     results = cur.fetchall()
+    conn.commit()
+
     colnames = [desc[0] for desc in cur.description]
-    conn.close()
 
     df = pd.DataFrame(results, columns=colnames)
     if require_counties:
@@ -233,41 +236,45 @@ def latest_data_all_tables() -> pd.DataFrame:
 
 
 def static_data_single_table(table_name: str, columns: list) -> pd.DataFrame:
-    conn, engine = init_connection()
+    conn = init_connection()
     cur = conn.cursor()
     str_columns = ', '.join('"{}"'.format(c) for c in columns)
     query = 'SELECT county_id, {} FROM {} '.format(str_columns, table_name)
     cur.execute(query)
     results = cur.fetchall()
+    conn.commit()
+
     colnames = [desc[0] for desc in cur.description]
     df = pd.DataFrame(results, columns=colnames)
     counties_df = counties_query()
     df = counties_df.merge(df)
-    conn.close()
     return df
 
 
 def generic_select_query(table_name: str, columns: list) -> pd.DataFrame:
-    conn, engine = init_connection()
+    conn = init_connection()
     cur = conn.cursor()
     str_columns = ', '.join('"{}"'.format(c) for c in columns)
     query = 'SELECT {} FROM {} '.format(str_columns, table_name)
     cur.execute(query)
     results = cur.fetchall()
+    conn.commit()
+
     colnames = [desc[0] for desc in cur.description]
-    conn.close()
     df = pd.DataFrame(results, columns=colnames)
     return df
 
 
 def get_county_geoms(counties_list: list, state: str) -> pd.DataFrame:
-    conn, engine = init_connection()
+    conn = init_connection()
     counties_list = [_.replace("'", "''") for _ in counties_list]
     counties = "(" + ",".join(["'" + str(_) + "'" for _ in counties_list]) + ")"
     cur = conn.cursor()
     query = "SELECT * FROM counties_geom WHERE LOWER(state)='{}' AND cnty_name in {};".format(state, counties)
     cur.execute(query)
     results = cur.fetchall()
+    conn.commit()
+
     colnames = [desc[0] for desc in cur.description]
     df = pd.DataFrame(results, columns=colnames)
     parcels = []
@@ -277,12 +284,11 @@ def get_county_geoms(counties_list: list, state: str) -> pd.DataFrame:
     geom_df['County Name'] = df['cnty_name']
     geom_df['State'] = df['state']
     geom_df['geom'] = pd.Series(parcels)
-    conn.close()
     return geom_df
 
 
 def census_tracts_geom_query(counties, state) -> pd.DataFrame:
-    conn, engine = init_connection()
+    conn = init_connection()
     cur = conn.cursor()
     if len(counties) > 1:
         where_clause = 'WHERE id_index.state_name = ' + "'" + state + "'" + ' ' + 'AND id_index.county_name IN ' + str(
@@ -298,7 +304,8 @@ def census_tracts_geom_query(counties, state) -> pd.DataFrame:
     """)
     colnames = [desc[0] for desc in cur.description]
     results = cur.fetchall()
-    conn.close()
+    conn.commit()
+
     df = pd.DataFrame(results, columns=colnames)
     parcels = []
     for parcel in df['geom']:
@@ -306,7 +313,6 @@ def census_tracts_geom_query(counties, state) -> pd.DataFrame:
     geom_df = pd.DataFrame()
     geom_df['Census Tract'] = df['tract_id']
     geom_df['geom'] = pd.Series(parcels)
-    conn.close()
     return geom_df
 
 
@@ -333,12 +339,13 @@ def output_data(df: pd.DataFrame, table_name: str = 'fred_tables', ext: str = 'x
 
 
 def fmr_data():
-    conn, engine = init_connection()
+    conn = init_connection()
     cur = conn.cursor()
     cur.execute('SELECT state_full as "State", countyname as "County Name" FROM fair_market_rents;')
     colnames = [desc[0] for desc in cur.description]
     results = cur.fetchall()
-    conn.close()
+    conn.commit()
+
     return pd.DataFrame(results, columns=colnames)
 
 
@@ -412,7 +419,7 @@ def get_existing_policies(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-@st.cache(ttl=3600, allow_output_mutation=True)
+@st.cache(ttl=1200, allow_output_mutation=True, hash_funcs={"_thread.RLock": lambda _: None})
 def get_county_data(state: str, counties: list = None, policy: bool = False):
     df = load_all_data()
     df = filter_state(df, state)
@@ -424,7 +431,7 @@ def get_county_data(state: str, counties: list = None, policy: bool = False):
     return df
 
 
-@st.cache(ttl=3600)
+@st.cache(ttl=3600, hash_funcs={"_thread.RLock": lambda _: None})
 def get_national_county_data():
     frames = []
     for s in STATES:

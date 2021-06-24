@@ -114,7 +114,7 @@ def run_UI():
         initial_sidebar_state="expanded")
     st.sidebar.title('Arup Social Data')
     workflow = st.sidebar.selectbox('Workflow', ['Data Explorer', 'Eviction Analysis'])
-    data_type=None
+    data_type ='County Level'
     if workflow == 'Data Explorer':
         data_type = st.sidebar.radio("Select data boundary:", ('County Level', 'Census Tracts'), index=0)
     st.sidebar.write("""
@@ -133,17 +133,19 @@ def run_UI():
     with st.sidebar.beta_expander("Credits"):
         """
         This app is the result of hard work by our team:
-        - [Angela Wilson 🐦](https://twitter.com/AngelaWilson925) 
+        - [Jared Stock 🐦](https://twitter.com/jaredstock) 
+        - [Angela Wilson 🐦](https://twitter.com/AngelaWilson925) (alumnus)
         - Sam Lustado
         - Lingyi Chen
-        - Kevin McGee
-        - [Jared Stock 🐦](https://twitter.com/jaredstock) 
+        - Kevin McGee (alumnus)
         - Jen Combs
         - Zoe Temco
+        - Prashuk Jain
+        - Sanket Shah
 
 
         Special thanks to Julieta Moradei and Kamini Ayer from New Story, Kristin Maun from the city of Tulsa, 
-        Emily Walport and Irene Gleeson with Arup's Community Engagment team, and everyone else who has given feedback 
+        Emily Walport, Irene Gleeson, and Elizabeth Joyce with Arup's Community Engagment team, and everyone else who has given feedback 
         and helped support this work. Also thanks to the team at Streamlit for their support of this work.
 
         The analysis and underlying data are provided as open source under an [MIT license](https://github.com/arup-group/social-data/blob/master/LICENSE). 
@@ -153,6 +155,7 @@ def run_UI():
     if workflow == 'Eviction Analysis':
         eviction_analysis.eviction_UI()
     else:
+        print(data_type)
         if data_type == 'County Level':
             data_explorer.county_data_explorer()
         else:
