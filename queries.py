@@ -74,16 +74,25 @@ CENSUS_TABLES = ['disability_status',
                  'walkability_index']
 
 
-
 @st.cache(allow_output_mutation=True, hash_funcs={"_thread.RLock": lambda _: None})
 def init_engine():
-    engine = create_engine(f'postgresql://{credentials.DB_USER}:{credentials.DB_PASSWORD}@{credentials.DB_HOST}:{credentials.DB_PORT}/{credentials.DB_NAME}')
+    engine = create_engine(
+        f'postgresql://{credentials.DB_USER}:{credentials.DB_PASSWORD}@{credentials.DB_HOST}:{credentials.DB_PORT}/{credentials.DB_NAME}')
     return engine
 
 
 @st.cache(allow_output_mutation=True, hash_funcs={"_thread.RLock": lambda _: None})
 def init_connection():
-    conn = psycopg2.connect(**st.secrets["postgres"])
+    if st.secrets:
+        conn = psycopg2.connect(**st.secrets["postgres"])
+    else:
+        conn = psycopg2.connect(
+            user=credentials.DB_USER,
+            password=credentials.DB_PASSWORD,
+            host=credentials.DB_HOST,
+            port=credentials.DB_PORT,
+            dbname=credentials.DB_NAME
+        )
     return conn
 
 
@@ -119,7 +128,7 @@ def table_names_query() -> list:
     return res
 
 
-@st.cache(ttl=1200,hash_funcs={"_thread.RLock": lambda _: None})
+@st.cache(ttl=1200, hash_funcs={"_thread.RLock": lambda _: None})
 def latest_data_census_tracts(state: str, counties: list, tables: list) -> pd.DataFrame:
     conn = init_connection()
     cur = conn.cursor()
@@ -172,7 +181,6 @@ def policy_query() -> pd.DataFrame:
     colnames = [desc[0] for desc in cur.description]
     results = cur.fetchall()
     conn.commit()
-
 
     return pd.DataFrame(results, columns=colnames)
 
