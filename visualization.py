@@ -33,6 +33,8 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
     normalized_vals = scaler.fit_transform(norm_df)
     colors = list(map(color_scale, normalized_vals))
     geo_df['fill_color'] = colors
+    keep_cols=['coordinates','name', map_feature, 'fill_color']
+    geo_df=geo_df[keep_cols]
     geo_df.fillna(0, inplace=True)
 
     tooltip = {"html": ""}

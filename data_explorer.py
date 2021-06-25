@@ -33,7 +33,7 @@ def county_data_explorer():
     if df is not None:
         if st.checkbox('Show raw data'):
             st.subheader('Raw Data')
-            st.caption(df.shape)
+            st.caption(str(df.shape))
             st.dataframe(df)
             st.markdown(utils.get_table_download_link(df, name, 'Download raw data'), unsafe_allow_html=True)
 
