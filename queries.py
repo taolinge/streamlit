@@ -273,12 +273,13 @@ def generic_select_query(table_name: str, columns: list) -> pd.DataFrame:
     return df
 
 
+@st.cache(ttl=1200, allow_output_mutation=True, hash_funcs={"_thread.RLock": lambda _: None})
 def get_county_geoms(counties_list: list, state: str) -> pd.DataFrame:
     conn = init_connection()
     counties_list = [_.replace("'", "''") for _ in counties_list]
     counties = "(" + ",".join(["'" + str(_) + "'" for _ in counties_list]) + ")"
     cur = conn.cursor()
-    query = "SELECT * FROM counties_geom WHERE LOWER(state)='{}' AND cnty_name in {};".format(state, counties)
+    query = f"SELECT * FROM counties_geom WHERE LOWER(state)='{state}' AND cnty_name in {counties};"
     cur.execute(query)
     results = cur.fetchall()
     conn.commit()
@@ -290,6 +291,31 @@ def get_county_geoms(counties_list: list, state: str) -> pd.DataFrame:
         geom = wkb.loads(parcel, hex=True)
         parcels.append(geom.simplify(tolerance=0.001, preserve_topology=True))
     geom_df = pd.DataFrame()
+    geom_df['county_id'] = df['id']
+    geom_df['County Name'] = df['cnty_name']
+    geom_df['State'] = df['state']
+    geom_df['geom'] = pd.Series(parcels)
+    return geom_df
+
+
+@st.cache(ttl=1200, allow_output_mutation=True, hash_funcs={"_thread.RLock": lambda _: None})
+def get_county_geoms_by_id(counties_list: list) -> pd.DataFrame:
+    conn = init_connection()
+    counties = "(" + ",".join(["'" + str(_) + "'" for _ in counties_list]) + ")"
+    cur = conn.cursor()
+    query = f"SELECT * FROM counties_geom WHERE id in {counties};"
+    cur.execute(query)
+    results = cur.fetchall()
+    conn.commit()
+
+    colnames = [desc[0] for desc in cur.description]
+    df = pd.DataFrame(results, columns=colnames)
+    parcels = []
+    for parcel in df['geom']:
+        geom = wkb.loads(parcel, hex=True)
+        parcels.append(geom.simplify(tolerance=0.001, preserve_topology=True))
+    geom_df = pd.DataFrame()
+    geom_df['county_id'] = df['id']
     geom_df['County Name'] = df['cnty_name']
     geom_df['State'] = df['state']
     geom_df['geom'] = pd.Series(parcels)
@@ -442,7 +468,7 @@ def get_county_data(state: str, counties: list = None, policy: bool = False):
 
 
 @st.cache(ttl=3600, hash_funcs={"_thread.RLock": lambda _: None})
-def get_national_county_data():
+def get_national_county_data() -> pd.DataFrame:
     frames = []
     for s in STATES:
         tmp_df = get_county_data(s)
@@ -450,6 +476,14 @@ def get_national_county_data():
     df = pd.concat(frames)
     return df
 
+@st.cache(ttl=3600, hash_funcs={"_thread.RLock": lambda _: None})
+def get_national_county_geom_data(counties: list) ->pd.DataFrame:
+    frames = []
+    for c in counties:
+        tmp_df = get_county_geoms()
+        frames.append(tmp_df)
+    df = pd.concat(frames)
+    return df
 
 if __name__ == '__main__':
     latest_data_census_tracts('California', ['Contra Costa County'],

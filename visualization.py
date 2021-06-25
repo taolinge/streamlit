@@ -20,6 +20,7 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
         geo_df.reset_index(inplace=True)
     if 'Census Tract' in df.columns:
         df.reset_index(inplace=True)
+
     geojson = utils.convert_geom(geo_df, df, [map_feature])
     geojson_df = pd.DataFrame(geojson)
 
@@ -36,17 +37,18 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
 
     tooltip = {"html": ""}
     if 'Census Tract' in set(geo_df.columns):
-        keep_cols = ['coordinates', 'name', 'fill_color', map_feature]
+        keep_cols = ['coordinates', 'name', 'fill_color', 'geom', map_feature]
         geo_df.drop(list(set(geo_df.columns) - set(keep_cols)), axis=1, inplace=True)
         tooltip = {"html": "<b>Tract:</b> {name} </br>" + "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "}"}
     elif 'County Name' in set(geo_df.columns):
-        geo_df.drop(['geom', 'County Name'], axis=1, inplace=True)
+        # geo_df.drop(['geom', 'County Name'], axis=1, inplace=True)
         tooltip = {
             "html": "<b>County:</b> {name} </br>" + "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "}"}
     view_state = pdk.ViewState(
         **{"latitude": 36, "longitude": -95, "zoom": 3, "maxZoom": 16, "pitch": 0, "bearing": 0}
     )
     geo_df = geo_df.astype({map_feature: 'float64'})
+
     polygon_layer = pdk.Layer(
         "PolygonLayer",
         geo_df,

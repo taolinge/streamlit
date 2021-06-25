@@ -53,7 +53,10 @@ def county_data_explorer():
         if task != 'National':
             geo_df = queries.get_county_geoms(counties, state.lower())
             visualization.make_map(geo_df, temp, single_feature)
-
+        else:
+            county_ids = temp['county_id'].to_list()
+            geo_df = queries.get_county_geoms_by_id(county_ids)
+            visualization.make_map(geo_df, temp, single_feature)
         st.write('''
             ### Compare Features
             Select two features to compare on the X and Y axes
@@ -64,7 +67,7 @@ def county_data_explorer():
         with col2:
             feature_2 = st.selectbox('Y Feature', feature_labels, 1)
         with col3:
-            scaling_feature = st.selectbox('Scaling Feature', feature_labels, 18)
+            scaling_feature = st.selectbox('Scaling Feature', feature_labels, 17)
         if feature_1 and feature_2:
             visualization.make_scatter_plot_counties(temp, feature_1, feature_2, scaling_feature)
         temp.drop(['State', 'County Name', 'county_id'], inplace=True, axis=1)
