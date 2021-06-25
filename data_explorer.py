@@ -72,14 +72,14 @@ def county_data_explorer():
                                                    'Housing Units',
                                                    'Income Inequality (Ratio)',
                                                    'Median Age',
-                                                   'Non-White Population (%)'
+                                                   'Non-White Population (%)',
                                                    'Population Below Poverty Line (%)',
                                                    'Renter Occupied Units',
                                                    'Resident Population (Thousands of Persons)',
                                                    'Single Parent Households (%)',
+                                                   'Unemployment Rate (%)',
                                                    'Vacant Units',
                                                    'VulnerabilityIndex',
-                                                   'Unemployment Rate (%)',
                                                    ])
 
 

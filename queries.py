@@ -287,7 +287,8 @@ def get_county_geoms(counties_list: list, state: str) -> pd.DataFrame:
     df = pd.DataFrame(results, columns=colnames)
     parcels = []
     for parcel in df['geom']:
-        parcels.append(wkb.loads(parcel, hex=True))
+        geom = wkb.loads(parcel, hex=True)
+        parcels.append(geom.simplify(tolerance=0.001, preserve_topology=True))
     geom_df = pd.DataFrame()
     geom_df['County Name'] = df['cnty_name']
     geom_df['State'] = df['state']
@@ -317,7 +318,8 @@ def census_tracts_geom_query(counties, state) -> pd.DataFrame:
     df = pd.DataFrame(results, columns=colnames)
     parcels = []
     for parcel in df['geom']:
-        parcels.append(wkb.loads(parcel, hex=True))
+        geom = wkb.loads(parcel, hex=True)
+        parcels.append(geom.simplify(tolerance=0.00055, preserve_topology=False))
     geom_df = pd.DataFrame()
     geom_df['Census Tract'] = df['tract_id']
     geom_df['geom'] = pd.Series(parcels)

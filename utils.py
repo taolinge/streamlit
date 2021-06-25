@@ -1,4 +1,7 @@
 import base64
+import pickle
+import sys
+
 import pandas as pd
 from six import BytesIO
 import geopandas as gpd
@@ -34,8 +37,7 @@ def make_geojson(geo_df: pd.DataFrame, features: list) -> dict:
         for i, row in geo_df.iterrows():
             feature = row['coordinates']['features'][0]
             props = {"name": str(row['Census Tract'])}
-            for f in features:
-                props.update({f: row[f]})
+            [props.update({f: row[f]}) for f in features]
             feature["properties"] = props
             del feature["id"]
             del feature["bbox"]
@@ -45,8 +47,7 @@ def make_geojson(geo_df: pd.DataFrame, features: list) -> dict:
         for i, row in geo_df.iterrows():
             feature = row['coordinates']['features'][0]
             props = {"name": row['County Name']}
-            for f in features:
-                props.update({f: row[f]})
+            [props.update({f: row[f]}) for f in features]
             feature["properties"] = props
             del feature["id"]
             del feature["bbox"]
@@ -67,7 +68,7 @@ def convert_coordinates(row) -> list:
         coords = f['geometry']['coordinates']
         for coord in coords:
             for point in coord:
-                new_coords.append([point[0], point[1]])
+                new_coords.append([round(point[0],6), round(point[1],6)])
         f['geometry']['coordinates'] = new_coords
     return row['coordinates']
 
@@ -83,4 +84,6 @@ def convert_geom(geo_df: pd.DataFrame, data_df: pd.DataFrame, map_features: list
     geo_df['coordinates'] = geo_df.apply(lambda row: gpd.GeoSeries(row['geom']).__geo_interface__, axis=1)
     geo_df['coordinates'] = geo_df.apply(lambda row: convert_coordinates(row), axis=1)
     geojson = make_geojson(geo_df, map_features)
+    size_estimate = len(pickle.dumps(geojson))
+    print(f'{size_estimate/1024=}')
     return geojson

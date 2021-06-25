@@ -26,6 +26,7 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
     geo_df["coordinates"] = geojson_df["features"].apply(lambda row: row["geometry"]["coordinates"])
     geo_df["name"] = geojson_df["features"].apply(lambda row: row["properties"]["name"])
     geo_df[map_feature] = geojson_df["features"].apply(lambda row: row["properties"][map_feature])
+
     scaler = pre.MinMaxScaler()
     norm_df = pd.DataFrame(geo_df[map_feature])
     normalized_vals = scaler.fit_transform(norm_df)
@@ -33,6 +34,7 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
     geo_df['fill_color'] = colors
     geo_df.fillna(0, inplace=True)
 
+    tooltip = {"html": ""}
     if 'Census Tract' in set(geo_df.columns):
         keep_cols = ['coordinates', 'name', 'fill_color', map_feature]
         geo_df.drop(list(set(geo_df.columns) - set(keep_cols)), axis=1, inplace=True)
@@ -50,11 +52,11 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
         geo_df,
         get_polygon="coordinates",
         filled=True,
+        get_fill_color='fill_color',
         stroked=False,
         opacity=0.15,
-        get_fill_color='fill_color',
-        auto_highlight=True,
         pickable=True,
+        auto_highlight=True,
     )
 
     r = pdk.Deck(
