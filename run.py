@@ -9,12 +9,16 @@ import analysis
 import utils
 from constants import STATES
 
+import SessionState
+
 # Pandas options
 pd.set_option('max_rows', 25)
 pd.set_option('max_columns', 12)
 pd.set_option('expand_frame_repr', True)
 pd.set_option('large_repr', 'truncate')
 pd.options.display.float_format = '{:.2f}'.format
+
+session_state = SessionState.get(workflow='Data Explorer', data_type='County Level')
 
 
 def print_summary(df: pd.DataFrame, output: str):
@@ -113,10 +117,10 @@ def run_UI():
         page_icon="🏠",
         initial_sidebar_state="expanded")
     st.sidebar.title('Arup Social Data')
-    workflow = st.sidebar.selectbox('Workflow', ['Data Explorer', 'Eviction Analysis'])
-    data_type ='County Level'
-    if workflow == 'Data Explorer':
-        data_type = st.sidebar.radio("Select data boundary:", ('County Level', 'Census Tracts'), index=0)
+    # print(session_state.workflow, session_state.data_type)
+    session_state.workflow = st.sidebar.selectbox('Workflow', ['Data Explorer', 'Eviction Analysis'])
+    if session_state.workflow == 'Data Explorer':
+        session_state.data_type = st.sidebar.radio("Select data boundary:", ('County Level', 'Census Tracts'), index=0)
     st.sidebar.write("""
     This tool supports analysis of United States county level data from a variety of data sources. There are two workflows: an Eviction
      Analysis workflow, which is specifically focused on evictions as a result of COVID-19, and a Data Explorer workflow,
@@ -152,11 +156,10 @@ def run_UI():
 
         Made by [Arup](https://www.arup.com/).
             """
-    if workflow == 'Eviction Analysis':
+    if session_state.workflow == 'Eviction Analysis':
         eviction_analysis.eviction_UI()
     else:
-        print(data_type)
-        if data_type == 'County Level':
+        if session_state.data_type == 'County Level':
             data_explorer.county_data_explorer()
         else:
             data_explorer.census_data_explorer()
