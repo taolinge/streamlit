@@ -78,8 +78,6 @@ def convert_geom(geo_df: pd.DataFrame, data_df: pd.DataFrame, map_features: list
         data_df = data_df[['county_id'] + map_features]
         cols_to_use = list(data_df.columns.difference(geo_df.columns))
         cols_to_use.append('county_id')
-        print(data_df.columns)
-        print(geo_df.columns)
         geo_df = geo_df.merge(data_df[cols_to_use], on='county_id', how="outer")
     elif 'tract_id' in data_df or 'Census Tract' in data_df:
         data_df = data_df[['Census Tract'] + map_features]
@@ -88,6 +86,6 @@ def convert_geom(geo_df: pd.DataFrame, data_df: pd.DataFrame, map_features: list
     geo_df['coordinates'] = geo_df.apply(lambda row: gpd.GeoSeries(row['geom']).__geo_interface__, axis=1)
     geo_df['coordinates'] = geo_df.apply(lambda row: convert_coordinates(row), axis=1)
     geojson = make_geojson(geo_df, map_features)
-    size_estimate = len(pickle.dumps(geojson))
+    # size_estimate = len(pickle.dumps(geojson))
     # print(f'{size_estimate/1024=}')
     return geojson
