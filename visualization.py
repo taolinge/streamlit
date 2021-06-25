@@ -20,7 +20,7 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
         geo_df.reset_index(inplace=True)
     if 'Census Tract' in df.columns:
         df.reset_index(inplace=True)
-    geo_df_copy=geo_df.copy()
+    geo_df_copy = geo_df.copy()
     geojson = utils.convert_geom(geo_df_copy, df, [map_feature])
     geojson_df = pd.DataFrame(geojson)
 
@@ -33,8 +33,6 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
     normalized_vals = scaler.fit_transform(norm_df)
     colors = list(map(color_scale, normalized_vals))
     geo_df_copy['fill_color'] = colors
-    keep_cols=['coordinates','name', map_feature, 'fill_color','county_id']
-    geo_df_copy.drop(columns=[col for col in geo_df_copy if col not in keep_cols], inplace=True)
     geo_df_copy.fillna(0, inplace=True)
 
     tooltip = {"html": ""}
@@ -43,7 +41,7 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
         geo_df_copy.drop(list(set(geo_df_copy.columns) - set(keep_cols)), axis=1, inplace=True)
         tooltip = {"html": "<b>Tract:</b> {name} </br>" + "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "}"}
     elif 'County Name' in set(geo_df_copy.columns):
-        # geo_df_copy.drop(['geom', 'County Name'], axis=1, inplace=True)
+        geo_df_copy.drop(['geom', 'County Name'], axis=1, inplace=True)
         tooltip = {
             "html": "<b>County:</b> {name} </br>" + "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "}"}
     view_state = pdk.ViewState(
