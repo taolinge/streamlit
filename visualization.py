@@ -44,9 +44,11 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
         geo_df_copy.drop(['geom', 'County Name'], axis=1, inplace=True)
         tooltip = {
             "html": "<b>County:</b> {name} </br>" + "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "}"}
-    view_state = pdk.ViewState(
-        **{"latitude": 36, "longitude": -95, "zoom": 3, "maxZoom": 16, "pitch": 0, "bearing": 0}
-    )
+
+    if len(geo_df_copy['coordinates'][0][0][0]) > 0:
+        view_state = pdk.ViewState(**{"latitude": geo_df_copy['coordinates'][0][0][0][1], "longitude": geo_df_copy['coordinates'][0][0][0][0], "zoom": 5, "maxZoom": 16, "pitch": 0, "bearing": 0})
+    else:
+        view_state = pdk.ViewState(**{"latitude": 36, "longitude": -95, "zoom": 3, "maxZoom": 16, "pitch": 0, "bearing": 0})
     geo_df_copy = geo_df_copy.astype({map_feature: 'float64'})
 
     polygon_layer = pdk.Layer(

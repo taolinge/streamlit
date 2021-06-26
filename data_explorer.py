@@ -1,3 +1,4 @@
+import pandas as pd
 import streamlit as st
 
 import queries
@@ -99,10 +100,13 @@ def census_data_explorer():
     tables.sort()
 
     if len(tables) > 0 and len(counties) > 0:
-        if 'All' in counties:
-            df = queries.latest_data_census_tracts(state, county_list, tables)
-        else:
-            df = queries.latest_data_census_tracts(state, counties, tables)
+        try:
+            if 'All' in counties:
+                df = queries.latest_data_census_tracts(state, county_list, tables)
+            else:
+                df = queries.latest_data_census_tracts(state, counties, tables)
+        except:
+            df=pd.DataFrame()
 
         if st.checkbox('Show raw data'):
             st.subheader('Raw Data')

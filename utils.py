@@ -68,7 +68,7 @@ def convert_coordinates(row) -> list:
         coords = f['geometry']['coordinates']
         for coord in coords:
             for point in coord:
-                new_coords.append([round(point[0],6), round(point[1],6)])
+                new_coords.append([round(point[0], 6), round(point[1], 6)])
         f['geometry']['coordinates'] = new_coords
     return row['coordinates']
 
