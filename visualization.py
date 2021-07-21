@@ -8,7 +8,7 @@ from constants import BREAKS, COLOR_RANGE
 import utils
 
 
-def color_scale(val):
+def color_scale(val: float) -> list:
     for i, b in enumerate(BREAKS):
         if val < b:
             return COLOR_RANGE[i]
@@ -16,50 +16,51 @@ def color_scale(val):
 
 
 def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
-    temp = df.copy()
-
-    temp.reset_index(inplace=True)
     if 'Census Tract' in geo_df.columns:
         geo_df.reset_index(inplace=True)
     if 'Census Tract' in df.columns:
         df.reset_index(inplace=True)
-    geojson = utils.convert_geom(geo_df, temp, [map_feature])
+    geo_df_copy = geo_df.copy()
+    geojson = utils.convert_geom(geo_df_copy, df, [map_feature])
+    geojson_df = pd.DataFrame(geojson)
 
-    merged_df = pd.DataFrame(geojson)
+    geo_df_copy["coordinates"] = geojson_df["features"].apply(lambda row: row["geometry"]["coordinates"])
+    geo_df_copy["name"] = geojson_df["features"].apply(lambda row: row["properties"]["name"])
+    geo_df_copy[map_feature] = geojson_df["features"].apply(lambda row: row["properties"][map_feature])
 
-    geo_df["coordinates"] = merged_df["features"].apply(lambda row: row["geometry"]["coordinates"])
-    geo_df["name"] = merged_df["features"].apply(lambda row: row["properties"]["name"])
-    geo_df[map_feature] = merged_df["features"].apply(lambda row: row["properties"][map_feature])
     scaler = pre.MinMaxScaler()
-    norm_df = pd.DataFrame(geo_df[map_feature])
+    norm_df = pd.DataFrame(geo_df_copy[map_feature])
     normalized_vals = scaler.fit_transform(norm_df)
     colors = list(map(color_scale, normalized_vals))
-    geo_df['fill_color'] = colors
+    geo_df_copy['fill_color'] = colors
+    geo_df_copy.fillna(0, inplace=True)
 
-    if 'Census Tract' in set(geo_df.columns):
-        keep_cols = ['coordinates', 'name', 'fill_color', map_feature]
-        geo_df.drop(list(set(geo_df.columns) - set(keep_cols)), axis=1, inplace=True)
+    tooltip = {"html": ""}
+    if 'Census Tract' in set(geo_df_copy.columns):
+        keep_cols = ['coordinates', 'name', 'fill_color', 'geom', map_feature]
+        geo_df_copy.drop(list(set(geo_df_copy.columns) - set(keep_cols)), axis=1, inplace=True)
         tooltip = {"html": "<b>Tract:</b> {name} </br>" + "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "}"}
-    elif 'County Name' in set(geo_df.columns):
-        geo_df.drop(['geom', 'County Name'], axis=1, inplace=True)
+    elif 'County Name' in set(geo_df_copy.columns):
+        geo_df_copy.drop(['geom', 'County Name'], axis=1, inplace=True)
         tooltip = {
             "html": "<b>County:</b> {name} </br>" + "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "}"}
 
-    view_state = pdk.ViewState(
-        **{"latitude": 36, "longitude": -95, "zoom": 3, "maxZoom": 16, "pitch": 0, "bearing": 0}
-    )
-    geo_df = geo_df.astype({map_feature: 'float64'})
+    if len(geo_df_copy['coordinates'][0][0][0]) > 0:
+        view_state = pdk.ViewState(**{"latitude": geo_df_copy['coordinates'][0][0][0][1], "longitude": geo_df_copy['coordinates'][0][0][0][0], "zoom": 5, "maxZoom": 16, "pitch": 0, "bearing": 0})
+    else:
+        view_state = pdk.ViewState(**{"latitude": 36, "longitude": -95, "zoom": 3, "maxZoom": 16, "pitch": 0, "bearing": 0})
+    geo_df_copy = geo_df_copy.astype({map_feature: 'float64'})
 
     polygon_layer = pdk.Layer(
         "PolygonLayer",
-        geo_df,
+        geo_df_copy,
         get_polygon="coordinates",
         filled=True,
-        stroked=False,
-        opacity=0.5,
         get_fill_color='fill_color',
-        auto_highlight=True,
+        stroked=False,
+        opacity=0.15,
         pickable=True,
+        auto_highlight=True,
     )
 
     r = pdk.Deck(
@@ -71,7 +72,7 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
     st.pydeck_chart(r)
 
 
-def make_correlation_plot(df: pd.DataFrame, default_cols=[]):
+def make_correlation_plot(df: pd.DataFrame, feature_cols: list):
     df = df.astype('float64')
     st.subheader('Correlation Plot')
     st.write('''
@@ -79,9 +80,11 @@ def make_correlation_plot(df: pd.DataFrame, default_cols=[]):
     A value of 1 means that for a positive increase in one feature, there will be an increase in the other by a fixed proportion.
     A value of -1 means that for a positive increase in one feature, there will be a decrease in the other by a fixed proportion. 
     A value of 0 means that the two features are unrelated. A higher value can be read as a stronger relationship 
-    (either postive or negative) between the two features.
+    (either positive or negative) between the two features.
     ''')
-    cols_to_compare = st.multiselect('Columns to consider', list(df.columns), default_cols)
+    avail_cols = list(df.columns)
+    avail_cols.sort()
+    cols_to_compare = st.multiselect('Columns to consider', avail_cols, feature_cols)
     if len(cols_to_compare) > 2:
         df_corr = df[cols_to_compare].corr().stack().reset_index().rename(
             columns={0: 'correlation', 'level_0': 'variable', 'level_1': 'variable2'})
@@ -115,15 +118,35 @@ def make_correlation_plot(df: pd.DataFrame, default_cols=[]):
 
 
 def make_bar_chart(df: pd.DataFrame, feature: str):
-    bar_df = pd.DataFrame(df.reset_index()[[feature, 'County Name']])
+    bar_df = pd.DataFrame(df[[feature, 'County Name']])
     bar = alt.Chart(bar_df).mark_bar() \
         .encode(x='County Name', y=feature + ':Q',
-                tooltip=['County Name', feature])
+                tooltip=['County Name', feature]).interactive()
     st.altair_chart(bar, use_container_width=True)
 
 
 def make_census_bar_chart(df: pd.DataFrame, feature: str):
     bar = alt.Chart(df).mark_bar() \
         .encode(x='tract_id', y=feature + ':Q',
-                tooltip=['tract_id', feature])
+                tooltip=['tract_id', feature]).interactive()
     st.altair_chart(bar, use_container_width=True)
+
+
+def make_scatter_plot_counties(df: pd.DataFrame, feature_1: str, feature_2: str,
+                               scaling_feature: str = 'Resident Population (Thousands of Persons)'):
+    scatter_df = df[[feature_1, feature_2, 'County Name', scaling_feature]]
+    scatter = alt.Chart(scatter_df).mark_point() \
+        .encode(x=feature_1 + ':Q', y=feature_2 + ':Q',
+                tooltip=['County Name', scaling_feature, feature_1, feature_2],
+                size=scaling_feature).interactive()
+    st.altair_chart(scatter, use_container_width=True)
+
+
+def make_scatter_plot_census_tracts(df: pd.DataFrame, feature_1: str, feature_2: str,
+                                    scaling_feature: str = 'tot_population_census_2010'):
+    scatter_df = df.reset_index(drop=True)[[feature_1, feature_2, 'tract_id', scaling_feature]]
+    scatter = alt.Chart(scatter_df).mark_point() \
+        .encode(x=feature_1 + ':Q', y=feature_2 + ':Q',
+                tooltip=['tract_id', scaling_feature, feature_1, feature_2],
+                size=scaling_feature).interactive()
+    st.altair_chart(scatter, use_container_width=True)

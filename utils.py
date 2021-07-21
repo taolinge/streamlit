@@ -1,7 +1,11 @@
 import base64
+import pickle
+import sys
+
 import pandas as pd
 from six import BytesIO
 import geopandas as gpd
+
 
 def to_excel(df: pd.DataFrame):
     output = BytesIO()
@@ -12,7 +16,7 @@ def to_excel(df: pd.DataFrame):
     return processed_data
 
 
-def get_table_download_link(df: pd.DataFrame, file_name: str, text: str):
+def get_table_download_link(df: pd.DataFrame, file_name: str, text: str) -> str:
     """Generates a link allowing the data in a given panda dataframe to be downloaded
     in:  dataframe
     out: href string
@@ -33,8 +37,7 @@ def make_geojson(geo_df: pd.DataFrame, features: list) -> dict:
         for i, row in geo_df.iterrows():
             feature = row['coordinates']['features'][0]
             props = {"name": str(row['Census Tract'])}
-            for f in features:
-                props.update({f: row[f]})
+            [props.update({f: row[f]}) for f in features]
             feature["properties"] = props
             del feature["id"]
             del feature["bbox"]
@@ -44,8 +47,7 @@ def make_geojson(geo_df: pd.DataFrame, features: list) -> dict:
         for i, row in geo_df.iterrows():
             feature = row['coordinates']['features'][0]
             props = {"name": row['County Name']}
-            for f in features:
-                props.update({f: row[f]})
+            [props.update({f: row[f]}) for f in features]
             feature["properties"] = props
             del feature["id"]
             del feature["bbox"]
@@ -66,15 +68,17 @@ def convert_coordinates(row) -> list:
         coords = f['geometry']['coordinates']
         for coord in coords:
             for point in coord:
-                new_coords.append([point[0], point[1]])
+                new_coords.append([round(point[0], 6), round(point[1], 6)])
         f['geometry']['coordinates'] = new_coords
     return row['coordinates']
 
 
 def convert_geom(geo_df: pd.DataFrame, data_df: pd.DataFrame, map_features: list) -> dict:
     if 'tract_id' not in data_df:
-        data_df = data_df[['County Name'] + map_features]
-        geo_df = geo_df.merge(data_df, on='County Name')
+        data_df = data_df[['county_id'] + map_features]
+        cols_to_use = list(data_df.columns.difference(geo_df.columns))
+        cols_to_use.append('county_id')
+        geo_df = geo_df.merge(data_df[cols_to_use], on='county_id', how="outer")
     elif 'tract_id' in data_df or 'Census Tract' in data_df:
         data_df = data_df[['Census Tract'] + map_features]
         geo_df = geo_df.merge(data_df, on='Census Tract')
@@ -82,4 +86,6 @@ def convert_geom(geo_df: pd.DataFrame, data_df: pd.DataFrame, map_features: list
     geo_df['coordinates'] = geo_df.apply(lambda row: gpd.GeoSeries(row['geom']).__geo_interface__, axis=1)
     geo_df['coordinates'] = geo_df.apply(lambda row: convert_coordinates(row), axis=1)
     geojson = make_geojson(geo_df, map_features)
+    # size_estimate = len(pickle.dumps(geojson))
+    # print(f'{size_estimate/1024=}')
     return geojson
