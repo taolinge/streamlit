@@ -48,7 +48,7 @@ def county_data_explorer():
         single_feature = st.selectbox('Feature', feature_labels, 0)
         temp = df.copy()
         temp.reset_index(inplace=True)
-        visualization.make_bar_chart(temp, single_feature)
+        visualization.make_chart(temp, single_feature)
 
         counties = temp['County Name'].to_list()
         if task != 'National':
@@ -60,7 +60,7 @@ def county_data_explorer():
             visualization.make_map(geo_df, temp, single_feature)
         st.write('''
             ### Compare Features
-            Select two features to compare on the X and Y axes
+            Select two features to compare on the X and Y axes. Only numerical data can be compared.
             ''')
         col1, col2, col3 = st.beta_columns(3)
         with col1:
@@ -120,6 +120,11 @@ def census_data_explorer():
             df = df.loc[:, ~df.columns.duplicated()]
             df['County Name'] = df['county_name']
         df.set_index(['State', 'County Name'], drop=True, inplace=True)
+
+        # get column with data type, if data type == string, count uniques, apply to column encoding function...can be arbitrary:
+        # ie len(x)
+
+
         feature_labels = list(
             set(df.columns) - {'County Name', 'county_id', 'index', 'county_name', 'Census Tract', 'geom',
                                'state_id', 'state_name', 'tract', 'tract_id'})
@@ -129,15 +134,16 @@ def census_data_explorer():
                 Select a feature to view for each county
                 ''')
         single_feature = st.selectbox('Feature', feature_labels, 0)
-        visualization.make_census_bar_chart(df, single_feature)
+        visualization.make_census_chart(df, single_feature)
 
         geo_df = df.copy()
         geo_df = geo_df[['geom', 'Census Tract', 'tract_id']]
+
         visualization.make_map(geo_df, df, single_feature)
 
         st.write('''
             ### Compare Features
-            Select two features to compare on the X and Y axes
+            Select two features to compare on the X and Y axes. Only numerical data can be compared.
             ''')
         col1, col2, col3 = st.beta_columns(3)
         with col1:

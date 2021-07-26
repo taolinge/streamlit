@@ -1,3 +1,6 @@
+# Consider using python ENUM class
+from enum import Enum, auto
+
 STATES = [
     'Alabama',
     'Alaska',
