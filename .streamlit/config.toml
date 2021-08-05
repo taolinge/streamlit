@@ -5,5 +5,5 @@ token='pk.eyJ1IjoiamFyZWRzdG9jayIsImEiOiJjam1jZnU5eTM1eG9iM3BwNDRmanhoNmh5In0.T4
 [logger]
 
 # Level of logging: 'error', 'warning', 'info', or 'debug'.
-# Default: 'info'
+# Default: 'debug'
 level = "warning"

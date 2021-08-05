@@ -1,3 +1,6 @@
+# Consider using python ENUM class
+from enum import Enum, auto
+
 STATES = [
     'Alabama',
     'Alaska',
@@ -7,6 +10,7 @@ STATES = [
     'Colorado',
     'Connecticut',
     'Delaware',
+    'District of Columbia',
     'Florida',
     'Georgia',
     'Hawaii',
@@ -46,7 +50,6 @@ STATES = [
     'Vermont',
     'Virginia',
     'Washington',
-    # 'Washington DC',
     'West Virginia',
     'Wisconsin',
     'Wyoming'
