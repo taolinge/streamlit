@@ -134,8 +134,7 @@ def make_chart(df: pd.DataFrame, feature: str):
     feat_type = 'category' if df[feature].dtype == 'object' else 'numerical'
     data_df = pd.DataFrame(df[[feature, 'County Name']])
     if feat_type == 'category':
-        pass
-        # print("Categorical Data called on make_chart... are you sure thats correct?")
+        print("Categorical Data called on make_chart")
     else:
         bar = alt.Chart(data_df)\
             .mark_bar() \
@@ -152,7 +151,6 @@ def make_census_chart(df: pd.DataFrame, feature: str):
     if feat_type == 'category':
         data_df = pd.DataFrame(data_df.groupby(['county_name', feature]).size())
         data_df = data_df.rename(columns={0: "tract count"})
-        # print(data_df)
         data_df = data_df.reset_index()
         bar = alt.Chart(data_df)\
             .mark_bar() \
