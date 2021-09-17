@@ -3,6 +3,7 @@ import pandas as pd
 import pydeck as pdk
 import altair as alt
 from sklearn import preprocessing as pre
+
 from constants import BREAKS, COLOR_RANGE
 import utils
 

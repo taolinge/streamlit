@@ -48,7 +48,7 @@ def county_data_explorer():
         single_feature = st.selectbox('Feature', feature_labels, 0)
         temp = df.copy()
         temp.reset_index(inplace=True)
-        temp.drop(['geom'], inplace=True, axis=1)
+        # temp.drop(['geom'], inplace=True, axis=1)
         visualization.make_chart(temp, single_feature)
         counties = temp['County Name'].to_list()
         if task != 'National':
