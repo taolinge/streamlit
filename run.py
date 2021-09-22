@@ -9,8 +9,6 @@ import analysis
 import utils
 from constants import STATES
 
-import SessionState
-
 # Pandas options
 pd.set_option('max_rows', 25)
 pd.set_option('max_columns', 12)
@@ -18,7 +16,9 @@ pd.set_option('expand_frame_repr', True)
 pd.set_option('large_repr', 'truncate')
 pd.options.display.float_format = '{:.2f}'.format
 
-session_state = SessionState.get(workflow='Data Explorer', data_type='County Level')
+if 'key' not in st.session_state:
+    st.session_state['workflow'] = 'Data Explorer'
+    st.session_state['data_type'] = 'County Level'
 
 
 def print_summary(df: pd.DataFrame, output: str):
@@ -65,7 +65,7 @@ def run_shell() -> pd.DataFrame:
         counties = input('Please specify one or more counties, separated by commas.').strip().split(',')
         counties = [_.strip().lower() for _ in counties]
         counties = [_ + ' county' for _ in counties if ' county' not in _]
-        df = queries.get_county_data(state,counties)
+        df = queries.get_county_data(state, counties)
         cost_of_evictions = input(
             'Run an analysis to estimate the cost to avoid evictions? (Y/n) ')
         if cost_of_evictions == 'y' or cost_of_evictions == '':
@@ -115,12 +115,17 @@ def run_UI():
     st.set_page_config(
         page_title="Arup Social Data",
         page_icon="🏠",
-        initial_sidebar_state="expanded")
+        initial_sidebar_state="expanded",
+        menu_items={
+            'Report a bug': "https://github.com/arup-group/social-data/issues/new/choose",
+            'About': "Provided by Arup as free and open source under an MIT license."
+        }
+    )
     st.sidebar.title('Arup Social Data')
-    # print(session_state.workflow, session_state.data_type)
-    session_state.workflow = st.sidebar.selectbox('Workflow', ['Data Explorer', 'Eviction Analysis'])
-    if session_state.workflow == 'Data Explorer':
-        session_state.data_type = st.sidebar.radio("Select data boundary:", ('County Level', 'Census Tracts'), index=0)
+    st.session_state.workflow = st.sidebar.selectbox('Workflow', ['Data Explorer', 'Eviction Analysis'])
+    if st.session_state.workflow == 'Data Explorer':
+        st.session_state.data_type = st.sidebar.radio("Select data boundary:", ('County Level', 'Census Tracts'),
+                                                      index=0)
     st.sidebar.write("""
     This tool supports analysis of United States county level data from a variety of data sources. There are two workflows: an Eviction
      Analysis workflow, which is specifically focused on evictions as a result of COVID-19, and a Data Explorer workflow,
@@ -134,7 +139,7 @@ def run_UI():
 
     More documentation and contribution details are at our [GitHub Repository](https://github.com/arup-group/social-data).
     """)
-    with st.sidebar.beta_expander("Credits"):
+    with st.sidebar.expander("Credits"):
         """
         This app is the result of hard work by our team:
         - [Jared Stock 🐦](https://twitter.com/jaredstock) 
@@ -144,8 +149,8 @@ def run_UI():
         - Kevin McGee (alumnus)
         - Jen Combs
         - Zoe Temco
-        - Prashuk Jain
-        - Sanket Shah
+        - Prashuk Jain (alumnus)
+        - Sanket Shah (alumnus)
 
 
         Special thanks to Julieta Moradei and Kamini Ayer from New Story, Kristin Maun from the city of Tulsa, 
@@ -156,10 +161,10 @@ def run_UI():
 
         Made by [Arup](https://www.arup.com/).
             """
-    if session_state.workflow == 'Eviction Analysis':
+    if st.session_state.workflow == 'Eviction Analysis':
         eviction_analysis.eviction_UI()
     else:
-        if session_state.data_type == 'County Level':
+        if st.session_state.data_type == 'County Level':
             data_explorer.county_data_explorer()
         else:
             data_explorer.census_data_explorer()

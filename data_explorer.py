@@ -34,9 +34,12 @@ def county_data_explorer():
     if df is not None:
         if st.checkbox('Show raw data'):
             st.subheader('Raw Data')
-            st.caption(str(df.shape))
-            st.dataframe(df)
+            tmp_df=df.copy()
+            tmp_df['geom']=tmp_df['geom'].astype(str)
+            st.caption(str(tmp_df.shape))
+            st.dataframe(tmp_df)
             st.markdown(utils.get_table_download_link(df, name, 'Download raw data'), unsafe_allow_html=True)
+            st.download_button('Download raw data',utils.to_excel(df), file_name=f'{name}.xlsx')
 
         feature_labels = list(set(df.columns) - {'County Name', 'county_id'})
         feature_labels.sort()
@@ -62,7 +65,7 @@ def county_data_explorer():
             ### Compare Features
             Select two features to compare on the X and Y axes. Only numerical data can be compared.
             ''')
-        col1, col2, col3 = st.beta_columns(3)
+        col1, col2, col3 = st.columns(3)
         with col1:
             feature_1 = st.selectbox('X Feature', feature_labels, 0)
         with col2:
@@ -110,9 +113,11 @@ def census_data_explorer():
 
         if st.checkbox('Show raw data'):
             st.subheader('Raw Data')
-            st.caption(str(df.shape))
-            st.dataframe(df)
-            st.markdown(utils.get_table_download_link(df, state + '_data', 'Download raw data'), unsafe_allow_html=True)
+            tmp_df=df.copy()
+            st.caption(str(tmp_df.shape))
+            tmp_df['geom']=tmp_df['geom'].astype(str)
+            st.dataframe(tmp_df)
+            st.download_button('Download raw data',utils.to_excel(df), file_name=f'{state}_data.xlsx')
         if 'state_name' in df.columns:
             df = df.loc[:, ~df.columns.duplicated()]
             df['State'] = df['state_name']
@@ -140,7 +145,7 @@ def census_data_explorer():
                 ### Compare Features
                 Select two features to compare on the X and Y axes
                 ''')
-            col1, col2, col3 = st.beta_columns(3)
+            col1, col2, col3 = st.columns(3)
             with col1:
                 feature_1 = st.selectbox('X Feature', feature_labels, 0)
             with col2:

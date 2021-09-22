@@ -10,7 +10,7 @@ from constants import STATES
 
 def eviction_UI():
     st.write('### Eviction Data Analysis')
-    with st.beta_expander("About"):
+    with st.expander("About"):
         st.write(
             """
             This is an analysis based on work we did with [New Story](https://newstorycharity.org/) to help them
@@ -53,7 +53,7 @@ def eviction_UI():
                     st.markdown(utils.get_table_download_link(df, county + '_data', 'Download raw data'),
                                 unsafe_allow_html=True)
 
-                with st.beta_expander('Cost to avoid evictions'):
+                with st.expander('Cost to avoid evictions'):
                     st.write("""
                             The cost to avoid evictions is defined as the cost to a municipality or other entity if it was to pay 
                             people's rent directly. In this calculation, we assume a distribution of housing stock (0 bedroom to 4+ bedroom)
@@ -95,7 +95,7 @@ def eviction_UI():
                 st.markdown(utils.get_table_download_link(df, state + '_custom_data', 'Download raw data'),
                             unsafe_allow_html=True)
 
-            with st.beta_expander('Cost to avoid evictions'):
+            with st.expander('Cost to avoid evictions'):
                 st.write("""
                         The cost to avoid evictions is defined as the cost to a municipality or other entity if it was to pay 
                         people's rent directly. In this calculation, we assume a distribution of housing stock (0 bedroom to 4+ bedroom)
@@ -131,7 +131,7 @@ def eviction_UI():
             st.dataframe(df)
             st.markdown(utils.get_table_download_link(df, state + '_data', 'Download raw data'),
                         unsafe_allow_html=True)
-        with st.beta_expander('Cost to avoid evictions'):
+        with st.expander('Cost to avoid evictions'):
             st.write("""
                     The cost to avoid evictions is defined as the cost to a municipality or other entity if it was to pay 
                     people's rent directly. In this calculation, we assume a distribution of housing stock (0 bedroom to 4+ bedroom)
@@ -158,7 +158,7 @@ def eviction_UI():
 
     elif task == 'National':
         st.info('Analysis for every county in the US can take a while! Please wait...')
-        with st.beta_expander("Caveats"):
+        with st.expander("Caveats"):
             st.write(
                 "There are some counties that don't show up in this analysis because of how they are named or because data is missing. We are aware of this issue.")
 
@@ -172,7 +172,7 @@ def eviction_UI():
             st.dataframe(natl_df)
             st.markdown(utils.get_table_download_link(natl_df, 'national_data', 'Download raw data'),
                         unsafe_allow_html=True)
-        with st.beta_expander('Cost to avoid evictions'):
+        with st.expander('Cost to avoid evictions'):
             st.write("""
                     The cost to avoid evictions is defined as the cost to a municipality or other entity if it was to pay 
                     people's rent directly. In this calculation, we assume a distribution of housing stock (0 bedroom to 4+ bedroom)
