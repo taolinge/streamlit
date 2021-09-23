@@ -74,14 +74,14 @@ CENSUS_TABLES = ['disability_status',
                  'walkability_index']
 
 
-@st.cache(allow_output_mutation=True, hash_funcs={"_thread.RLock": lambda _: None})
+@st.experimental_singleton()
 def init_engine():
     engine = create_engine(
         f'postgresql://{credentials.DB_USER}:{credentials.DB_PASSWORD}@{credentials.DB_HOST}:{credentials.DB_PORT}/{credentials.DB_NAME}')
     return engine
 
 
-@st.cache(allow_output_mutation=True, hash_funcs={"_thread.RLock": lambda _: None})
+@st.experimental_singleton()
 def init_connection():
     if st.secrets:
         conn = psycopg2.connect(**st.secrets["postgres"])
@@ -128,7 +128,7 @@ def table_names_query() -> list:
     return res
 
 
-@st.cache(ttl=1200, hash_funcs={"_thread.RLock": lambda _: None})
+@st.experimental_memo(ttl=1200)
 def latest_data_census_tracts(state: str, counties: list, tables: list) -> pd.DataFrame:
     conn = init_connection()
     cur = conn.cursor()
@@ -205,14 +205,15 @@ def latest_data_single_table(table_name: str, require_counties: bool = True) -> 
         df = counties_df.merge(df)
     return df
 
-
+@st.experimental_memo(ttl=1200)
 def latest_data_all_tables() -> pd.DataFrame:
     counties_df = counties_query()
     for table_name in FRED_TABLES:
         table_output = latest_data_single_table(table_name, require_counties=False)
-        counties_df = counties_df.merge(table_output)
+        counties_df = counties_df.merge(table_output, how='outer')
     chmura_df = static_data_single_table('chmura_economic_vulnerability_index', ['VulnerabilityIndex'])
-    counties_df = counties_df.merge(chmura_df)
+    counties_df = counties_df.merge(chmura_df, how='outer')
+
     demo_df = generic_select_query('socio_demographics',
                                    ['id', 'hse_units', 'vacant', 'renter_occ', 'med_age', 'white', 'black', 'ameri_es',
                                     'asian', 'hawn_pi', 'hispanic', 'other', 'mult_race', 'males', 'females',
@@ -239,7 +240,8 @@ def latest_data_all_tables() -> pd.DataFrame:
     }, axis=1, inplace=True)
 
     demo_df.drop(['population'], axis=1, inplace=True)
-    counties_df = counties_df.merge(demo_df)
+    counties_df = counties_df.merge(demo_df, how='outer')
+
     return counties_df
 
 
@@ -255,7 +257,7 @@ def static_data_single_table(table_name: str, columns: list) -> pd.DataFrame:
     colnames = [desc[0] for desc in cur.description]
     df = pd.DataFrame(results, columns=colnames)
     counties_df = counties_query()
-    df = counties_df.merge(df)
+    df = counties_df.merge(df, how='outer')
     return df
 
 
@@ -273,7 +275,7 @@ def generic_select_query(table_name: str, columns: list) -> pd.DataFrame:
     return df
 
 
-@st.cache(ttl=1200, allow_output_mutation=True, hash_funcs={"_thread.RLock": lambda _: None})
+@st.experimental_memo(ttl=1200)
 def get_county_geoms(counties_list: list, state: str) -> pd.DataFrame:
     conn = init_connection()
     counties_list = [_.replace("'", "''") for _ in counties_list]
@@ -298,7 +300,7 @@ def get_county_geoms(counties_list: list, state: str) -> pd.DataFrame:
     return geom_df
 
 
-@st.cache(ttl=1200, allow_output_mutation=True, hash_funcs={"_thread.RLock": lambda _: None})
+@st.experimental_memo(ttl=1200)
 def get_county_geoms_by_id(counties_list: list) -> pd.DataFrame:
     conn = init_connection()
     counties = "(" + ",".join(["'" + str(_) + "'" for _ in counties_list]) + ")"
@@ -322,6 +324,7 @@ def get_county_geoms_by_id(counties_list: list) -> pd.DataFrame:
     return geom_df
 
 
+@st.experimental_memo(ttl=1200)
 def census_tracts_geom_query(counties, state) -> pd.DataFrame:
     conn = init_connection()
     cur = conn.cursor()
@@ -352,6 +355,7 @@ def census_tracts_geom_query(counties, state) -> pd.DataFrame:
     return geom_df
 
 
+@st.experimental_memo(ttl=1200)
 def static_data_all_table() -> pd.DataFrame:
     counties_df = counties_query()
     for table_name in STATIC_TABLES:
@@ -394,6 +398,7 @@ def filter_counties(data: pd.DataFrame, counties: list) -> pd.DataFrame:
     return data[data['County Name'].str.lower().isin(counties)]
 
 
+@st.experimental_memo(ttl=1200)
 def load_all_data() -> pd.DataFrame:
     if os.path.exists("Output/all_tables.xlsx"):
         try:
@@ -455,7 +460,7 @@ def get_existing_policies(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-@st.cache(ttl=1200, allow_output_mutation=True, hash_funcs={"_thread.RLock": lambda _: None})
+@st.experimental_memo(ttl=1200)
 def get_county_data(state: str, counties: list = None, policy: bool = False):
     df = load_all_data()
     df = filter_state(df, state)
@@ -467,7 +472,7 @@ def get_county_data(state: str, counties: list = None, policy: bool = False):
     return df
 
 
-@st.cache(ttl=3600, hash_funcs={"_thread.RLock": lambda _: None})
+@st.experimental_memo(ttl=3600)
 def get_national_county_data() -> pd.DataFrame:
     frames = []
     for s in STATES:
@@ -476,7 +481,8 @@ def get_national_county_data() -> pd.DataFrame:
     df = pd.concat(frames)
     return df
 
-@st.cache(ttl=3600, hash_funcs={"_thread.RLock": lambda _: None})
+
+@st.experimental_memo(ttl=3600)
 def get_national_county_geom_data(counties: list) ->pd.DataFrame:
     frames = []
     for c in counties:
@@ -484,6 +490,7 @@ def get_national_county_geom_data(counties: list) ->pd.DataFrame:
         frames.append(tmp_df)
     df = pd.concat(frames)
     return df
+
 
 if __name__ == '__main__':
     latest_data_census_tracts('California', ['Contra Costa County'],

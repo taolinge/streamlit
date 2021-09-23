@@ -34,12 +34,12 @@ def county_data_explorer():
     if df is not None:
         if st.checkbox('Show raw data'):
             st.subheader('Raw Data')
-            tmp_df=df.copy()
-            tmp_df['geom']=tmp_df['geom'].astype(str)
+            tmp_df = df.copy()
+            tmp_df['geom'] = tmp_df['geom'].astype(str)
             st.caption(str(tmp_df.shape))
             st.dataframe(tmp_df)
             st.markdown(utils.get_table_download_link(df, name, 'Download raw data'), unsafe_allow_html=True)
-            st.download_button('Download raw data',utils.to_excel(df), file_name=f'{name}.xlsx')
+            st.download_button('Download raw data', utils.to_excel(df), file_name=f'{name}.xlsx')
 
         feature_labels = list(set(df.columns) - {'County Name', 'county_id'})
         feature_labels.sort()
@@ -51,11 +51,12 @@ def county_data_explorer():
         single_feature = st.selectbox('Feature', feature_labels, 0)
         temp = df.copy()
         temp.reset_index(inplace=True)
-        # temp.drop(['geom'], inplace=True, axis=1)
+
         visualization.make_chart(temp, single_feature)
         counties = temp['County Name'].to_list()
         if task != 'National':
             geo_df = queries.get_county_geoms(counties, state.lower())
+            st.write(geo_df.astype(str))
             visualization.make_map(geo_df, temp, single_feature)
         else:
             county_ids = temp['county_id'].to_list()
@@ -109,15 +110,15 @@ def census_data_explorer():
             else:
                 df = queries.latest_data_census_tracts(state, counties, tables)
         except:
-            df=pd.DataFrame()
+            df = pd.DataFrame()
 
         if st.checkbox('Show raw data'):
             st.subheader('Raw Data')
-            tmp_df=df.copy()
+            tmp_df = df.copy()
             st.caption(str(tmp_df.shape))
-            tmp_df['geom']=tmp_df['geom'].astype(str)
+            tmp_df['geom'] = tmp_df['geom'].astype(str)
             st.dataframe(tmp_df)
-            st.download_button('Download raw data',utils.to_excel(df), file_name=f'{state}_data.xlsx')
+            st.download_button('Download raw data', utils.to_excel(df), file_name=f'{state}_data.xlsx')
         if 'state_name' in df.columns:
             df = df.loc[:, ~df.columns.duplicated()]
             df['State'] = df['state_name']
@@ -140,7 +141,7 @@ def census_data_explorer():
 
         geo_df = geo_df[['geom', 'Census Tract', 'tract_id']]
         visualization.make_map(geo_df, df, single_feature)
-        if len(feature_labels)>2:
+        if len(feature_labels) > 2:
             st.write('''
                 ### Compare Features
                 Select two features to compare on the X and Y axes
@@ -151,7 +152,7 @@ def census_data_explorer():
             with col2:
                 feature_2 = st.selectbox('Y Feature', feature_labels, 1)
                 with col3:
-                    scaling_feature = st.selectbox('Scaling Feature', feature_labels, len(feature_labels)-1)
+                    scaling_feature = st.selectbox('Scaling Feature', feature_labels, len(feature_labels) - 1)
             if feature_1 and feature_2:
                 visualization.make_scatter_plot_census_tracts(df, feature_1, feature_2, scaling_feature)
 
