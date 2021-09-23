@@ -56,7 +56,6 @@ def county_data_explorer():
         counties = temp['County Name'].to_list()
         if task != 'National':
             geo_df = queries.get_county_geoms(counties, state.lower())
-            st.write(geo_df.astype(str))
             visualization.make_map(geo_df, temp, single_feature)
         else:
             county_ids = temp['county_id'].to_list()
