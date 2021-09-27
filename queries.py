@@ -81,7 +81,6 @@ def init_engine():
     return engine
 
 
-@st.experimental_singleton()
 def init_connection():
     if st.secrets:
         conn = psycopg2.connect(**st.secrets["postgres"])
@@ -111,6 +110,7 @@ def counties_query() -> pd.DataFrame:
     colnames = [desc[0] for desc in cur.description]
     results = cur.fetchall()
     conn.commit()
+    conn.close()
 
     return pd.DataFrame(results, columns=colnames)
 
@@ -123,6 +123,7 @@ def table_names_query() -> list:
         """)
     results = cur.fetchall()
     conn.commit()
+    conn.close()
 
     res = [_[0] for _ in results]
     return res
@@ -145,6 +146,7 @@ def latest_data_census_tracts(state: str, counties: list, tables: list) -> pd.Da
             {where_clause};""")
         results = cur.fetchall()
         conn.commit()
+        conn.close()
 
         colnames = [desc[0] for desc in cur.description]
         df = pd.DataFrame(results, columns=colnames)
@@ -181,6 +183,7 @@ def policy_query() -> pd.DataFrame:
     colnames = [desc[0] for desc in cur.description]
     results = cur.fetchall()
     conn.commit()
+    conn.close()
 
     return pd.DataFrame(results, columns=colnames)
 
@@ -196,6 +199,7 @@ def latest_data_single_table(table_name: str, require_counties: bool = True) -> 
                                                   TABLE_UNITS[table_name], table_name))
     results = cur.fetchall()
     conn.commit()
+    conn.close()
 
     colnames = [desc[0] for desc in cur.description]
 
@@ -241,7 +245,6 @@ def latest_data_all_tables() -> pd.DataFrame:
 
     demo_df.drop(['population'], axis=1, inplace=True)
     counties_df = counties_df.merge(demo_df, how='outer')
-
     return counties_df
 
 
@@ -253,6 +256,7 @@ def static_data_single_table(table_name: str, columns: list) -> pd.DataFrame:
     cur.execute(query)
     results = cur.fetchall()
     conn.commit()
+    conn.close()
 
     colnames = [desc[0] for desc in cur.description]
     df = pd.DataFrame(results, columns=colnames)
@@ -269,6 +273,7 @@ def generic_select_query(table_name: str, columns: list) -> pd.DataFrame:
     cur.execute(query)
     results = cur.fetchall()
     conn.commit()
+    conn.close()
 
     colnames = [desc[0] for desc in cur.description]
     df = pd.DataFrame(results, columns=colnames)
@@ -285,6 +290,7 @@ def get_county_geoms(counties_list: list, state: str) -> pd.DataFrame:
     cur.execute(query)
     results = cur.fetchall()
     conn.commit()
+    conn.close()
 
     colnames = [desc[0] for desc in cur.description]
     df = pd.DataFrame(results, columns=colnames)
@@ -309,6 +315,7 @@ def get_county_geoms_by_id(counties_list: list) -> pd.DataFrame:
     cur.execute(query)
     results = cur.fetchall()
     conn.commit()
+    conn.close()
 
     colnames = [desc[0] for desc in cur.description]
     df = pd.DataFrame(results, columns=colnames)
@@ -343,6 +350,7 @@ def census_tracts_geom_query(counties, state) -> pd.DataFrame:
     colnames = [desc[0] for desc in cur.description]
     results = cur.fetchall()
     conn.commit()
+    conn.close()
 
     df = pd.DataFrame(results, columns=colnames)
     parcels = []
@@ -385,6 +393,7 @@ def fmr_data():
     colnames = [desc[0] for desc in cur.description]
     results = cur.fetchall()
     conn.commit()
+    conn.close()
 
     return pd.DataFrame(results, columns=colnames)
 
@@ -493,27 +502,27 @@ def get_national_county_geom_data(counties: list) ->pd.DataFrame:
 
 
 if __name__ == '__main__':
-    latest_data_census_tracts('California', ['Contra Costa County'],
-                              ['household_technology_availability', 'disability_status'])
-    args = {k: v for k, v in [i.split('=') for i in sys.argv[1:] if '=' in i]}
-    table = args.get('--table', None)
-    output_format = args.get('--output', None)
-
-    if table:
-        df = latest_data_single_table(table)
-    else:
-        df = latest_data_all_tables()
-
-    if output_format:
-        if table:
-            path = output_data(df, table_name=table, ext=output_format)
-        else:
-            path = output_data(df, ext=output_format)
-    else:
-        if table:
-            path = output_data(df, table_name=table)
-        else:
-            path = output_data(df)
-
-    print('Successful query returned. Output at {}.'.format(path))
-    # get_county_geoms(['Boulder County', 'Arapahoe County'], 'colorado')
+    # latest_data_census_tracts('California', ['Contra Costa County'],
+    #                           ['household_technology_availability', 'disability_status'])
+    # args = {k: v for k, v in [i.split('=') for i in sys.argv[1:] if '=' in i]}
+    # table = args.get('--table', None)
+    # output_format = args.get('--output', None)
+    #
+    # if table:
+    #     df = latest_data_single_table(table)
+    # else:
+    #     df = latest_data_all_tables()
+    #
+    # if output_format:
+    #     if table:
+    #         path = output_data(df, table_name=table, ext=output_format)
+    #     else:
+    #         path = output_data(df, ext=output_format)
+    # else:
+    #     if table:
+    #         path = output_data(df, table_name=table)
+    #     else:
+    #         path = output_data(df)
+    #
+    # print('Successful query returned. Output at {}.'.format(path))
+    pass

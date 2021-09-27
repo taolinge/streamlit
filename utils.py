@@ -1,7 +1,5 @@
 import base64
-import pickle
-import sys
-
+import streamlit as st
 import pandas as pd
 from six import BytesIO
 import geopandas as gpd
@@ -82,6 +80,8 @@ def convert_geom(geo_df: pd.DataFrame, data_df: pd.DataFrame, map_features: list
     elif 'tract_id' in data_df or 'Census Tract' in data_df:
         data_df = data_df[['Census Tract'] + map_features]
         geo_df = geo_df.merge(data_df, on='Census Tract')
+
+    geo_df.fillna(0,inplace=True)
     geo_df['geom'] = geo_df.apply(lambda row: row['geom'].buffer(0), axis=1)
     geo_df['coordinates'] = geo_df.apply(lambda row: gpd.GeoSeries(row['geom']).__geo_interface__, axis=1)
     geo_df['coordinates'] = geo_df.apply(lambda row: convert_coordinates(row), axis=1)

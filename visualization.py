@@ -13,6 +13,7 @@ def color_scale(val: float) -> list:
             return COLOR_RANGE[i]
     return COLOR_RANGE[i]
 
+
 def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
     if 'Census Tract' in geo_df.columns:
         geo_df.reset_index(inplace=True)
@@ -29,9 +30,15 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
     feat_series = geo_df_copy[map_feature]
     feat_type = None
     if feat_series.dtype == 'object':
-        feat_type = 'category'
-        feat_dict = {k: (i % 10) / 10 for i, k in enumerate(feat_series.unique())} # max 10 categories, following from constants.BREAK, enumerated rather than encoded
-        normalized_vals = feat_series.apply(lambda x: feat_dict[x]) # getting normalized vals, manually.
+        try:
+            feat_type = 'category'
+            feat_dict = {k: (i % 10) / 10 for i, k in enumerate(feat_series.unique())} # max 10 categories, following from constants.BREAK, enumerated rather than encoded
+            normalized_vals = feat_series.apply(lambda x: feat_dict[x]) # getting normalized vals, manually.
+        except TypeError:
+            feat_type = 'numerical'
+            normalized_vals = scaler.fit_transform(
+                pd.DataFrame(feat_series)
+            )
     else:
         feat_type = 'numerical'
         normalized_vals = scaler.fit_transform(
@@ -56,8 +63,7 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
     else:
         view_state = pdk.ViewState(**{"latitude": 36, "longitude": -95, "zoom": 3, "maxZoom": 16, "pitch": 0, "bearing": 0})
 
-    if feat_type == 'numerical':
-        geo_df_copy = geo_df_copy.astype({map_feature: 'float64'})
+    geo_df_copy = geo_df_copy.astype({map_feature: 'float64'})
 
     polygon_layer = pdk.Layer(
         "PolygonLayer",
@@ -131,17 +137,17 @@ def make_correlation_plot(df: pd.DataFrame, feature_cols: list):
 
 
 def make_chart(df: pd.DataFrame, feature: str):
-    feat_type = 'category' if df[feature].dtype == 'object' else 'numerical'
     data_df = pd.DataFrame(df[[feature, 'County Name']])
-    if feat_type == 'category':
-        print("Categorical Data called on make_chart")
-    else:
-        bar = alt.Chart(data_df)\
-            .mark_bar() \
-            .encode(x='County Name',
-                    y=feature + ':Q',
-                    tooltip=['County Name', feature])\
-            .interactive()
+    # feat_type = 'category' if data_df[feature].dtype == 'object' else 'numerical'
+    # if feat_type == 'category':
+    #     print("Categorical Data called on make_chart")
+    # else:
+    bar = alt.Chart(data_df)\
+        .mark_bar() \
+        .encode(x='County Name',
+                y=feature + ':Q',
+                tooltip=['County Name', feature])\
+        .interactive()
     st.altair_chart(bar, use_container_width=True)
 
 
