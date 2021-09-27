@@ -4,6 +4,7 @@ import streamlit as st
 
 import data_explorer
 import eviction_analysis
+import equity_index
 import queries
 import analysis
 import utils
@@ -118,8 +119,10 @@ def run_UI():
         initial_sidebar_state="expanded")
     st.sidebar.title('Arup Social Data')
     # print(session_state.workflow, session_state.data_type)
-    session_state.workflow = st.sidebar.selectbox('Workflow', ['Data Explorer', 'Eviction Analysis'])
+    session_state.workflow = st.sidebar.selectbox('Workflow', ['Data Explorer', 'Eviction Analysis', 'Equity Index'])
     if session_state.workflow == 'Data Explorer':
+        session_state.data_type = st.sidebar.radio("Select data boundary:", ('County Level', 'Census Tracts'), index=0)
+    if session_state.workflow == 'Equity Index':
         session_state.data_type = st.sidebar.radio("Select data boundary:", ('County Level', 'Census Tracts'), index=0)
     st.sidebar.write("""
     This tool supports analysis of United States county level data from a variety of data sources. There are two workflows: an Eviction
@@ -159,10 +162,16 @@ def run_UI():
     if session_state.workflow == 'Eviction Analysis':
         eviction_analysis.eviction_UI()
     else:
-        if session_state.data_type == 'County Level':
-            data_explorer.county_data_explorer()
-        else:
-            data_explorer.census_data_explorer()
+        if session_state.workflow == 'Data Explorer':
+            if session_state.data_type == 'County Level':
+                data_explorer.county_data_explorer()
+            else:
+                data_explorer.census_data_explorer()
+        if session_state.workflow == 'Equity Index':
+            if session_state.data_type == 'County Level':
+                equity_index.county_equity_index()
+            else:
+                equity_index.census_equity_index()
 
 
 if __name__ == '__main__':
