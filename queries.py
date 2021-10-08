@@ -43,6 +43,22 @@ TABLE_HEADERS = {
     'resident_population': 'Resident Population',
 }
 
+EQUITY_COUNTY_HEADERS = [
+    'Age 19 or Under', 'Age 65 or Over', 
+    'Non-White Population (%)'
+    ]
+
+EQUITY_CENSUS_HEADERS = [
+    'Age 19 or Under', 'Age 65 or Over', 
+    'Below Poverty Level'
+    ]
+
+TRANSPORT_CENSUS_HEADERS = [
+    'percent_hh_0_veh', 'percent_hh_1_veh', 'percent_hh_2more_veh', 
+    'person_miles_traveled', 'person_trips', 'vehicle_miles_traveled', 'vehicle_trips',
+    'walkability_index', 'urbanicity'
+    ]
+
 TABLE_UNITS = {
     'burdened_households': '%',
     'homeownership_rate': '%',
@@ -72,6 +88,15 @@ CENSUS_TABLES = ['disability_status',
                  'sex_of_workers_by_vehicles_available',
                  'trip_miles',
                  'walkability_index']
+
+EQUITY_CENSUS_TABLES = ['poverty_status',
+                #  'resident_population_census_tract',
+                 'sex_by_age']
+
+TRANSPORT_CENSUS_TABLES = ['household_vehicle_availability',
+    'level_of_urbanicity',
+    'trip_miles',
+    'walkability_index']
 
 
 @st.cache(allow_output_mutation=True, hash_funcs={"_thread.RLock": lambda _: None})
@@ -216,9 +241,12 @@ def latest_data_all_tables() -> pd.DataFrame:
     demo_df = generic_select_query('socio_demographics',
                                    ['id', 'hse_units', 'vacant', 'renter_occ', 'med_age', 'white', 'black', 'ameri_es',
                                     'asian', 'hawn_pi', 'hispanic', 'other', 'mult_race', 'males', 'females',
-                                    'population'])
+                                    'population', 'age_under5', 'age_5_9', 'age_10_14', 'age_15_19', 'age_65_74',
+                                    'age_75_84', 'age_85_up'])
     demo_df['Non-White Population'] = (demo_df['black'] + demo_df['ameri_es'] + demo_df['asian'] + demo_df[
         'hawn_pi'] + demo_df['hispanic'] + demo_df['other'] + demo_df['mult_race'])
+    demo_df['Age 19 or Under'] = (demo_df['age_under5']+demo_df['age_5_9']+demo_df['age_10_14']+demo_df['age_15_19'])
+    demo_df['Age 65 or Over'] = (demo_df['age_65_74']+demo_df['age_75_84']+demo_df['age_85_up'])
     demo_df['Non-White Population (%)'] = demo_df['Non-White Population'] / demo_df['population'] * 100
     demo_df.rename({
         'id': 'county_id',
@@ -238,7 +266,8 @@ def latest_data_all_tables() -> pd.DataFrame:
         'females': 'Female Population'
     }, axis=1, inplace=True)
 
-    demo_df.drop(['population'], axis=1, inplace=True)
+    demo_df.drop(['population', 'age_under5', 'age_5_9', 'age_10_14', 'age_15_19',
+    'age_65_74','age_75_84','age_85_up'], axis=1, inplace=True)
     counties_df = counties_df.merge(demo_df)
     return counties_df
 
@@ -429,6 +458,39 @@ def clean_data(data: pd.DataFrame) -> pd.DataFrame:
     data = data.loc[:, ~data.columns.str.contains('^Unnamed')]
 
     return data
+
+def clean_equity_data(data: pd.DataFrame) -> pd.DataFrame:
+    data['Age 19 or Under'] = (
+        data['female_under_5']+ data['female_5_to_9']+ data['female_10_to_14']+ 
+        data['female_15_to_17']+ data['female_18_and_19']+
+        data['male_under_5']+ data['male_5_to_9']+ data['male_10_to_14']+ 
+        data['male_15_to_17']+ data['male_18_and_19']
+        )
+    data['Age 65 or Over'] = (
+        data['female_65_and_66']+ data['female_67_to_69']+ data['female_70_to_74']+
+        data['female_75_to_79']+ data['female_80_to_84']+ data['female_85_and_over']+
+        data['male_65_and_66']+ data['male_67_to_69']+ data['male_70_to_74']+
+        data['male_75_to_79']+ data['male_80_to_84']+ data['male_85_and_over']
+        )
+
+    data.rename({'below_pov_level': 'Below Poverty Level'}, axis=1, inplace=True)
+    
+    # data.drop(
+    #     data.iloc[:,12:40] 
+    #     # 'female_65_and_66', 'female_67_to_69', 'female_70_to_74','female_75_to_79',
+    #     # 'female_80_to_84', 'female_85_and_over', 'male_65_and_66', 'male_67_to_69',
+    #     # 'male_70_to_74', 'male_75_to_79', 'male_80_to_84', 'male_85_and_over'
+    #     ,
+    #     axis=1, inplace=True)
+
+    return data
+
+# def equity_index(data: pd.DataFrame, header_weight: pd.DataFrame) -> pd.DataFrame:
+#     data[equity_index_value]=None
+#     for header in EQUITY_COUNTY_HEADERS:
+#         data[equity_index_value]+= data[header]*header_weight[header]
+
+#     return data
 
 
 def get_existing_policies(df: pd.DataFrame) -> pd.DataFrame:

@@ -119,7 +119,7 @@ def run_UI():
         initial_sidebar_state="expanded")
     st.sidebar.title('Arup Social Data')
     # print(session_state.workflow, session_state.data_type)
-    session_state.workflow = st.sidebar.selectbox('Workflow', ['Data Explorer', 'Eviction Analysis', 'Equity Index'])
+    session_state.workflow = st.sidebar.selectbox('Workflow', ['Equity Index', 'Data Explorer', 'Eviction Analysis'])
     if session_state.workflow == 'Data Explorer':
         session_state.data_type = st.sidebar.radio("Select data boundary:", ('County Level', 'Census Tracts'), index=0)
     if session_state.workflow == 'Equity Index':
