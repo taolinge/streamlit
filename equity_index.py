@@ -17,7 +17,7 @@ def county_equity_index():
         county_list = queries.counties_query()
         county_list = county_list[county_list['State'] == state]['County Name'].to_list()
         county_list.sort()
-        counties = st.multiselect('Please specify one or more counties', county_list)
+        counties = st.multiselect('Please specify counties to compare', county_list)
         counties = [_.strip().lower() for _ in counties]
         if len(counties) > 0:
             df = queries.get_county_data(state, counties)
@@ -125,7 +125,6 @@ def census_equity_index():
         except:
             df=pd.DataFrame()
 
-        df = queries.clean_equity_data(df)
 
         if st.checkbox('Show raw data'):
             st.subheader('Raw Data')
@@ -140,63 +139,83 @@ def census_equity_index():
             df['County Name'] = df['county_name']
         df.set_index(['State', 'County Name'], drop=True, inplace=True)
 
-        # feature_labels = list(
-        #     set(df.columns) - {'County Name', 'county_id', 'index', 'county_name', 'Census Tract', 'geom',
-        #                        'state_id', 'state_name', 'tract', 'tract_id'})
-        # feature_labels.sort()
 
-        # single_feature = st.selectbox('Feature', feature_labels, 0)
+        df = queries.clean_equity_data(df)
+        df, thresholds, averages = queries.get_equity_priority_communities(df)
 
         geo_df = df.copy()
         df.drop(['geom'], inplace=True, axis=1)
+        # st.write(df.loc[:, df.columns != 'geom'])
         
-        st.write('''
-                ### Equity Index
-                Create a weighted equity index by selecting weights for each of the equity indicators below.
-                
-                ''')
-
-        df['equity_index_value'] = 0
-
-        col1, col2= st.beta_columns((2,5))
-        with col1:
-            st.write("Select Weights")
-            for header in queries.EQUITY_CENSUS_HEADERS:
-                header_weight = st.slider("Weight for "+header, 0,5,5, key=header)
-                df['equity_index_value'] += header_weight*df[header]
-                st.write("")
-        with col2:
-            for header in queries.EQUITY_CENSUS_HEADERS:
-                st.write("")
-                st.write("")
-                st.write("")
-
-                with st.beta_expander(label='More info about '+ header + ' data'):
-                    visualization.make_equity_census_chart(df, header)
-        
-
-        st.write('''
-                ### View Census Tract Data on Map
-                 ''')
         geo_df = geo_df[['geom', 'Census Tract', 'tract_id']]
-        selected_tracts=[]
+
+        st.write('''
+                ### Equity Priority Communities
+                Census tracts have been selected as Equity Priority Communities (EPCs) using the MTC Equity Framework for Plan Bay Area 2040. 
+                Census tracts qualify by meeting at least one of the two criteria below.                 
+                ''')
         
-        col1, col2 = st.beta_columns((1,3))
+
+        col1, col2 = st.columns((1,1))
         with col1:
-            st.write('''**Select census tracts for analysis**''')
-            for tract in geo_df['tract_id'].sort_values():
-                selected=st.checkbox(str(tract), value=True)
-                if selected:
-                    selected_tracts.append(tract)
-                st.write('###### Equity index value: ', 
-                    str(df[df['tract_id']==tract].loc[:,'equity_index_value'].item())                    
+            st.write('''**Criteria A:**
+                *Census tracts have a concentration of BOTH people of color AND low-income households* 
+                ''')
+        with col2: 
+            with st.expander(label='View in map'):
+                st.write('Census tracts that meet Criteria A to be considered Equity Priority Communities')
+                visualization.make_equity_census_map(geo_df, df, 'Criteria A')
+        
+        col1, col2 = st.columns((1,1))
+        with col1:
+            st.write('''
+                **Criteria B:** *Census tracts have a concentration of three or more of the remaining 6 factors AND a concentration of low-income households* 
+                ''')
+        with col2: 
+            with st.expander(label='View in map'):
+                st.write('Census tracts that meet Criteria A to be considered Equity Priority Communities')
+                visualization.make_equity_census_map(geo_df, df, 'Criteria B')
+
+        feature = st.selectbox("Select an equity indicator to see how the census tract levels compare to the county average",
+            queries.EQUITY_CENSUS_POC_LOW_INCOME+queries.EQUITY_CENSUS_REMAINING_HEADERS
                 )
-                st.write("")
+        
+        visualization.make_equity_census_chart(df, averages, feature)
 
-        with col2:
-            visualization.make_equity_census_map(geo_df, df, 'equity_index_value')
+        st.write("Map of the Equity Priority Communities")
+        # visualization.make_equity_census_map(geo_df, df, 'tot_population_census_2010')
+       
+        # with st.expander(label='Filter census tracts '):
+        #     col1, col2 = st.columns((1,1))
+        #     with col1:
+        #         number_tracts = st.selectbox("Limit number of census tracts shown", [5,10,15,20])
+        #     with col2:
+        #         sort_by = st.selectbox("Sort census tracts by", ['tract value', 'equity index value'])
+        # col1, col2 = st.columns((1,3))
+        # with col1:
+        #     st.write('''**Select census tracts for analysis**''')
+        #     if sort_by == 'tract value':
+        #         for tract in geo_df['tract_id'].sort_values().head(number_tracts):
+        #             selected=st.checkbox(str(tract), value=True, help='Include census tract in Transportation analysis below')
+        #             if selected:
+        #                 selected_tracts.append(tract)
+        #             st.write('###### Equity index value: ', 
+        #                 str(df[df['tract_id']==tract].loc[:,'equity_index_value'].item())                    
+        #             )
+        #             st.write("")
+        #     else:
+        #         for tract in df.loc[df['tract_id'].isin(geo_df['tract_id'])].sort_values('equity_index_value', ascending=False).head(number_tracts)['tract_id']:
+        #             selected=st.checkbox(str(tract), value=True, help='Include census tract in Transportation analysis below')
+        #             if selected:
+        #                 selected_tracts.append(tract)
+        #             st.write('###### Equity index value: ', 
+        #                 str(df[df['tract_id']==tract].loc[:,'equity_index_value'].item())                    
+        #             )
+        #             st.write("")
 
-        equity_df = df
+        # with col2:
+        #     visualization.make_equity_census_map(geo_df, df, 'equity_index_value')
+
 
         tables = queries.TRANSPORT_CENSUS_TABLES
         tables = [_.strip().lower() for _ in tables]
@@ -226,37 +245,11 @@ def census_equity_index():
                 ### Compare Transportation Factors
                  ''')
 
-        for header in queries.TRANSPORT_CENSUS_HEADERS:
-            st.write(header)
-            visualization.make_equity_census_chart(df.loc[df['tract_id'].isin(selected_tracts)], header)
+        visualization.make_grouped_bar_chart(df,'tract_id', ['percent_hh_0_veh','percent_hh_1_veh', 'percent_hh_2more_veh'],
+            'Household Vehicles'
+            )
+        
 
-        # feature_labels = list(
-        #     set(df.columns) - {'County Name', 'county_id', 'index', 'county_name', 'Census Tract', 'geom',
-        #                        'state_id', 'state_name', 'tract', 'tract_id'})
-        # feature_labels.sort()
-
-    
-
-
-        # if len(feature_labels)>2:
-        #     st.write('''
-        #         ### Compare Features
-        #         Select two features to compare on the X and Y axes
-        #         ''')
-        #     col1, col2, col3 = st.beta_columns(3)
-        #     with col1:
-        #         feature_1 = st.selectbox('X Feature', feature_labels, 0)
-        #     with col2:
-        #         feature_2 = st.selectbox('Y Feature', feature_labels, 1)
-        #         with col3:
-        #             scaling_feature = st.selectbox('Scaling Feature', feature_labels, len(feature_labels)-1)
-        #         if feature_1 and feature_2:
-        #             print(df.head())
-        #             visualization.make_scatter_plot_census_tracts(df, feature_1, feature_2, scaling_feature)
-
-        # df.drop(list(set(df.columns) - set(feature_labels)), axis=1, inplace=True)
-        # display_columns = []
-        # for col in df.columns:
-        #     display_columns.append(col)
-        # display_columns.sort()
-        # visualization.make_correlation_plot(df, display_columns)
+        # for header in queries.TRANSPORT_CENSUS_HEADERS[3:]:
+        #     st.write(header)
+        #     visualization.make_equity_census_chart(df.loc[df['tract_id'].isin(selected_tracts)], header)

@@ -48,10 +48,15 @@ EQUITY_COUNTY_HEADERS = [
     'Non-White Population (%)'
     ]
 
-EQUITY_CENSUS_HEADERS = [
-    'Age 19 or Under', 'Age 65 or Over', 
-    'Below Poverty Level'
+EQUITY_CENSUS_POC_LOW_INCOME = [
+    'People of Color (%)', 'Below Poverty Level (%)'
     ]
+
+EQUITY_CENSUS_REMAINING_HEADERS = [
+    'People with Disability (%)', 'Age 19 or Under (%)', 'Age 65 or Over (%)', 
+    'Limited English Proficiency (%)', 'Single Parent Family (%)', 'Zero-Vehicle Household (%)'
+    ]
+    
 
 TRANSPORT_CENSUS_HEADERS = [
     'percent_hh_0_veh', 'percent_hh_1_veh', 'percent_hh_2more_veh', 
@@ -91,7 +96,11 @@ CENSUS_TABLES = ['disability_status',
 
 EQUITY_CENSUS_TABLES = ['poverty_status',
                 #  'resident_population_census_tract',
-                 'sex_by_age']
+                 'sex_by_age',
+                 'english_proficiency','household_vehicle_availability',
+                'hispanic_or_latino_origin_by_race', 'disability_status',
+                'family_type'
+                ]
 
 TRANSPORT_CENSUS_TABLES = ['household_vehicle_availability',
     'level_of_urbanicity',
@@ -194,7 +203,6 @@ def load_distributions() -> tuple:
     metro_areas.set_index('location', inplace=True)
 
     return metro_areas, locations
-
 
 def policy_query() -> pd.DataFrame:
     conn = init_connection()
@@ -474,24 +482,74 @@ def clean_equity_data(data: pd.DataFrame) -> pd.DataFrame:
         )
 
     data.rename({'below_pov_level': 'Below Poverty Level'}, axis=1, inplace=True)
-    
-    # data.drop(
-    #     data.iloc[:,12:40] 
-    #     # 'female_65_and_66', 'female_67_to_69', 'female_70_to_74','female_75_to_79',
-    #     # 'female_80_to_84', 'female_85_and_over', 'male_65_and_66', 'male_67_to_69',
-    #     # 'male_70_to_74', 'male_75_to_79', 'male_80_to_84', 'male_85_and_over'
-    #     ,
-    #     axis=1, inplace=True)
+
+    data['total_w_a_disability'] = (data['male_under_5_w_a_disability']+data['male_5_to_17_w_a_disability']+ data['male_18_to_34_w_a_disability']+
+        data['male_35_to_64_w_a_disability']+data['male_65_to_74_w_a_disability']+data['male_75_and_over_w_a_disability']+
+        data['female_under_5_w_a_disability']+data['female_5_to_17_w_a_disability']+ data['female_18_to_34_w_a_disability']+
+        data['female_35_to_64_w_a_disability']+data['female_65_to_74_w_a_disability']+data['female_75_and_over_w_a_disability']
+        )
+
+    data['speak_eng_not_well'] = (data['foreign_speak_spanish_speak_eng_not_well']+ data['foreign_speak_spanish_speak_eng_not_at_all']+
+        data['foreign_speak_other_indo-euro_speak_eng_not_well']+ data['foreign_speak_other_indo-euro_speak_eng_not_at_all']+
+        data['foreign_speak_asian_or_pac_isl_lang_speak_eng_not_well']+ data['foreign_speak_asian_or_pac_isl_lang_speak_eng_not_at_all']+
+        data['foreign_speak_other_speak_eng_not_well']+ data['foreign_speak_other_speak_eng_not_at_all']
+        )
+
+    data['single_parent'] = data['other_male_householder_no_spouse_w_kids'] + data['other_female_householder_no_spouse_w_kids']
+
+    data['non-white'] = data['total_population'] - data['not_hisp_or_latino_white']
+
+    data['People with Disability (%)'] = data['total_w_a_disability']/(data['male']+data['female'])
+    data['Below Poverty Level (%)'] = data['Below Poverty Level']/data['population_for_whom_poverty_status_is_determined']
+    data['Age 19 or Under (%)'] = data['Age 19 or Under']/data['total_population']
+    data['Age 65 or Over (%)'] = data['Age 65 or Over']/data['total_population']
+    data['Limited English Proficiency (%)'] = data['speak_eng_not_well']/(data['native']+data['foreign_born'])
+    data['Single Parent Family (%)'] = data['single_parent']/data['total_families']
+    data['Zero-Vehicle Household (%)'] = data['percent_hh_0_veh']
+    data['People of Color (%)'] = data['non-white']/data['total_population']
 
     return data
 
-# def equity_index(data: pd.DataFrame, header_weight: pd.DataFrame) -> pd.DataFrame:
-#     data[equity_index_value]=None
-#     for header in EQUITY_COUNTY_HEADERS:
-#         data[equity_index_value]+= data[header]*header_weight[header]
+def get_equity_priority_communities(df: pd.DataFrame) -> pd.DataFrame:
+    epc = pd.DataFrame()
+    concentration_thresholds = dict()
+    concentration_averages = dict()
+    
+    for header in (EQUITY_CENSUS_POC_LOW_INCOME + EQUITY_CENSUS_REMAINING_HEADERS):
+        concentration_averages[header] = df[header].mean()
+        sd_of_tract_level_shares = df[header].std()
+        concentration_thresholds[header] = concentration_averages[header] + sd_of_tract_level_shares
 
-#     return data
+        epc = epc.append(df[df[header]>concentration_thresholds[header]])
+        
+        epc['criteria_A'] = 0
+        epc['criteria_B'] = 0
 
+    for header in EQUITY_CENSUS_POC_LOW_INCOME:
+        temp = epc[header].apply(lambda x: x>concentration_thresholds[header])
+        epc['criteria_A'] = epc['criteria_A']+temp.astype(int)
+
+    for header in EQUITY_CENSUS_REMAINING_HEADERS:
+        temp = epc[header].apply(lambda x: x>concentration_thresholds[header])
+        epc['criteria_B'] = epc['criteria_B']+epc[header].astype(int)
+    
+    epc = epc.loc[(epc['criteria_A']==2) | ((epc['criteria_B']>=3) &
+        (epc['Below Poverty Level (%)']>concentration_thresholds['Below Poverty Level (%)']))]
+    
+    epc['Criteria A'] = epc['criteria_A'].apply(lambda x: bool(x==2))
+    epc['Criteria B'] = epc.apply(lambda x: x['criteria_B']>=3 & (x['Below Poverty Level (%)']>concentration_thresholds['Below Poverty Level (%)']), axis=1)
+
+    epc = epc.drop_duplicates(subset=['tract_id'])
+
+    return epc, concentration_thresholds, concentration_averages
+
+def get_county_level_data (df: pd.DataFrame) -> pd.DataFrame:
+    county_df = None
+    
+    for header in (EQUITY_CENSUS_POC_LOW_INCOME + EQUITY_CENSUS_REMAINING_HEADERS):
+        county_df['average', header] = df[header].mean()
+    
+    return county_df
 
 def get_existing_policies(df: pd.DataFrame) -> pd.DataFrame:
     policy_df = policy_query()
