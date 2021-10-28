@@ -49,19 +49,19 @@ EQUITY_COUNTY_HEADERS = [
     ]
 
 EQUITY_CENSUS_POC_LOW_INCOME = [
-    'People of Color (%)', 'Below Poverty Level (%)'
+    'People of Color', 'Below Poverty Level'
     ]
 
 EQUITY_CENSUS_REMAINING_HEADERS = [
-    'People with Disability (%)', 'Age 19 or Under (%)', 'Age 65 or Over (%)', 
-    'Limited English Proficiency (%)', 'Single Parent Family (%)', 'Zero-Vehicle Household (%)'
+    'People with Disability', 'Age 19 or Under', 'Age 65 or Over', 
+    'Limited English Proficiency', 'Single Parent Family', 'Zero-Vehicle Household'
     ]
     
-
 TRANSPORT_CENSUS_HEADERS = [
     'percent_hh_0_veh', 'percent_hh_1_veh', 'percent_hh_2more_veh', 
-    'person_miles_traveled', 'person_trips', 'vehicle_miles_traveled', 'vehicle_trips',
-    'walkability_index', 'urbanicity'
+    # 'person_miles_traveled', 'person_trips',  'vehicle_trips','urbanicity'
+    'vehicle_miles_traveled',
+    'walkability_index', 
     ]
 
 TABLE_UNITS = {
@@ -102,7 +102,8 @@ EQUITY_CENSUS_TABLES = ['poverty_status',
                 'family_type'
                 ]
 
-TRANSPORT_CENSUS_TABLES = ['household_vehicle_availability',
+TRANSPORT_CENSUS_TABLES = ['poverty_status',
+    'household_vehicle_availability',
     'level_of_urbanicity',
     'trip_miles',
     'walkability_index']
@@ -508,40 +509,45 @@ def clean_equity_data(data: pd.DataFrame) -> pd.DataFrame:
     data['Zero-Vehicle Household (%)'] = data['percent_hh_0_veh']
     data['People of Color (%)'] = data['non-white']/data['total_population']
 
+    data['criteria_A'] = 0
+    data['criteria_B'] = 0
+
+    data['Criteria A'] = False
+    data['Criteria B'] = False
+
     return data
 
-def get_equity_priority_communities(df: pd.DataFrame) -> pd.DataFrame:
-    epc = pd.DataFrame()
+def clean_transport_data(data: pd.DataFrame, epc: pd.DataFrame) -> pd.DataFrame:
+    averages = {}
+    epc_averages = {}
+    for x in TRANSPORT_CENSUS_HEADERS:
+        averages[x] = data[x].mean()
+        epc_averages[x] = data.loc[data['tract_id'].isin(epc['tract_id'])][x].mean()
+    transport_epc = data.loc[data['tract_id'].isin(epc['tract_id'])]
+
+    return transport_epc, averages, epc_averages, data
+
+def get_equity_priority_communities(epc: pd.DataFrame, coeff: float) -> pd.DataFrame:
     concentration_thresholds = dict()
     concentration_averages = dict()
     
     for header in (EQUITY_CENSUS_POC_LOW_INCOME + EQUITY_CENSUS_REMAINING_HEADERS):
-        concentration_averages[header] = df[header].mean()
-        sd_of_tract_level_shares = df[header].std()
-        concentration_thresholds[header] = concentration_averages[header] + sd_of_tract_level_shares
+        concentration_averages[header] = epc[header+ ' (%)'].mean()
+        concentration_thresholds[header] = concentration_averages[header] + coeff*epc[header+ ' (%)'].std()
+        epc[header+'_check'] = epc[header+' (%)'].apply(lambda x: x>concentration_thresholds[header])
+        epc[header+'_check'] = epc[header+'_check'].astype(int)
 
-        epc = epc.append(df[df[header]>concentration_thresholds[header]])
-        
-        epc['criteria_A'] = 0
-        epc['criteria_B'] = 0
-
-    for header in EQUITY_CENSUS_POC_LOW_INCOME:
-        temp = epc[header].apply(lambda x: x>concentration_thresholds[header])
-        epc['criteria_A'] = epc['criteria_A']+temp.astype(int)
-
-    for header in EQUITY_CENSUS_REMAINING_HEADERS:
-        temp = epc[header].apply(lambda x: x>concentration_thresholds[header])
-        epc['criteria_B'] = epc['criteria_B']+epc[header].astype(int)
-    
-    epc = epc.loc[(epc['criteria_A']==2) | ((epc['criteria_B']>=3) &
-        (epc['Below Poverty Level (%)']>concentration_thresholds['Below Poverty Level (%)']))]
-    
+    epc['criteria_A'] = epc[[x + '_check' for x in EQUITY_CENSUS_POC_LOW_INCOME]].sum(axis=1, numeric_only=True)
     epc['Criteria A'] = epc['criteria_A'].apply(lambda x: bool(x==2))
-    epc['Criteria B'] = epc.apply(lambda x: x['criteria_B']>=3 & (x['Below Poverty Level (%)']>concentration_thresholds['Below Poverty Level (%)']), axis=1)
 
-    epc = epc.drop_duplicates(subset=['tract_id'])
+    epc['criteria_B'] = epc[[x + '_check' for x in EQUITY_CENSUS_REMAINING_HEADERS]].sum(axis=1, numeric_only=True)
+    temp = epc['Below Poverty Level (%)'].apply(lambda x: x>concentration_thresholds['Below Poverty Level'])
+    epc['Criteria B'] = (epc['criteria_B'].apply(lambda x: bool(x>=3)) + temp.astype(int)) == 2
 
-    return epc, concentration_thresholds, concentration_averages
+    df = epc.drop_duplicates(subset=['tract_id'])
+    epc = epc.loc[(epc['Criteria A'] | epc['Criteria B'])]
+
+    return epc, concentration_thresholds, concentration_averages, df
 
 def get_county_level_data (df: pd.DataFrame) -> pd.DataFrame:
     county_df = None

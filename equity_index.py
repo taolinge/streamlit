@@ -124,7 +124,7 @@ def census_equity_index():
                 df = queries.latest_data_census_tracts(state, counties, tables)
         except:
             df=pd.DataFrame()
-
+        
 
         if st.checkbox('Show raw data'):
             st.subheader('Raw Data')
@@ -138,84 +138,52 @@ def census_equity_index():
             df = df.loc[:, ~df.columns.duplicated()]
             df['County Name'] = df['county_name']
         df.set_index(['State', 'County Name'], drop=True, inplace=True)
-
-
-        df = queries.clean_equity_data(df)
-        df, thresholds, averages = queries.get_equity_priority_communities(df)
-
-        geo_df = df.copy()
-        df.drop(['geom'], inplace=True, axis=1)
-        # st.write(df.loc[:, df.columns != 'geom'])
         
-        geo_df = geo_df[['geom', 'Census Tract', 'tract_id']]
-
+        st.write('')
         st.write('''
                 ### Equity Priority Communities
-                Census tracts have been selected as Equity Priority Communities (EPCs) using the MTC Equity Framework for Plan Bay Area 2040. 
-                Census tracts qualify by meeting at least one of the two criteria below.                 
+                *Census tracts have been selected as Equity Priority Communities (EPCs) using the MTC Equity Framework for Plan Bay Area 2040. 
+                Census tracts qualify by meeting at least one of the two criteria below.*                 
                 ''')
-        
+                
+        col1, col2 = st.columns((1,1))
+        with col1:
+            st.write('###### **Criteria A:**')
+            st.write('Census tracts have a concentration of BOTH people of color AND low-income households')
+        with col2: 
+            st.write('###### **Criteria B:**')
+            st.write('Census tracts have a concentration of three or more of the remaining 6 factors AND a concentration of low-income households')
+        st.expander('Details on Equity Priority Community factors')
 
-        col1, col2 = st.columns((1,1))
+        st.write('')
+        st.write('')
+        st.write('###### Concentration thresholds')
+        concentration = st.select_slider('Increase the concentration threshold to limit the number of equity priority communities',
+            options=['Low', 'Medium', 'High'])
+        coeff = {'Low':0.5, 'Medium':1, 'High':1.5}
+
+        df = queries.clean_equity_data(df)
+        df, thresholds, averages, total_census_tracts = queries.get_equity_priority_communities(df, coeff[concentration])
+
+        geo_df = df.copy()
+        df_copy = df.copy()
+        df.drop(['geom'], inplace=True, axis=1)
+        geo_df = geo_df[['geom', 'Census Tract', 'tract_id']]
+
+        st.write('')
+        st.write('')
+        st.write('##### View Equity Priority Communities on Map')
+        col1, col2 = st.columns((1,4))
         with col1:
-            st.write('''**Criteria A:**
-                *Census tracts have a concentration of BOTH people of color AND low-income households* 
-                ''')
-        with col2: 
-            with st.expander(label='View in map'):
-                st.write('Census tracts that meet Criteria A to be considered Equity Priority Communities')
-                visualization.make_equity_census_map(geo_df, df, 'Criteria A')
-        
-        col1, col2 = st.columns((1,1))
-        with col1:
-            st.write('''
-                **Criteria B:** *Census tracts have a concentration of three or more of the remaining 6 factors AND a concentration of low-income households* 
-                ''')
-        with col2: 
-            with st.expander(label='View in map'):
-                st.write('Census tracts that meet Criteria A to be considered Equity Priority Communities')
-                visualization.make_equity_census_map(geo_df, df, 'Criteria B')
+            EPC_map = st.radio("View census tracts that meet criteria", ('Criteria A', 'Criteria B'))
+        with col2:
+            visualization.make_equity_census_map(geo_df, total_census_tracts, EPC_map)    
 
         feature = st.selectbox("Select an equity indicator to see how the census tract levels compare to the county average",
             queries.EQUITY_CENSUS_POC_LOW_INCOME+queries.EQUITY_CENSUS_REMAINING_HEADERS
                 )
         
-        visualization.make_equity_census_chart(df, averages, feature)
-
-        st.write("Map of the Equity Priority Communities")
-        # visualization.make_equity_census_map(geo_df, df, 'tot_population_census_2010')
-       
-        # with st.expander(label='Filter census tracts '):
-        #     col1, col2 = st.columns((1,1))
-        #     with col1:
-        #         number_tracts = st.selectbox("Limit number of census tracts shown", [5,10,15,20])
-        #     with col2:
-        #         sort_by = st.selectbox("Sort census tracts by", ['tract value', 'equity index value'])
-        # col1, col2 = st.columns((1,3))
-        # with col1:
-        #     st.write('''**Select census tracts for analysis**''')
-        #     if sort_by == 'tract value':
-        #         for tract in geo_df['tract_id'].sort_values().head(number_tracts):
-        #             selected=st.checkbox(str(tract), value=True, help='Include census tract in Transportation analysis below')
-        #             if selected:
-        #                 selected_tracts.append(tract)
-        #             st.write('###### Equity index value: ', 
-        #                 str(df[df['tract_id']==tract].loc[:,'equity_index_value'].item())                    
-        #             )
-        #             st.write("")
-        #     else:
-        #         for tract in df.loc[df['tract_id'].isin(geo_df['tract_id'])].sort_values('equity_index_value', ascending=False).head(number_tracts)['tract_id']:
-        #             selected=st.checkbox(str(tract), value=True, help='Include census tract in Transportation analysis below')
-        #             if selected:
-        #                 selected_tracts.append(tract)
-        #             st.write('###### Equity index value: ', 
-        #                 str(df[df['tract_id']==tract].loc[:,'equity_index_value'].item())                    
-        #             )
-        #             st.write("")
-
-        # with col2:
-        #     visualization.make_equity_census_map(geo_df, df, 'equity_index_value')
-
+        visualization.make_equity_census_chart(df, thresholds, averages, feature)
 
         tables = queries.TRANSPORT_CENSUS_TABLES
         tables = [_.strip().lower() for _ in tables]
@@ -224,32 +192,49 @@ def census_equity_index():
         if len(tables) > 0 and len(counties) > 0:
             try:
                 if 'All' in counties:
-                    df = queries.latest_data_census_tracts(state, county_list, tables)
+                    transport_df = queries.latest_data_census_tracts(state, county_list, tables)
                 else:
-                    df = queries.latest_data_census_tracts(state, counties, tables)
+                    transport_df = queries.latest_data_census_tracts(state, counties, tables)
             except:
-                df=pd.DataFrame()
+                transport_df=pd.DataFrame()
 
-        if 'state_name' in df.columns:
-            df = df.loc[:, ~df.columns.duplicated()]
-            df['State'] = df['state_name']
-        if 'county_name' in df.columns:
-            df = df.loc[:, ~df.columns.duplicated()]
-            df['County Name'] = df['county_name']
-        df.set_index(['State', 'County Name'], drop=True, inplace=True)
-
-        geo_df = df.copy()
-        df.drop(['geom'], inplace=True, axis=1)
+        if 'state_name' in transport_df.columns:
+            transport_df = transport_df.loc[:, ~transport_df.columns.duplicated()]
+            transport_df['State'] = transport_df['state_name']
+        if 'county_name' in transport_df.columns:
+            transport_df = transport_df.loc[:, ~transport_df.columns.duplicated()]
+            transport_df['County Name'] = transport_df['county_name']
+        transport_df.set_index(['State', 'County Name'], drop=True, inplace=True)
+        
+        geo_df = transport_df.copy()
+        transport_epc, averages, epc_averages, transport_df = queries.clean_transport_data(transport_df, df_copy)
+        geo_df = transport_df.copy()
+        geo_epc = transport_epc.copy()
+        geo_df = geo_df[['geom', 'Census Tract', 'tract_id']]
+        geo_epc = geo_epc[['geom', 'Census Tract', 'tract_id']]
 
         st.write('''
                 ### Compare Transportation Factors
+                #### Vehicles per household
                  ''')
 
-        visualization.make_grouped_bar_chart(df,'tract_id', ['percent_hh_0_veh','percent_hh_1_veh', 'percent_hh_2more_veh'],
-            'Household Vehicles'
-            )
-        
+        col1, col2 = st.columns((1,1))
+        with col1:
+            radio_feature = st.radio('Filter analysis for ',('0 vehicles per household', '1 vehicle per household', '2 or more vehicles per household'))
+            select_feature = {'0 vehicles per household':'percent_hh_0_veh', '1 vehicle per household':'percent_hh_1_veh', '2 or more vehicles per household':'percent_hh_2more_veh'}
+        with col2:
+            radio_data = st.radio('', ('Equity Priority Communities only', 'All census tracts'))
+            select_data = {'All census tracts':transport_df, 'Equity Priority Communities only':transport_epc}
+            select_geo = {'All census tracts':geo_df, 'Equity Priority Communities only':geo_epc}
+        st.write('')
+        st.write('###### Compare averages:')
+        visualization.make_horizontal_bar_chart(averages, epc_averages, select_feature[radio_feature])
+        st.write('###### Identify census tracts:')
+        visualization.make_transport_census_map(select_geo[radio_data], select_data[radio_data], select_feature[radio_feature]) 
 
-        # for header in queries.TRANSPORT_CENSUS_HEADERS[3:]:
-        #     st.write(header)
-        #     visualization.make_equity_census_chart(df.loc[df['tract_id'].isin(selected_tracts)], header)
+        transport_epc.drop(['geom'], inplace=True, axis=1)
+        transport_df.drop(['geom'], inplace=True, axis=1)
+        st.write('###### View distribution for equity priority commmunities (', radio_feature, '):')
+        visualization.make_transport_census_chart(transport_epc, averages, select_feature[radio_feature])
+ 
+        
