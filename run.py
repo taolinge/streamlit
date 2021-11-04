@@ -16,10 +16,6 @@ pd.set_option('expand_frame_repr', True)
 pd.set_option('large_repr', 'truncate')
 pd.options.display.float_format = '{:.2f}'.format
 
-if 'key' not in st.session_state:
-    st.session_state['workflow'] = 'Data Explorer'
-    st.session_state['data_type'] = 'County Level'
-
 
 def print_summary(df: pd.DataFrame, output: str):
     print('*** Results ***')
@@ -63,8 +59,8 @@ def run_shell() -> pd.DataFrame:
     elif task == '2':
         state = input("Which state are you looking for? (ie: California)").strip()
         counties = input('Please specify one or more counties, separated by commas.').strip().split(',')
-        counties = [_.strip().lower() for _ in counties]
-        counties = [_ + ' county' for _ in counties if ' county' not in _]
+        # counties = [_.strip().lower() for _ in counties]
+        # counties = [_ + ' county' for _ in counties if ' county' not in _]
         df = queries.get_county_data(state, counties)
         cost_of_evictions = input(
             'Run an analysis to estimate the cost to avoid evictions? (Y/n) ')
@@ -118,52 +114,57 @@ def run_UI():
         initial_sidebar_state="expanded",
         menu_items={
             'Report a bug': "https://github.com/arup-group/social-data/issues/new/choose",
-            'About': "Provided by Arup as free and open source under an MIT license."
-        }
-    )
-    st.sidebar.title('Arup Social Data')
-    st.session_state.workflow = st.sidebar.selectbox('Workflow', ['Data Explorer', 'Eviction Analysis'])
-    if st.session_state.workflow == 'Data Explorer':
-        st.session_state.data_type = st.sidebar.radio("Select data boundary:", ('County Level', 'Census Tracts'),
-                                                      index=0)
-    st.sidebar.write("""
-    This tool supports analysis of United States county level data from a variety of data sources. There are two workflows: an Eviction
-     Analysis workflow, which is specifically focused on evictions as a result of COVID-19, and a Data Explorer workflow,
-     which allows you to see and interact with the data we have without doing any analysis.
-
-     You can also use our Python code in a scripting environment or query our database directly. Details are at our 
-     [GitHub](https://github.com/arup-group/social-data). If you find bugs, please reach out or create an issue on our 
-     GitHub repository. If you find that this interface doesn't do what you need it to, you can create an feature request 
-     at our repository or better yet, contribute a pull request of your own. You can reach out to the team on LinkedIn or 
-     Twitter if you have questions or feedback.
-
-    More documentation and contribution details are at our [GitHub Repository](https://github.com/arup-group/social-data).
-    """)
-    with st.sidebar.expander("Credits"):
-        """
-        This app is the result of hard work by our team:
+            'About': """            
+         If you're seeing this, we would love your contribution! If you find bugs, please reach out or create an issue on our 
+         [GitHub](https://github.com/arup-group/social-data) repository. If you find that this interface doesn't do what you need it to, you can create an feature request 
+         at our repository or better yet, contribute a pull request of your own. You can reach out to the team on LinkedIn or 
+         Twitter if you have questions or feedback.
+    
+        More documentation and contribution details are at our [GitHub Repository](https://github.com/arup-group/social-data).
+        
+         This app is the result of hard work by our team:
         - [Jared Stock 🐦](https://twitter.com/jaredstock) 
-        - [Angela Wilson 🐦](https://twitter.com/AngelaWilson925) (alumnus)
+        - [Angela Wilson 🐦](https://twitter.com/AngelaWilson925) (alum)
         - Sam Lustado
         - Lingyi Chen
-        - Kevin McGee (alumnus)
+        - Kevin McGee (alum)
         - Jen Combs
         - Zoe Temco
-        - Prashuk Jain (alumnus)
-        - Sanket Shah (alumnus)
+        - Prashuk Jain (alum)
+        - Sanket Shah (alum)
 
 
         Special thanks to Julieta Moradei and Kamini Ayer from New Story, Kristin Maun from the city of Tulsa, 
         Emily Walport, Irene Gleeson, and Elizabeth Joyce with Arup's Community Engagment team, and everyone else who has given feedback 
         and helped support this work. Also thanks to the team at Streamlit for their support of this work.
 
-        The analysis and underlying data are provided as open source under an [MIT license](https://github.com/arup-group/social-data/blob/master/LICENSE). 
+        The analysis and underlying data are provided as-is as an open source project under an [MIT license](https://github.com/arup-group/social-data/blob/master/LICENSE). 
 
         Made by [Arup](https://www.arup.com/).
-            """
-    if st.session_state.workflow == 'Eviction Analysis':
-        eviction_analysis.eviction_UI()
+        """
+        }
+    )
+    st.sidebar.title('Arup Social Data')
+    pages = ['Data Explorer', 'Equity Index', 'Eviction Analysis']
+    url_params = st.experimental_get_query_params()
+    page = 'Data Explorer'
+    if 'page' in url_params.keys() and not st.session_state.loaded:
+        i = pages.index(url_params['page'][0])
+        page = st.sidebar.radio('Navigation', pages, i)
+        st.experimental_set_query_params(page=page)
     else:
+        page = st.sidebar.radio('Navigation', pages)
+        st.experimental_set_query_params(page=page)
+    st.session_state.loaded = True
+
+    if page == 'Eviction Analysis':
+        eviction_analysis.eviction_UI()
+    elif page == 'Equity Index':
+        pass
+    else:
+        st.write('## Data Explorer')
+
+        st.session_state.data_type = st.radio("Select data boundary:", ('County Level', 'Census Tracts'), index=0)
         if st.session_state.data_type == 'County Level':
             data_explorer.county_data_explorer()
         else:
@@ -171,9 +172,15 @@ def run_UI():
 
 
 if __name__ == '__main__':
+
     if not os.path.exists('Output'):
         os.makedirs('Output')
     if st._is_running_with_streamlit:
+        if 'loaded' not in st.session_state:
+            print('init state')
+            st.session_state['workflow'] = 'Data Explorer'
+            st.session_state['data_type'] = 'County Level'
+            st.session_state['loaded'] = False
         run_UI()
     else:
         run_shell()

@@ -20,6 +20,7 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
     if 'Census Tract' in df.columns:
         df.reset_index(inplace=True)
     geo_df_copy = geo_df.copy()
+
     geojson = utils.convert_geom(geo_df_copy, df, [map_feature])
     geojson_df = pd.DataFrame(geojson)
 
@@ -135,7 +136,6 @@ def make_correlation_plot(df: pd.DataFrame, feature_cols: list):
         st.altair_chart(cor_plot + text)
 
 
-
 def make_chart(df: pd.DataFrame, feature: str):
     data_df = pd.DataFrame(df[[feature, 'County Name']])
     # feat_type = 'category' if data_df[feature].dtype == 'object' else 'numerical'
@@ -153,7 +153,7 @@ def make_chart(df: pd.DataFrame, feature: str):
 
 def make_census_chart(df: pd.DataFrame, feature: str):
     feat_type = 'category' if df[feature].dtype == 'object' else 'numerical'
-    data_df = pd.DataFrame(df[[feature, 'tract_id', 'county_name']])
+    data_df = pd.DataFrame(df[[feature, 'Census Tract', 'county_name']])
     if feat_type == 'category':
         data_df = pd.DataFrame(data_df.groupby(['county_name', feature]).size())
         data_df = data_df.rename(columns={0: "tract count"})
@@ -168,9 +168,9 @@ def make_census_chart(df: pd.DataFrame, feature: str):
     else:
         bar = alt.Chart(df)\
             .mark_bar() \
-            .encode(x='tract_id',
+            .encode(x='Census Tract',
                     y=feature + ':Q',
-                    tooltip=['tract_id', feature])\
+                    tooltip=['Census Tract', feature])\
             .interactive()
     st.altair_chart(bar, use_container_width=True)
 
@@ -187,10 +187,10 @@ def make_scatter_plot_counties(df: pd.DataFrame, feature_1: str, feature_2: str,
 
 def make_scatter_plot_census_tracts(df: pd.DataFrame, feature_1: str, feature_2: str,
                                     scaling_feature: str = 'tot_population_census_2010'):
-    scatter_df = df.reset_index(drop=True)[[feature_1, feature_2, 'tract_id', scaling_feature]]
+    scatter_df = df.reset_index(drop=True)[[feature_1, feature_2, 'Census Tract', scaling_feature]]
     scatter = alt.Chart(scatter_df).mark_point() \
         .encode(x=feature_1 + ':Q', y=feature_2 + ':Q',
-                tooltip=['tract_id', scaling_feature, feature_1, feature_2],
+                tooltip=['Census Tract', scaling_feature, feature_1, feature_2],
                 size=scaling_feature).interactive()
     st.altair_chart(scatter, use_container_width=True)
 

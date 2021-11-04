@@ -82,8 +82,8 @@ def eviction_UI():
 
     elif task == 'Multiple Counties':
         state = st.selectbox("Select a state", STATES).strip()
-        county_list = queries.counties_query()
-        county_list = county_list[county_list['State'] == state]['County Name'].to_list()
+        county_list = queries.all_counties_query()
+        county_list = county_list[county_list['state_name'] == state]['county_name'].to_list()
         counties = st.multiselect('Please specify one or more counties', county_list)
         counties = [_.strip().lower() for _ in counties]
         if len(counties) > 0:
@@ -202,12 +202,12 @@ def eviction_visualizations(df: pd.DataFrame, state: str = None):
         temp.reset_index(inplace=True)
         counties = temp['County Name'].to_list()
         if state.lower() != 'national':
-            geo_df = queries.get_county_geoms(counties, state.lower())
+            geo_df = queries.get_county_geoms(counties, state)
             visualization.make_map(geo_df, temp, 'Relative Risk')
         else:
             frames = []
             for s in STATES:
-                frames.append(queries.get_county_geoms(counties, s.lower()))
+                frames.append(queries.get_county_geoms(counties, s))
             geo_df = pd.concat(frames)
             visualization.make_map(geo_df, temp, 'Relative Risk')
 

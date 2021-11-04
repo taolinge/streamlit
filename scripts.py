@@ -8,7 +8,7 @@ engine = create_engine(f'postgresql+psycopg2://postgres:Password@localhost:5432/
 
 
 def fix_chmura_counties():
-    counties = queries.counties_query()
+    counties = queries.all_counties_query()
     counties.set_index(['State', 'County Name'], inplace=True)
     ch_df = queries.generic_select_query('chmura_economic_vulnerability_index',
                                          ['fips', 'name', 'VulnerabilityIndex', 'Rank', 'state', 'county_id'])
