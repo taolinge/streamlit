@@ -349,7 +349,7 @@ def make_equity_census_chart(df: pd.DataFrame, threshold: dict, average: dict, f
     df['threshold'] = threshold[feature]
 
     baselines = pd.DataFrame([{"name":'average', "value": average[feature]},
-        {"name":'threshold', "value": threshold[feature]}])
+        {"name":'concentration threshold', "value": threshold[feature]}])
 
     feature = feature + ' (%)'
     feat_type = 'category' if df[feature].dtype == 'object' else 'numerical'
@@ -365,13 +365,16 @@ def make_equity_census_chart(df: pd.DataFrame, threshold: dict, average: dict, f
             .encode(x=alt.X('county_name', axis = alt.Axis(labels=False)),
                     y="tract count" + ':Q',
                     color=feature,
-                            tooltip=['county_name', feature, "tract count"])\
+                    tooltip=['county_name', feature, "tract count"])\
             .interactive()
     else:
         bar = alt.Chart(df)\
             .mark_bar() \
-            .encode(x=alt.X('tract_id:O', axis = alt.Axis(labels=False), title='Equity Priority Communities', sort='y'),
+            .encode(x=alt.X('tract_id:O', axis = alt.Axis(labels=False), title='Census Tract Distribution', sort='y'),
                     y=alt.Y(feature + ':Q', title=feature),
+                    color=alt.Color('Census Tract',
+                    # scale=alt.Scale(scheme='blues'),
+                     legend=alt.Legend(orient='bottom')),
                     tooltip=['tract_id', feature])\
             .interactive()
         
@@ -380,7 +383,7 @@ def make_equity_census_chart(df: pd.DataFrame, threshold: dict, average: dict, f
         )
 
         text = alt.Chart(baselines).mark_text(
-            align='right', dx=300, dy=5, fontSize=15, fontWeight='bold'
+            align='left', dx=-300, dy=5, fontSize=15, fontWeight='bold'
         ).encode(
             alt.Y('value:Q'), text = 'name'
         )
@@ -411,7 +414,7 @@ def make_transport_census_chart(df: pd.DataFrame, average: dict, feature: str):
         bar = alt.Chart(df)\
             .mark_bar() \
             .encode(x=alt.X('tract_id:O', axis = alt.Axis(labels=False), title='Census Tracts', sort='y'),
-                    y=alt.Y(feature + ':Q', title='Households in census tract(%)'),
+                    y=alt.Y(feature + ':Q', title='Households(%)'),
                     tooltip=['tract_id', feature])\
             .interactive()
         
@@ -483,3 +486,4 @@ def make_simple_chart(df: pd.DataFrame, feature: str):
                 tooltip=['index', feature])\
         .interactive()
     st.altair_chart(bar, use_container_width=True)
+
