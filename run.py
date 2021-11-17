@@ -163,8 +163,12 @@ def run_UI():
         pass
     else:
         st.write('## Data Explorer')
+        subcol_1, subcol_2=st.columns(2)
+        with subcol_1:
+            st.session_state.data_type = st.radio("Data resolution:", ('County Level', 'Census Tracts'), index=0)
+        with subcol_2:
+            st.session_state.data_format = st.radio('Data format', ['Raw Values', 'Per Capita', 'Per Square Mile'], 0)
 
-        st.session_state.data_type = st.radio("Select data boundary:", ('County Level', 'Census Tracts'), index=0)
         if st.session_state.data_type == 'County Level':
             data_explorer.county_data_explorer()
         else:
@@ -180,6 +184,7 @@ if __name__ == '__main__':
             print('init state')
             st.session_state['workflow'] = 'Data Explorer'
             st.session_state['data_type'] = 'County Level'
+            st.session_state['data_format'] = 'Raw Values'
             st.session_state['loaded'] = False
         run_UI()
     else:

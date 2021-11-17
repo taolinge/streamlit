@@ -14,7 +14,7 @@ FRED_TABLES = [
     # 'homeownership_rate',
     'income_inequality',
     'population_below_poverty',
-    'resident_population',
+    # 'resident_population',
     'single_parent_households',
     'snap_benefits_recipients',
     'unemployment_rate',
@@ -54,24 +54,28 @@ TABLE_UNITS = {
     'resident_population': 'Thousands of Persons',
 }
 
-CENSUS_TABLES = ['disability_status',
-                 'educational_attainment',
-                 'employment_status',
-                 'english_proficiency',
-                 'family_type',
-                 'hispanic_or_latino_origin_by_race',
-                 'household_job_availability',
-                 'household_technology_availability',
-                 'household_vehicle_availability',
-                 'housing_units_in_structure',
-                 'level_of_urbanicity',
-                 'occupants_per_bedroom',
-                 'poverty_status',
-                 'resident_population_census_tract',
-                 'sex_by_age',
-                 'sex_of_workers_by_vehicles_available',
-                 'trip_miles',
-                 'walkability_index']
+CENSUS_TABLES = [
+    'population_below_poverty_double',
+    'commuting_characteristics',
+    'disability_status',
+    'educational_attainment',
+    'employment_status',
+    'english_proficiency',
+    'family_type',
+    'hispanic_or_latino_origin_by_race',
+    'household_job_availability',
+    'household_technology_availability',
+    'household_vehicle_availability',
+    'housing_units_in_structure',
+    'level_of_urbanicity',
+    'occupants_per_bedroom',
+    'poverty_status',
+    'resident_population_census_tract',
+    'sex_by_age',
+    'sex_of_workers_by_vehicles_available',
+    'trip_miles',
+    'walkability_index'
+]
 
 
 def init_engine():
@@ -99,12 +103,14 @@ def write_table(df: pd.DataFrame, table: str):
     df.to_sql(table, engine, if_exists='replace', method='multi')
 
 
-def all_counties_query() -> pd.DataFrame:
+def all_counties_query(where:str=None) -> pd.DataFrame:
     conn = init_connection()
     cur = conn.cursor()
-    cur.execute(
-        'SELECT DISTINCT county_name, state_name, county_id FROM id_index;'
-    )
+    query=f"SELECT DISTINCT county_name, state_name, county_id FROM id_index"
+    if where:
+        query+=f" WHERE {where}"
+    query+=";"
+    cur.execute(query)
     colnames = [desc[0] for desc in cur.description]
     results = cur.fetchall()
     conn.commit()
@@ -125,21 +131,30 @@ def table_names_query() -> list:
     return res
 
 
-@st.experimental_memo()
-def read_table(table: str, columns: list = None, where_clause: str = None, order_by: str = None,
-               order: str = 'ASC') -> pd.DataFrame:
+@st.experimental_memo(ttl=1200)
+def read_table(table: str, columns: list = None, where: str = None, order_by: str = None,
+               order: str = 'ASC', fred=False) -> pd.DataFrame:
     conn = init_connection()
-    if columns is not None:
-        cols = ', '.join(columns)
-        query = f"SELECT {cols} FROM {table}"
+    if not fred:
+        if columns is not None:
+            cols = ', '.join(columns)
+            query = f"SELECT {cols} FROM {table}"
+        else:
+            query = f"SELECT * FROM {table}"
+        if where is not None:
+            query += f" WHERE {where}"
+        if order_by is not None:
+            query += f"ORDER BY {order_by} {order}"
     else:
-        query = f"SELECT * FROM {table}"
-    if where_clause is not None:
-        query += f" WHERE {where_clause}"
-    if order_by is not None:
-        query += f"ORDER BY {order_by} {order}"
+        if fred:
+            query = f"""SELECT {table}.* FROM {table},
+                    (SELECT county_id,max(date) as date
+                         FROM {table}
+                         GROUP BY county_id) max_county
+                      WHERE {table}.{where}
+                      AND {table}.county_id=max_county.county_id
+                      AND {table}.date=max_county.date"""
     query += ';'
-
     df = pd.read_sql(query, con=conn)
     return df
 
@@ -153,7 +168,7 @@ def latest_data_census_tracts(state: str, counties: list, tables: list) -> pd.Da
     where_clause = f"WHERE id_index.state_name ='{state}' AND id_index.county_name IN {counties_str}"
 
     for table_name in tables:
-        query =f"""SELECT {table_name}.*, id_index.county_name, id_index.county_id, id_index.state_name, id_index.tract_id,
+        query = f"""SELECT {table_name}.*, id_index.county_name, id_index.county_id, id_index.state_name, id_index.tract_id,
         resident_population_census_tract.tot_population_census_2010
             FROM {table_name} 
             INNER JOIN id_index ON {table_name}.tract_id = id_index.tract_id
@@ -166,6 +181,7 @@ def latest_data_census_tracts(state: str, counties: list, tables: list) -> pd.Da
         colnames = [desc[0] for desc in cur.description]
         df = pd.DataFrame(results, columns=colnames)
         df = df.loc[:, ~df.columns.duplicated()]
+
         df.rename({'tract_id': 'Census Tract'}, axis=1, inplace=True)
 
         tracts_df = tracts_df.merge(df, on="Census Tract", how="inner", suffixes=('', '_y'))
@@ -225,35 +241,46 @@ def latest_data_single_table(table_name: str, require_counties: bool = True) -> 
 
 
 @st.experimental_memo(ttl=1200)
-def get_all_county_data(state: str, counties: list) -> pd.DataFrame:
-    # for table_name in FRED_TABLES:
-    #     table_output = read_table(table_name,where_clause=f'')
-    # counties_df = counties_df.merge(table_output, how='outer')
-    # chmura_df = static_data_single_table('chmura_economic_vulnerability_index', ['VulnerabilityIndex'])
-    # counties_df = counties_df.merge(chmura_df, how='outer')
+def fred_query(counties_str:str)->pd.DataFrame:
+    frames = []
+    for table_name in FRED_TABLES:
+        # Todo: update in database and remove new suffix
+        f_df = read_table(f"{table_name}_new", where=f"county_id in {counties_str}", columns=[table_name, 'county_id'],
+                          fred=True)
+        f_df.drop(['date', 'state_name', 'county_name'], axis=1, inplace=True)
+        frames.append(f_df)
+    fred_df = pd.concat(frames, axis=1)
+    fred_df = fred_df.loc[:, ~fred_df.columns.duplicated()]
+    fred_df = fred_df.astype(float)
+    chmura_df = static_data_single_table('chmura_economic_vulnerability_index', ['VulnerabilityIndex'])
+    fred_df = fred_df.merge(chmura_df, how='outer', on='county_id', suffixes=('', '_DROP')).filter(
+        regex='^(?!.*_DROP)')
+    return fred_df
 
+
+@st.experimental_memo(ttl=1200)
+def get_all_county_data(state: str, counties: list) -> pd.DataFrame:
     if counties:
-        counties_list = [_.replace("'", "''") for _ in counties]
-        counties_str = "(" + ",".join(["'" + str(_) + "'" for _ in counties_list]) + ")"
-        demo_df = generic_select_query('county_demographics',
-                                       ['fips', 'state_name', 'county_name', 'hse_units', 'vacant', 'renter_occ',
-                                        'med_age', 'white', 'black', 'ameri_es',
-                                        'asian', 'hawn_pi', 'hispanic', 'other', 'mult_race', 'males', 'females',
-                                        'population'], where=f"state_name='{state}' AND county_name in {counties_str};")
+        counties_str = "(" + ",".join(["'" + str(_) + "'" for _ in counties]) + ")"
+        demo_df = read_table('county_demographics', where=f"county_id in {counties_str}")
+        fred_df=fred_query(counties_str)
+        demo_df = demo_df.merge(fred_df, on='county_id', how='inner', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
+
     else:
-        demo_df = generic_select_query('county_demographics',
-                                       ['fips', 'state_name', 'county_name', 'hse_units', 'vacant', 'renter_occ',
-                                        'med_age', 'white', 'black',
-                                        'ameri_es',
-                                        'asian', 'hawn_pi', 'hispanic', 'other', 'mult_race', 'males', 'females',
-                                        'population'], where=f"state_name='{state}';")
+        demo_df = read_table('county_demographics', where=f"state_name='{state}';")
+        counties=all_counties_query(f"state_name='{state}'")
+        county_ids=counties['county_id'].to_list()
+        counties_str = "(" + ",".join(["'" + str(_) + "'" for _ in county_ids]) + ")"
+        fred_df=fred_query(counties_str=counties_str)
+        demo_df = demo_df.merge(fred_df, on='county_id', how='inner', suffixes=('', '_DROP')).filter(
+            regex='^(?!.*_DROP)')
+
     demo_df['Non-White Population'] = (demo_df['black'] + demo_df['ameri_es'] + demo_df['asian'] + demo_df[
         'hawn_pi'] + demo_df['hispanic'] + demo_df['other'] + demo_df['mult_race'])
     demo_df['Non-White Population (%)'] = demo_df['Non-White Population'] / demo_df['population'] * 100
     demo_df['fips'] = demo_df['fips'].astype(int)
 
     demo_df.rename({
-        'fips': 'county_id',
         'state_name': 'State',
         'county_name': 'County Name',
         'hse_units': 'Housing Units',
@@ -272,6 +299,8 @@ def get_all_county_data(state: str, counties: list) -> pd.DataFrame:
         'females': 'Female Population',
         'population': 'Total Population',
     }, axis=1, inplace=True)
+    demo_df.drop_duplicates(inplace=True)
+    demo_df.fillna(0, inplace=True)
     return demo_df
 
 
@@ -286,8 +315,8 @@ def static_data_single_table(table_name: str, columns: list) -> pd.DataFrame:
 
     colnames = [desc[0] for desc in cur.description]
     df = pd.DataFrame(results, columns=colnames)
-    counties_df = all_counties_query()
-    df = counties_df.merge(df, how='outer')
+    # counties_df = all_counties_query()
+    # df = counties_df.merge(df, how='outer')
     return df
 
 
@@ -368,12 +397,13 @@ def census_tracts_geom_query(counties, state) -> pd.DataFrame:
     if len(counties) == 1:
         where_clause = 'WHERE id_index.state_name = ' + "'" + state + "'" + ' ' + 'AND id_index.county_name IN (' + "'" + \
                        counties[0] + "'" + ')'
-    cur.execute(f"""
+    query = f"""
         SELECT id_index.county_name, id_index.state_name, census_tracts_geom.tract_id, census_tracts_geom.geom
         FROM id_index
         INNER JOIN census_tracts_geom ON census_tracts_geom.tract_id=id_index.tract_id
         {where_clause};
-    """)
+    """
+    cur.execute(query)
     colnames = [desc[0] for desc in cur.description]
     results = cur.fetchall()
     conn.commit()
@@ -450,24 +480,15 @@ def load_all_data() -> pd.DataFrame:
     return df
 
 
-def clean_data(data: pd.DataFrame) -> pd.DataFrame:
-    data.set_index(['State', 'County Name'], drop=True, inplace=True)
+def clean_data(df: pd.DataFrame) -> pd.DataFrame:
+    df.set_index(['State', 'County Name'], drop=True, inplace=True)
 
-    # data.drop([
-    #     'Burdened Households Date',
-    #     'Income Inequality Date',
-    #     'Population Below Poverty Line Date',
-    #     'Single Parent Households Date',
-    #     'Unemployment Rate Date',
-    #     'Resident Population Date',
-    #     'SNAP Benefits Recipients Date'
-    # ], axis=1, inplace=True)
+    df.rename({'Vulnerability Index': 'COVID Vulnerability Index'}, axis=1, inplace=True)
 
-    data.rename({'Vulnerability Index': 'COVID Vulnerability Index'}, axis=1, inplace=True)
+    df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
+    df = df.loc[:, ~df.columns.duplicated()]
 
-    data = data.loc[:, ~data.columns.str.contains('^Unnamed')]
-
-    return data
+    return df
 
 
 def get_existing_policies(df: pd.DataFrame) -> pd.DataFrame:
@@ -495,8 +516,8 @@ def get_existing_policies(df: pd.DataFrame) -> pd.DataFrame:
 
 
 @st.experimental_memo(ttl=1200)
-def get_county_data(state: str, counties: list = None, policy: bool = False):
-    df = get_all_county_data(state, counties)
+def get_county_data(state: str, county_ids: list = None, policy: bool = False):
+    df = get_all_county_data(state, county_ids)
 
     df = clean_data(df)
     return df

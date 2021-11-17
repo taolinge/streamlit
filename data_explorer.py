@@ -8,18 +8,20 @@ from constants import STATES
 
 
 def county_data_explorer():
-    st.write('This interface allows you to see and interact with county data in our database.')
+    # st.write('This interface allows you to see and interact with county data in our database.')
     task = st.selectbox('How much data do you want to look at?', ['Counties', 'State', 'National'], 0)
     state, counties, name, df = None, None, None, None
     if task == 'Counties':
         state = st.selectbox("Select a state", STATES).strip()
-        county_list = queries.all_counties_query()
-        county_list = county_list[county_list['state_name'] == state]['county_name'].to_list()
+        county_df = queries.all_counties_query()
+        county_df = county_df[county_df['state_name'] == state]
+        county_list = county_df['county_name'].to_list()
         county_list.sort()
         counties = st.multiselect('Please specify one or more counties', county_list)
         # counties = [_.strip().lower() for _ in counties]
         if len(counties) > 0:
-            df = queries.get_county_data(state, counties)
+            county_ids = county_df.query(f'county_name in {counties}')['county_id'].to_list()
+            df = queries.get_county_data(state, county_ids)
             name = f"{state}_county_data"
     elif task == 'State':
         state = st.selectbox("Select a state", STATES).strip()
@@ -39,26 +41,25 @@ def county_data_explorer():
             st.markdown(utils.get_table_download_link(df, name, 'Download raw data'), unsafe_allow_html=True)
             st.download_button('Download raw data', utils.to_excel(df), file_name=f'{name}.xlsx')
 
-
         st.write('''
                 ### View Feature
-                Select a feature to view for each county
                 ''')
         temp = df.copy()
         temp.reset_index(inplace=True)
-        feature_labels = list(set(temp.columns) - {'County Name', 'State', 'county_id'})
+        feature_labels = list(
+            set(temp.columns) - {'County Name', 'State', 'county_id', 'state_id', 'pop10_sqmi', 'pop2010','fips','cnty_fips','state_fips'})
         feature_labels.sort()
         single_feature = st.selectbox('Feature', feature_labels, 0)
 
-        visualization.make_chart(temp, single_feature)
+        visualization.make_chart(temp, single_feature, st.session_state.data_format)
         counties = temp['County Name'].to_list()
         if task != 'National':
             geo_df = queries.get_county_geoms(counties, state)
-            visualization.make_map(geo_df, temp, single_feature)
+            visualization.make_map(geo_df, temp, single_feature, st.session_state.data_format)
         else:
             county_ids = temp['county_id'].to_list()
             geo_df = queries.get_county_geoms_by_id(county_ids)
-            visualization.make_map(geo_df, temp, single_feature)
+            visualization.make_map(geo_df, temp, single_feature, st.session_state.data_format)
         st.write('''
             ### Compare Features
             Select two features to compare on the X and Y axes. Only numerical data can be compared.
@@ -69,9 +70,9 @@ def county_data_explorer():
         with col2:
             feature_2 = st.selectbox('Y Feature', feature_labels, 1)
         with col3:
-            scaling_feature = st.selectbox('Scaling Feature', feature_labels, len(feature_labels)-1)
+            scaling_feature = st.selectbox('Scaling Feature', feature_labels, len(feature_labels) - 1)
         if feature_1 and feature_2 and scaling_feature:
-            visualization.make_scatter_plot_counties(temp, feature_1, feature_2, scaling_feature)
+            visualization.make_scatter_plot_counties(temp, feature_1, feature_2, scaling_feature, st.session_state.data_format)
         temp.drop(['State', 'County Name', 'county_id'], inplace=True, axis=1)
         visualization.make_correlation_plot(temp, feature_labels)
 

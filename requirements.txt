@@ -80,6 +80,7 @@ pycparser==2.20
 pydeck==0.6.1
 Pygments==2.8.1
 pyinstaller-hooks-contrib==2021.1
+Pympler==0.9
 pyparsing==2.4.7
 pyproj==3.0.1
 pyrsistent==0.17.3
@@ -98,7 +99,7 @@ six==1.15.0
 sklearn==0.0
 smmap==3.0.5
 SQLAlchemy==1.4.0
-streamlit==0.89.0
+streamlit==1.2.0
 terminado==0.9.2
 testpath==0.4.4
 threadpoolctl==2.1.0

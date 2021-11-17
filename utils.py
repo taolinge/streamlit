@@ -74,11 +74,14 @@ def convert_coordinates(row) -> list:
 def convert_geom(geo_df: pd.DataFrame, data_df: pd.DataFrame, map_features: list) -> dict:
     if 'Census Tract' not in data_df:
         data_df = data_df[['county_id'] + map_features]
+        data_df=data_df.round(3)
         cols_to_use = list(data_df.columns.difference(geo_df.columns))
         cols_to_use.append('county_id')
         geo_df = geo_df.merge(data_df[cols_to_use], on='county_id', how="outer")
     else:
         data_df = data_df[['Census Tract'] + map_features]
+        data_df=data_df.round(3)
+
         geo_df = geo_df.merge(data_df, on='Census Tract')
 
     # geo_df.fillna(0,inplace=True)
