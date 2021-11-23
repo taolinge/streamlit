@@ -1,16 +1,21 @@
 from numpy import maximum
 import pandas as pd
 import streamlit as st
+from fpdf import FPDF
+import base64
 
 import queries
 import utils
 import visualization
 from constants import STATES
 
+def create_download_link(val, filename):
+    b64 = base64.b64encode(val)  # val looks like b'...'
+    return f'<a href="data:application/octet-stream;base64,{b64.decode()}" download="{filename}.pdf">Download file</a>'
 
 def county_equity_explorer():
     st.write('## County Equity Explorer')
-    st.write('Currently, the equity explorer is limited to a census tract level. We hope to include a count-level analysis in the future.')
+    st.write('Currently, the equity explorer is limited to a census tract level. Please select the Census Tracts radio button on the sidebar.')
 
 def census_equity_explorer():
     indent = 4
@@ -26,6 +31,16 @@ def census_equity_explorer():
             ''')
     st.write('')
 
+    # report_text = st.text_input("Report Text")
+    # export_as_pdf = st.button("Export Report")
+    # if export_as_pdf:
+    #     pdf = FPDF()
+    #     pdf.add_page()
+    #     pdf.set_font('Arial', 'B', 16)
+    #     pdf.cell(40, 10, report_text)
+    #     html = create_download_link(pdf.output(dest="S").encode("latin-1"), "test")
+
+    #     st.markdown(html, unsafe_allow_html=True)
 
     col1, col2= st.columns((1+indent,1))
     with col1:
@@ -46,7 +61,7 @@ def census_equity_explorer():
                 df = queries.latest_data_census_tracts(state, counties, tables)
         except:
             df=pd.DataFrame()
-
+        
         if st.checkbox('Show raw data'):
             st.subheader('Raw Data')
             st.caption(str(df.shape))
@@ -69,11 +84,11 @@ def census_equity_explorer():
                 ''')
         st.write('')
 
-        col1, col2, col3= st.columns(((1+indent)/2,(1+indent)/2,1))
+        col1, col2, col3= st.columns((5,1,5))
         with col1:
             st.write('##### **Criteria A:**')
             st.write('Census tracts have a concentration of BOTH people of color AND low-income households')
-        with col2: 
+        with col3: 
             st.write('##### **Criteria B:**')
             st.write('Census tracts have a concentration of three or more of the remaining six equity indicators AND a concentration of low-income households')
         col1, col2= st.columns((1+indent,1))
@@ -81,7 +96,7 @@ def census_equity_explorer():
         with col1:
             st.write('')
             with st.expander('List of equity indicators'):
-                st.write("More details to come! Read [here](https://bayareametro.github.io/Spatial-Analysis-Mapping-Projects/Project-Documentation/Equity-Priority-Communities/#summary-of-mtc-epc-demographic-factors--demographic-factor-definitions) for more info")
+                st.write("More details to come! Read [here](" +queries.LINKS['mtc_framework']+ ") for more info")
         
         # col1, col2, col3= st.columns((1,indent,1))
         st.write('')
@@ -103,10 +118,12 @@ def census_equity_explorer():
         df, total_census_tracts, concentration_thresholds, averages, epc_averages  = queries.get_equity_geographies(df, coeff[concentration])
 
         geo_df = df.copy()
+        geo_total = total_census_tracts.copy()
         df_copy = df.copy()
         df.drop(['geom'], inplace=True, axis=1)
         total_census_tracts.drop(['geom'], inplace=True, axis=1)
         geo_df = geo_df[['geom', 'Census Tract', 'tract_id']]
+        geo_total = geo_total[['geom', 'Census Tract', 'tract_id']]
 
         st.write('')
         st.write('')
@@ -130,11 +147,17 @@ def census_equity_explorer():
         # col1, col2, col3= st.columns((1,indent,1))
         # with col2:  
         st.write('')
-        st.write('')
+        st.write('###### How does the Equity Geography average compare to the county-wide average?')
         visualization.make_horizontal_bar_chart(averages, epc_averages, feature)
-
-        st.write('')
-        visualization.make_equity_census_map(geo_df, df, feature+' (%)') 
+        
+        st.write('###### View variation by geography')
+        col1, col2 = st.columns((1, indent))
+        with col1:
+            radio_data = st.radio('Filter map for:', ('Equity Geos', 'All census tracts'),key='equity')
+            select_data = {'All census tracts':total_census_tracts, 'Equity Geos':df}
+            select_geo = {'All census tracts':geo_total, 'Equity Geos':geo_df}
+        with col2:
+            visualization.make_equity_census_map(select_geo[radio_data], select_data[radio_data], feature+' (%)') 
         st.write('')
         st.write('')
         # st.write('##### Compare Equity Geographies to other census tracts in the county')
@@ -171,42 +194,64 @@ def census_equity_explorer():
             transport_df['County Name'] = transport_df['county_name']
         transport_df.set_index(['State', 'County Name'], drop=True, inplace=True)
         
-        geo_df = transport_df.copy()
-        transport_epc, averages, epc_averages, transport_df = queries.clean_transport_data(transport_df, df_copy)
+        transport_epc, averages, epc_averages, transport_df, normalized_data = queries.clean_transport_data(transport_df, df_copy)
+
         geo_df = transport_df.copy()
         geo_epc = transport_epc.copy()
         geo_df = geo_df[['geom', 'Census Tract', 'tract_id']]
         geo_epc = geo_epc[['geom', 'Census Tract', 'tract_id']]
         st.markdown("""---""")
-        st.write('''
-                ### Compare Transportation Factors
-                #### Vehicles per household
-                 ''')
-
-        col1, col2 = st.columns((1,1))
-        with col1:
-            radio_feature = st.radio('Filter analysis for ',('0 vehicles per household', '1 vehicle per household', '2 or more vehicles per household'))
-            select_feature = {'0 vehicles per household':'percent_hh_0_veh', '1 vehicle per household':'percent_hh_1_veh', '2 or more vehicles per household':'percent_hh_2more_veh'}
-        with col2:
-            radio_data = st.radio('', ('Equity Priority Communities only', 'All census tracts'))
-            select_data = {'All census tracts':transport_df, 'Equity Priority Communities only':transport_epc}
-            select_geo = {'All census tracts':geo_df, 'Equity Priority Communities only':geo_epc}
-        st.write('')
         
-        st.write('###### See the variation by geography:')
-        visualization.make_transport_census_map(select_geo[radio_data], select_data[radio_data], select_feature[radio_feature]) 
+        st.write('''
+                ### Equity in Transportation
+                *Analyze behavior and transportation considerations for vulnerable communities in the county.*                 
+                ''')
+        with st.expander('More about this dataset'):
+                st.write("More details to come! Read [here](" +queries.LINKS['household_vehicle_availability']+ ") for more info")
+        st.write('')
+        st.write('#### Transportation Indicators')
+        col1, col2= st.columns((1+indent,1))
+        with col1:
+            feature = st.selectbox("Select an indicator to see how the census tract levels compare to the county average",
+                queries.TRANSPORT_CENSUS_HEADERS)
 
+        # col1, col2, col3= st.columns((1,indent,1))
+        # with col2:  
         st.write('###### How does the Equity Geography average compare to the county-wide average?')
-        visualization.make_horizontal_bar_chart(averages, epc_averages, select_feature[radio_feature])
+        visualization.make_horizontal_bar_chart(averages, epc_averages, feature)
 
+        st.write('###### View variation by geography')
+        col1, col2 = st.columns((1, indent))
+        with col1:
+            radio_data = st.radio('Filter map for:', ('Equity Geos', 'All census tracts'), key = 'transport')
+            select_data = {'All census tracts':transport_df, 'Equity Geos':transport_epc}
+            select_geo = {'All census tracts':geo_df, 'Equity Geos':geo_epc}
+        with col2:
+            visualization.make_transport_census_map(select_geo[radio_data], select_data[radio_data], feature) 
+        
+        st.write('')
         transport_epc.drop(['geom'], inplace=True, axis=1)
         transport_df.drop(['geom'], inplace=True, axis=1)
-        st.write('###### Equity Geography Census Tracts (', radio_feature, '):')
-        visualization.make_transport_census_chart(transport_epc, averages, select_feature[radio_feature])
+        st.write('###### Equity Geography Census Tracts (', feature, '):')
+        visualization.make_transport_census_chart(transport_epc, averages, feature)
+        st.write('')
         
-        st.write('#### Walkability Index')
-        # values = st.slider('Select a range', 0.0, max(transport_df['walkability_index']), (0.0, max(transport_df['walkability_index'])))
-        visualization.make_transport_census_map(geo_epc, transport_epc, 'walkability_index')
-
-        st.write('#### Vehicle Miles Traveled')
-        visualization.make_transport_census_map(geo_epc, transport_epc, 'vehicle_miles_traveled')
+        st.write('')
+        st.write('''
+                #### Create Transportation Vulnerability Index
+                *Select weights for the following indicators to compare the vulnerability of Equity Geographies*                 
+                ''')
+        col1, col2, col3, col4, col5 = st.columns((3, 1, 3, 1, 3))
+        with col1:
+            index_options = [0,1,2,3]
+            index_value = {}
+            for header in queries.TRANSPORT_CENSUS_HEADERS[:2]:
+                index_value[header] = st.select_slider(header, options = index_options, key = header, value = 1)
+        with col3:
+            for header in queries.TRANSPORT_CENSUS_HEADERS[2:5]:
+                index_value[header] = st.select_slider(header, options = index_options, key = header, value = 1)
+        with col5:
+            for header in queries.TRANSPORT_CENSUS_HEADERS[5:7]:
+                index_value[header] = st.select_slider(header, options = index_options, key = header, value = 1)
+        
+        visualization.make_stacked(transport_epc, index_value)

@@ -6,6 +6,8 @@ from sklearn import preprocessing as pre
 from constants import BREAKS, COLOR_RANGE
 import utils
 import queries
+from fpdf import FPDF
+from ipywidgets import HTML
 
 
 def color_scale(val: float) -> list:
@@ -190,6 +192,19 @@ def make_scatter_plot_census_tracts(df: pd.DataFrame, feature_1: str, feature_2:
                 size=scaling_feature).interactive()
     st.altair_chart(scatter, use_container_width=True)
 
+text = HTML(value='Move the viewport')   
+def filter_by_bbox(row, west_lng, east_lng, north_lat, south_lat):
+    return west_lng < row['lng'] < east_lng and south_lat < row['lat'] < north_lat
+
+def filter_by_viewport(widget_instance, payload):
+    try:
+        west_lng, north_lat = payload['data']['nw']
+        east_lng, south_lat = payload['data']['se']
+        filtered_df = df[df.apply(lambda row: filter_by_bbox(row, west_lng, east_lng, north_lat, south_lat), axis=1)]
+        text.value = 'Points in viewport: %s' % int(filtered_df.count()['lng'])
+    except Exception as e:
+        text.value = 'Error: %s' % e
+        
 def make_equity_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
 
     EQUITY_MAP_HEADERS = [map_feature] + [x + '_check' for x in queries.EQUITY_CENSUS_POC_LOW_INCOME] + [x + '_check' for x in queries.EQUITY_CENSUS_REMAINING_HEADERS]
@@ -229,10 +244,14 @@ def make_equity_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: 
     if 'Census Tract' in set(geo_df_copy.columns):
         keep_cols = ['coordinates', 'name', 'fill_color', 'geom', map_feature]
         geo_df_copy.drop(list(set(geo_df_copy.columns) - set(keep_cols)), axis=1, inplace=True)
-        tooltip = {
-            "html": "<b>Tract:</b> {name} </br>" + "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "} </br>"
-            # "<b>" + str(EQUITY_CENSUS_HEADERS[0]) + ":</b> {" + str(EQUITY_CENSUS_HEADERS[0]) + "} </br>" +
-            }
+        if feat_type == 'numerical':
+            tooltip = {
+                "html": "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "}% </br>"
+                }
+        else:
+            tooltip = {
+                "html": "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "} </br>"
+                }
 
     elif 'County Name' in set(geo_df_copy.columns):
         geo_df_copy.drop(['geom', 'County Name'], axis=1, inplace=True)
@@ -266,6 +285,7 @@ def make_equity_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: 
         map_style=pdk.map_styles.LIGHT,
         tooltip=tooltip
     )
+    r.deck_widget.on_click(filter_by_viewport)
     st.pydeck_chart(r)
 
 def make_transport_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
@@ -306,7 +326,7 @@ def make_transport_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_featur
         keep_cols = ['coordinates', 'name', 'fill_color', 'geom', map_feature]
         geo_df_copy.drop(list(set(geo_df_copy.columns) - set(keep_cols)), axis=1, inplace=True)
         tooltip = {
-            "html": "<b>Tract:</b> {name} </br>" + "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "} </br>"
+            "html": "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "} </br>"
             # "<b>" + str(EQUITY_CENSUS_HEADERS[0]) + ":</b> {" + str(EQUITY_CENSUS_HEADERS[0]) + "} </br>" +
             }
 
@@ -342,6 +362,7 @@ def make_transport_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_featur
         map_style=pdk.map_styles.LIGHT,
         tooltip=tooltip
     )
+    
     st.pydeck_chart(r)
 
 def make_equity_census_chart(df: pd.DataFrame, threshold: dict, average: dict, feature: str):
@@ -461,6 +482,20 @@ def make_grouped_bar_chart(df: pd.DataFrame, id_var: str, features: list, featur
                     color=id_var+':N',
                     tooltip=[id_var, 'value'])\
             .interactive()
+    st.altair_chart(bar, use_container_width=True)
+
+def make_stacked(df:pd.DataFrame, index_value: dict):
+    df = df.melt('tract_id', queries.TRANSPORT_CENSUS_HEADERS, 'Indicators')
+    df['value'] = df['Indicators'].apply(lambda x: index_value[x])*df['value']
+
+    bar = alt.Chart(df)\
+            .mark_bar() \
+            .encode(x=alt.X('tract_id:O', axis = alt.Axis(labels=False), title='Census Tracts', sort='y'),
+                    y=alt.Y('sum(value):Q', title='Transportation Vulnerability Index'),
+                    color='Indicators:N',
+                    tooltip=['tract_id'])\
+            .interactive()
+        
     st.altair_chart(bar, use_container_width=True)
 
 def make_histogram(df: pd.DataFrame, feature: str):

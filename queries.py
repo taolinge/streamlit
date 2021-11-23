@@ -49,25 +49,50 @@ EQUITY_COUNTY_HEADERS = [
     ]
 
 CENSUS_HEADERS = [
-    'People of Color (%)', 'Below Poverty Level (%)',
+    'People of Color (%)', '200% Below Poverty Level (%)',
     'People with Disability (%)', 'Age 19 or Under (%)', 'Age 65 or Over (%)', 
     'Limited English Proficiency (%)', 'Single Parent Family (%)', 'Zero-Vehicle Household (%)'
 ]
 
 EQUITY_CENSUS_POC_LOW_INCOME = [
-    'People of Color', 'Below Poverty Level'
+    'People of Color', "200% Below Poverty Level"
     ]
 
 EQUITY_CENSUS_REMAINING_HEADERS = [
     'People with Disability', 'Age 19 or Under', 'Age 65 or Over', 
     'Limited English Proficiency', 'Single Parent Family', 'Zero-Vehicle Household'
     ]
-    
+
 TRANSPORT_CENSUS_HEADERS = [
-    'percent_hh_0_veh', 'percent_hh_1_veh', 'percent_hh_2more_veh', 
-    # 'person_miles_traveled', 'person_trips',  'vehicle_trips','urbanicity'
-    'vehicle_miles_traveled',
+    '0 Vehicle Households', 
+    'Vehicle Miles Traveled', 
+    'No Computer Households', 
+    'No Internet Households', 
+    'Renter Occupied Units',
+    'Drive Alone Commuters', 
+    # 'Drive Alone (#)',
+    'Average Commute Time (min)'
+    ]
+
+# TRANSPORT_CENSUS_HEADERS = [
+#     'percent_hh_0_veh', 
+#     # 'percent_hh_1_veh', 'percent_hh_2more_veh', 
+#     # 'urbanicity',
+#     'vehicle_miles_traveled', 
+#     # 'person_miles_traveled', 'vehicle_trips', 'person_trips',  
+#     'household_no_computing_device', 
+#     # 'household_smartphone_no_computer','household_computer',  
+#     'household_no_internet', 
+#     # 'household_broadband',
+#     # 'occupied_housing_units', 'owner-occ_units', 
+#     'renter-occ_units',
+#     'percent_drive_alone', 'number_drive_alone',
+#     'mean_travel_time'
+#     ]
+
+POSITIVE_TRANSPORT_CENSUS_HEADERS = [
     'walkability_index', 
+    'percent_public_transport', 'percent_bicycle'
     ]
 
 TABLE_UNITS = {
@@ -94,14 +119,17 @@ CENSUS_TABLES = ['disability_status',
                  'level_of_urbanicity',
                  'occupants_per_bedroom',
                  'poverty_status',
+                 'population_below_poverty_double',
                  'resident_population_census_tract',
                  'sex_by_age',
                  'sex_of_workers_by_vehicles_available',
                  'trip_miles',
+                 'commuting_characteristics'
                  'walkability_index']
 
 EQUITY_CENSUS_TABLES = ['poverty_status',
                 #  'resident_population_census_tract',
+                 'population_below_poverty_double',
                  'sex_by_age',
                  'english_proficiency','household_vehicle_availability',
                 'hispanic_or_latino_origin_by_race', 'disability_status',
@@ -111,8 +139,14 @@ EQUITY_CENSUS_TABLES = ['poverty_status',
 TRANSPORT_CENSUS_TABLES = ['household_vehicle_availability',
     'level_of_urbanicity',
     'trip_miles',
-    'walkability_index']
+    'walkability_index',
+    'housing_units_in_structure',
+    'median_household_income',
+    'household_technology_availability',
+    'commuting_characteristics']
 
+LINKS = {'mtc_framework': 'https://bayareametro.github.io/Spatial-Analysis-Mapping-Projects/Project-Documentation/Equity-Priority-Communities/#summary-of-mtc-epc-demographic-factors--demographic-factor-definitions',
+         'household_vehicle_availability': 'https://data.census.gov/cedsci/table?q=vehicles&tid=ACSDT1Y2019.B08201&hidePreview=true'}
 
 @st.cache(allow_output_mutation=True, hash_funcs={"_thread.RLock": lambda _: None})
 def init_engine():
@@ -121,7 +155,7 @@ def init_engine():
     return engine
 
 
-@st.cache(allow_output_mutation=True, hash_funcs={"_thread.RLock": lambda _: None})
+# @st.cache(allow_output_mutation=True, hash_funcs={"_thread.RLock": lambda _: None})
 def init_connection():
     if st.secrets:
         conn = psycopg2.connect(**st.secrets["postgres"])
@@ -168,7 +202,7 @@ def table_names_query() -> list:
     return res
 
 
-@st.cache(ttl=1200, hash_funcs={"_thread.RLock": lambda _: None})
+# @st.cache(ttl=1200, hash_funcs={"_thread.RLock": lambda _: None})
 def latest_data_census_tracts(state: str, counties: list, tables: list) -> pd.DataFrame:
     conn = init_connection()
     cur = conn.cursor()
@@ -453,6 +487,8 @@ def load_all_data() -> pd.DataFrame:
 
     return df
 
+def minmax_norm(data: pd.DataFrame) -> pd.DataFrame:
+    return (data - data.min()) / ( data.max() - data.min())
 
 def clean_data(data: pd.DataFrame) -> pd.DataFrame:
     data.set_index(['State', 'County Name'], drop=True, inplace=True)
@@ -488,6 +524,7 @@ def clean_equity_data(data: pd.DataFrame) -> pd.DataFrame:
         )
 
     data.rename({'below_pov_level': 'Below Poverty Level'}, axis=1, inplace=True)
+    data.rename({'200_below_pov_level': '200% Below Poverty Level'}, axis=1, inplace=True) 
 
     data['total_w_a_disability'] = (data['male_under_5_w_a_disability']+data['male_5_to_17_w_a_disability']+ data['male_18_to_34_w_a_disability']+
         data['male_35_to_64_w_a_disability']+data['male_65_to_74_w_a_disability']+data['male_75_and_over_w_a_disability']+
@@ -506,13 +543,16 @@ def clean_equity_data(data: pd.DataFrame) -> pd.DataFrame:
     data['non-white'] = data['total_population'] - data['not_hisp_or_latino_white']
 
     data['People with Disability (%)'] = data['total_w_a_disability']/(data['male']+data['female'])
-    data['Below Poverty Level (%)'] = data['Below Poverty Level']/data['population_for_whom_poverty_status_is_determined']
+    data['200% Below Poverty Level (%)'] = data['200% Below Poverty Level']/data['population_for_whom_poverty_status_is_determined']
     data['Age 19 or Under (%)'] = data['Age 19 or Under']/data['total_population']
     data['Age 65 or Over (%)'] = data['Age 65 or Over']/data['total_population']
     data['Limited English Proficiency (%)'] = data['speak_eng_not_well']/(data['native']+data['foreign_born'])
     data['Single Parent Family (%)'] = data['single_parent']/data['total_families']
     data['Zero-Vehicle Household (%)'] = data['percent_hh_0_veh']
     data['People of Color (%)'] = data['non-white']/data['total_population']
+
+    for header in (EQUITY_CENSUS_POC_LOW_INCOME+EQUITY_CENSUS_REMAINING_HEADERS):
+        data[header + ' (%)'] = round(data[header + ' (%)']*100)
 
     data['criteria_A'] = 0
     data['criteria_B'] = 0
@@ -523,14 +563,32 @@ def clean_equity_data(data: pd.DataFrame) -> pd.DataFrame:
     return data
 
 def clean_transport_data(data: pd.DataFrame, epc: pd.DataFrame) -> pd.DataFrame:
+    
+    data['walkability_index'] = round(data['walkability_index'])
+    data['number_drive_alone'] = data['percent_drive_alone']*data['total_workers_commute']
+    data.drop(['total_workers_commute'], axis=1, inplace=True)
+    data.rename({
+        'percent_hh_0_veh': '0 Vehicle Households',
+        'vehicle_miles_traveled': 'Vehicle Miles Traveled',
+        'household_no_computing_device': 'No Computer Households',
+        'household_no_internet': 'No Internet Households',
+        'renter-occ_units': 'Renter Occupied Units',
+        'percent_drive_alone': 'Drive Alone Commuters',
+        # 'number_drive_alone': 'Drive Alone (#)',
+        'mean_travel_time': "Average Commute Time (min)"
+        },
+        axis=1, inplace=True)
+    
     averages = {}
     epc_averages = {}
+    normalized_data = pd.DataFrame()
     for x in TRANSPORT_CENSUS_HEADERS:
         averages[x] = data[x].mean()
         epc_averages[x] = data.loc[data['tract_id'].isin(epc['tract_id'])][x].mean()
+        normalized_data[x] = minmax_norm(data[x])
     transport_epc = data.loc[data['tract_id'].isin(epc['tract_id'])]
 
-    return transport_epc, averages, epc_averages, data
+    return transport_epc, averages, epc_averages, data, normalized_data
 
 def get_equity_geographies(epc: pd.DataFrame, coeff: float) -> pd.DataFrame:
     concentration_thresholds = dict()
@@ -546,10 +604,11 @@ def get_equity_geographies(epc: pd.DataFrame, coeff: float) -> pd.DataFrame:
     epc['Criteria A'] = epc['criteria_A'].apply(lambda x: bool(x==2))
 
     epc['criteria_B'] = epc[[x + '_check' for x in EQUITY_CENSUS_REMAINING_HEADERS]].sum(axis=1, numeric_only=True)
-    temp = epc['Below Poverty Level (%)'].apply(lambda x: x>concentration_thresholds['Below Poverty Level'])
+    temp = epc['200% Below Poverty Level (%)'].apply(lambda x: x>concentration_thresholds['200% Below Poverty Level'])
     epc['Criteria B'] = (epc['criteria_B'].apply(lambda x: bool(x>=3)) + temp.astype(int)) == 2
 
-    df = epc.drop_duplicates(subset=['tract_id'])
+    # df = epc.drop_duplicates(subset=['tract_id'])
+    df = epc
 
     epc['Criteria'] = epc[['Criteria A', 'Criteria B']].apply(lambda x: 'Both' if (x['Criteria A'] & x['Criteria B']) else 
         ('Criteria A Only' if x['Criteria A'] else
