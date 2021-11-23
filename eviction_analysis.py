@@ -9,7 +9,7 @@ from constants import STATES
 
 
 def eviction_UI():
-    st.write('### Eviction Data Analysis')
+    st.title('Eviction Analysis')
     with st.expander("About"):
         st.write(
             """
@@ -190,8 +190,6 @@ def eviction_UI():
 
 def eviction_visualizations(df: pd.DataFrame, state: str = None):
     if state:
-        print('viz')
-        print(df.columns)
         temp = df.copy()
         temp.reset_index(inplace=True)
         counties = temp['County Name'].to_list()

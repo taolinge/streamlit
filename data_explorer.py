@@ -78,8 +78,6 @@ def county_data_explorer():
 
 
 def census_data_explorer():
-    st.write('## Census Tract Data Explorer')
-    st.write("""This interface allows you to see and interact with census tract data in our database. """)
     state = st.selectbox("Select a state", STATES).strip()
     county_list = queries.all_counties_query()
     county_list = county_list[county_list['state_name'] == state]['county_name'].to_list()

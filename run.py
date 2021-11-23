@@ -145,7 +145,12 @@ def run_UI():
         }
     )
     st.sidebar.title('Arup Social Data')
-    pages = ['Data Explorer', 'Equity Index', 'Eviction Analysis']
+
+    pages = [
+        'Data Explorer',
+        # 'Equity Index',
+        'Eviction Analysis'
+    ]
     url_params = st.experimental_get_query_params()
     page = 'Data Explorer'
     if 'page' in url_params.keys() and not st.session_state.loaded:
@@ -158,12 +163,29 @@ def run_UI():
     st.session_state.loaded = True
 
     if page == 'Eviction Analysis':
+        st.sidebar.write("""
+            ## About
+            
+            The Eviction Analysis tool is targeted at providing data and and context around evictions at the county level. It provides a _Relative Risk Index_, which represents the varying relative risk of eviction in the selected counties. You can also estimate the cost to avoid evictions per month based on the number of people at risk and the cost of rent in the counties selected.  
+        """)
         eviction_analysis.eviction_UI()
+
     elif page == 'Equity Index':
-        pass
+        st.sidebar.write("""
+            ## About
+
+            The Equity Index is a set of Arup-designed analysis to show access to transit and other equity indicators at the census tract level.  
+        """)
     else:
-        st.write('## Data Explorer')
-        subcol_1, subcol_2=st.columns(2)
+        st.sidebar.write("""
+            ## About
+
+            The Data Explorer is an interface to allow you to explore the data available in our database and do some initial analysis. In total we have over 2 million rows and over 400 unique features with coverage across the 50 US states and expanding to the District of Columbia and Puerto Rico. You can use this interface to combine multiple datasets and export raw data as an Excel file. 
+            
+            Datasets vary between county and census tract resolution and data may not exist for all counties or tracts. Some features may not work for all states/territories. 
+        """)
+        st.title("Data Explorer")
+        subcol_1, subcol_2 = st.columns(2)
         with subcol_1:
             st.session_state.data_type = st.radio("Data resolution:", ('County Level', 'Census Tracts'), index=0)
         with subcol_2:
