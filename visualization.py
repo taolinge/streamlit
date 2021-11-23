@@ -429,7 +429,7 @@ def make_transport_census_chart(df: pd.DataFrame, average: dict, feature: str):
             .encode(x=alt.X('county_name', axis = alt.Axis(labels=False)),
                     y="tract count" + ':Q',
                     color=feature,
-                            tooltip=['county_name', feature, "tract count"])\
+                    tooltip=['county_name', feature, "tract count"])\
             .interactive()
     else:
         bar = alt.Chart(df)\
@@ -492,7 +492,7 @@ def make_stacked(df:pd.DataFrame, index_value: dict):
             .mark_bar() \
             .encode(x=alt.X('tract_id:O', axis = alt.Axis(labels=False), title='Census Tracts', sort='y'),
                     y=alt.Y('sum(value):Q', title='Transportation Vulnerability Index'),
-                    color='Indicators:N',
+                    color=alt.Color('Indicators:N', legend=alt.Legend(orient='left')),
                     tooltip=['tract_id'])\
             .interactive()
         

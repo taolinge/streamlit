@@ -488,7 +488,11 @@ def load_all_data() -> pd.DataFrame:
     return df
 
 def minmax_norm(data: pd.DataFrame) -> pd.DataFrame:
-    return (data - data.min()) / ( data.max() - data.min())
+    for header in TRANSPORT_CENSUS_HEADERS:
+        min = data[header].min()
+        max = data[header].max()
+        data[header] = data[header].apply(lambda x: (x-min)/(max-min))
+    return data
 
 def clean_data(data: pd.DataFrame) -> pd.DataFrame:
     data.set_index(['State', 'County Name'], drop=True, inplace=True)
@@ -581,13 +585,13 @@ def clean_transport_data(data: pd.DataFrame, epc: pd.DataFrame) -> pd.DataFrame:
     
     averages = {}
     epc_averages = {}
-    normalized_data = pd.DataFrame()
+    
     for x in TRANSPORT_CENSUS_HEADERS:
         averages[x] = data[x].mean()
         epc_averages[x] = data.loc[data['tract_id'].isin(epc['tract_id'])][x].mean()
-        normalized_data[x] = minmax_norm(data[x])
     transport_epc = data.loc[data['tract_id'].isin(epc['tract_id'])]
-
+    normalized_data = minmax_norm(transport_epc)
+    
     return transport_epc, averages, epc_averages, data, normalized_data
 
 def get_equity_geographies(epc: pd.DataFrame, coeff: float) -> pd.DataFrame:

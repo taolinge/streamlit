@@ -194,7 +194,7 @@ def census_equity_explorer():
             transport_df['County Name'] = transport_df['county_name']
         transport_df.set_index(['State', 'County Name'], drop=True, inplace=True)
         
-        transport_epc, averages, epc_averages, transport_df, normalized_data = queries.clean_transport_data(transport_df, df_copy)
+        transport_epc, transport_df, normalized_data, averages, epc_averages = queries.clean_transport_data(transport_df, df_copy)
 
         geo_df = transport_df.copy()
         geo_epc = transport_epc.copy()
@@ -215,8 +215,6 @@ def census_equity_explorer():
             feature = st.selectbox("Select an indicator to see how the census tract levels compare to the county average",
                 queries.TRANSPORT_CENSUS_HEADERS)
 
-        # col1, col2, col3= st.columns((1,indent,1))
-        # with col2:  
         st.write('###### How does the Equity Geography average compare to the county-wide average?')
         visualization.make_horizontal_bar_chart(averages, epc_averages, feature)
 
@@ -253,5 +251,5 @@ def census_equity_explorer():
         with col5:
             for header in queries.TRANSPORT_CENSUS_HEADERS[5:7]:
                 index_value[header] = st.select_slider(header, options = index_options, key = header, value = 1)
-        
-        visualization.make_stacked(transport_epc, index_value)
+
+        visualization.make_stacked(normalized_data, index_value)
