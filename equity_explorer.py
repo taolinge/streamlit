@@ -45,8 +45,8 @@ def census_equity_explorer():
     col1, col2= st.columns((1+indent,1))
     with col1:
         state = st.selectbox("Select a state", STATES).strip()
-        county_list = queries.counties_query()
-        county_list = county_list[county_list['State'] == state]['County Name'].to_list()
+        county_list = queries.all_counties_query()
+        county_list = county_list[county_list['state_name'] == state]['county_name'].to_list()
         county_list.sort()
         counties = st.multiselect('Select a county', ['All'] + county_list)
         tables = queries.EQUITY_CENSUS_TABLES

@@ -1,7 +1,5 @@
 import base64
-import pickle
-import sys
-
+import streamlit as st
 import pandas as pd
 from six import BytesIO
 import geopandas as gpd
@@ -74,18 +72,22 @@ def convert_coordinates(row) -> list:
 
 
 def convert_geom(geo_df: pd.DataFrame, data_df: pd.DataFrame, map_features: list) -> dict:
-    if 'tract_id' not in data_df:
+    if 'Census Tract' not in data_df:
         data_df = data_df[['county_id'] + map_features]
+        data_df=data_df.round(3)
         cols_to_use = list(data_df.columns.difference(geo_df.columns))
         cols_to_use.append('county_id')
         geo_df = geo_df.merge(data_df[cols_to_use], on='county_id', how="outer")
-    elif 'tract_id' in data_df or 'Census Tract' in data_df:
+    else:
         data_df = data_df[['Census Tract'] + map_features]
+        data_df=data_df.round(3)
+
         geo_df = geo_df.merge(data_df, on='Census Tract')
+
+    # geo_df.fillna(0,inplace=True)
+
     geo_df['geom'] = geo_df.apply(lambda row: row['geom'].buffer(0), axis=1)
     geo_df['coordinates'] = geo_df.apply(lambda row: gpd.GeoSeries(row['geom']).__geo_interface__, axis=1)
     geo_df['coordinates'] = geo_df.apply(lambda row: convert_coordinates(row), axis=1)
     geojson = make_geojson(geo_df, map_features)
-    # size_estimate = len(pickle.dumps(geojson))
-    # print(f'{size_estimate/1024=}')
     return geojson

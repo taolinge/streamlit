@@ -10,7 +10,7 @@ import queries
 
 def percent_to_population(feature: str, name: str, df: pd.DataFrame) -> pd.DataFrame:
     pd.set_option('mode.chained_assignment', None)
-    df[name] = (df.loc[:, feature].astype(float) / 100) * df.loc[:, 'Resident Population (Thousands of Persons)'].astype(float) * 1000
+    df[name] = (df.loc[:, feature].astype(float) / 100) * df.loc[:, 'Total Population'].astype(float) * 1000
     return df
 
 
@@ -33,27 +33,29 @@ def cross_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def prepare_analysis_data(df: pd.DataFrame) -> pd.DataFrame:
+    temp_df=df.copy()
     cols_to_drop = ['Population Below Poverty Line (%)',
                     'Unemployment Rate (%)',
                     'Burdened Households (%)',
                     'Single Parent Households (%)',
-                    'Non-White Population (%)']
-    for col in list(df.columns):
+                    'Non-White Population (%)',
+                    ]
+    for col in list(temp_df.columns):
         if '(%)' in col:
             if col == 'Unemployment Rate (%)':
-                df = percent_to_population('Unemployment Rate (%)', 'Population Unemployed', df)
+                temp_df = percent_to_population('Unemployment Rate (%)', 'Population Unemployed', temp_df)
             else:
-                df = percent_to_population(col, col.replace(' (%)', ''), df)
+                temp_df = percent_to_population(col, col.replace(' (%)', ''), temp_df)
 
-    if 'Policy Value' in list(df.columns) or 'Countdown' in list(df.columns):
-        df = df.drop(['Policy Value', 'Countdown'], axis=1)
+    if 'Policy Value' in list(temp_df.columns) or 'Countdown' in list(temp_df.columns):
+        temp_df = temp_df.drop(['Policy Value', 'Countdown'], axis=1)
 
     for col in cols_to_drop:
         try:
-            df.drop([col], axis=1, inplace=True)
+            temp_df.drop([col], axis=1, inplace=True)
         except:
             pass
-    return df
+    return temp_df
 
 
 def normalize(df: pd.DataFrame) -> pd.DataFrame:
@@ -90,7 +92,6 @@ def priority_indicator(socioeconomic_index: float, policy_index: float, time_lef
 
 
 def rank_counties(df: pd.DataFrame, label: str) -> pd.DataFrame:
-    df.drop(['county_id'], axis=1, inplace=True)
     analysis_df = prepare_analysis_data(df)
     analysis_df = normalize(analysis_df)
 
@@ -117,34 +118,19 @@ def rank_counties(df: pd.DataFrame, label: str) -> pd.DataFrame:
 def calculate_cost_estimate(df: pd.DataFrame, pct_burdened: float, distribution: dict,
                             rent_type: str = 'fmr') -> pd.DataFrame:
     if rent_type == 'fmr':
-        cost_df = queries.static_data_single_table('fair_market_rents', queries.STATIC_COLUMNS['fair_market_rents'])
+        cost_df = queries.static_data_single_table('fair_market_rents_new', queries.STATIC_COLUMNS['fair_market_rents'])
     elif rent_type == 'rent50':
-        cost_df = queries.static_data_single_table('median_rents', queries.STATIC_COLUMNS['median_rents'])
-    else:
-        raise Exception(
-            'Invalid input - {x} is not a valid rent type. Must be either `fmr` (Free Market Rent) or `med` (Median Rent)'.format(
-                x=rent_type))
+        cost_df = queries.static_data_single_table('median_rents_new', queries.STATIC_COLUMNS['median_rents'])
 
-    cost_df = cost_df.drop([
-        'State',
-        'County Name'
-    ], axis=1)
 
     df = df.reset_index().merge(cost_df, how="left", on='county_id').set_index(['State', 'County Name'])
-    df = df.astype(float)
-    for key, value in distribution.items():
-        df['br_cost_0'] = value * df[f'{rent_type}_0'] * (pct_burdened / 100) * (
-                df['Resident Population (Thousands of Persons)'] * 1000) * (df['Burdened Households (%)'] / 100)
-        df['br_cost_1'] = value * df[f'{rent_type}_1'] * (pct_burdened / 100) * (
-                df['Resident Population (Thousands of Persons)'] * 1000) * (df['Burdened Households (%)'] / 100)
-        df['br_cost_2'] = value * df[f'{rent_type}_2'] * (pct_burdened / 100) * (
-                df['Resident Population (Thousands of Persons)'] * 1000) * (df['Burdened Households (%)'] / 100)
-        df['br_cost_3'] = value * df[f'{rent_type}_3'] * (pct_burdened / 100) * (
-                df['Resident Population (Thousands of Persons)'] * 1000) * (df['Burdened Households (%)'] / 100)
-        df['br_cost_4'] = value * df[f'{rent_type}_4'] * (pct_burdened / 100) * (
-                df['Resident Population (Thousands of Persons)'] * 1000) * (df['Burdened Households (%)'] / 100)
-        df['total_cost'] = np.sum([df['br_cost_0'], df['br_cost_1'], df['br_cost_2'], df['br_cost_3'], df['br_cost_4']],
-                                  axis=0)
+
+    df['br_cost_0'] = distribution[0] * df[f'{rent_type}_0'] * (df['Renter Occupied Units']) * (df['burdened_households'] / 100) * (pct_burdened / 100)
+    df['br_cost_1'] = distribution[1] * df[f'{rent_type}_1'] * (df['Renter Occupied Units']) * (df['burdened_households'] / 100) * (pct_burdened / 100)
+    df['br_cost_2'] = distribution[2] * df[f'{rent_type}_2'] * (df['Renter Occupied Units']) * (df['burdened_households'] / 100) * (pct_burdened / 100)
+    df['br_cost_3'] = distribution[3] * df[f'{rent_type}_3'] * (df['Renter Occupied Units']) * (df['burdened_households'] / 100) * (pct_burdened / 100)
+    df['br_cost_4'] = distribution[4] * df[f'{rent_type}_4'] * (df['Renter Occupied Units']) * (df['burdened_households'] / 100) * (pct_burdened / 100)
+    df['total_cost'] = np.sum([df['br_cost_0'], df['br_cost_1'], df['br_cost_2'], df['br_cost_3'], df['br_cost_4']], axis=0)
     return df
 
 
@@ -169,8 +155,6 @@ def cost_of_evictions(df, metro_areas, locations):
     cost_df = df.reset_index()
     cost_df.drop(columns=['State'], inplace=True)
     cost_df.set_index('County Name', inplace=True)
-    # cost_df = cost_df[['br_cost_0', 'br_cost_1', 'br_cost_2', 'br_cost_3', 'br_cost_4', 'total_cost']]
-    # st.dataframe(
-    #     cost_df[['total_cost']])
+
     st.bar_chart(cost_df['total_cost'])
     return cost_df
