@@ -230,7 +230,9 @@ def census_equity_explorer():
         st.write('')
         transport_epc.drop(['geom'], inplace=True, axis=1)
         transport_df.drop(['geom'], inplace=True, axis=1)
+        normalized_data.drop(['geom'], inplace=True, axis=1)
         st.write('###### Equity Geography Census Tracts (', feature, '):')
+        
         visualization.make_transport_census_chart(transport_epc, averages, feature)
         st.write('')
         
@@ -239,17 +241,36 @@ def census_equity_explorer():
                 #### Create Transportation Vulnerability Index
                 *Select weights for the following indicators to compare the vulnerability of Equity Geographies*                 
                 ''')
-        col1, col2, col3, col4, col5 = st.columns((3, 1, 3, 1, 3))
+        col1, col2, col3 = st.columns((1,1,1))
         with col1:
             index_options = [0,1,2,3]
             index_value = {}
-            for header in queries.TRANSPORT_CENSUS_HEADERS[:2]:
+            for header in queries.TRANSPORT_CENSUS_HEADERS[:3]:
+                index_value[header] = st.select_slider(header, options = index_options, key = header, value = 1)
+        with col2:
+            for header in queries.TRANSPORT_CENSUS_HEADERS[3:5]:
                 index_value[header] = st.select_slider(header, options = index_options, key = header, value = 1)
         with col3:
-            for header in queries.TRANSPORT_CENSUS_HEADERS[2:5]:
-                index_value[header] = st.select_slider(header, options = index_options, key = header, value = 1)
-        with col5:
             for header in queries.TRANSPORT_CENSUS_HEADERS[5:7]:
                 index_value[header] = st.select_slider(header, options = index_options, key = header, value = 1)
 
-        visualization.make_stacked(normalized_data, index_value)
+        normalized_data = normalized_data.melt('tract_id', queries.TRANSPORT_CENSUS_HEADERS, 'Indicators')
+        normalized_data['value'] = normalized_data['Indicators'].apply(lambda x: index_value[x])*normalized_data['value']
+        transport_index = normalized_data.groupby(['tract_id'])['value'].sum()
+        visualization.make_stacked(normalized_data)
+
+        transport_index.sort_values(ascending=False, inplace=True)
+        
+        st.write('###### View census tracts with highest index values')
+        num_tracts = st.slider('Select number of census tracts to view', 
+                  min_value = 1, max_value = len(transport_index),
+                  value = [5 if 5 < len(transport_index) else len(transport_index)]
+                  )[0]
+        
+        selected = transport_index.head(num_tracts).reset_index()
+        selected_tracts = transport_epc.loc[transport_epc['tract_id'].isin(selected['tract_id'])]
+        selected_tracts['value'] = selected_tracts['tract_id'].apply(lambda x: transport_index.loc[x])
+        selected_geo = geo_epc.loc[geo_epc['tract_id'].isin(selected['tract_id'])]
+        selected_geo['value'] = selected_geo['tract_id'].apply(lambda x: transport_index.loc[x])
+        
+        visualization.make_transport_census_map(selected_geo, selected_tracts, 'value')

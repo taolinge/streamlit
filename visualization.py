@@ -484,9 +484,7 @@ def make_grouped_bar_chart(df: pd.DataFrame, id_var: str, features: list, featur
             .interactive()
     st.altair_chart(bar, use_container_width=True)
 
-def make_stacked(df:pd.DataFrame, index_value: dict):
-    df = df.melt('tract_id', queries.TRANSPORT_CENSUS_HEADERS, 'Indicators')
-    df['value'] = df['Indicators'].apply(lambda x: index_value[x])*df['value']
+def make_stacked(df:pd.DataFrame):
 
     bar = alt.Chart(df)\
             .mark_bar() \

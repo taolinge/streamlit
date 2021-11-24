@@ -487,12 +487,14 @@ def load_all_data() -> pd.DataFrame:
 
     return df
 
-def minmax_norm(data: pd.DataFrame) -> pd.DataFrame:
-    for header in TRANSPORT_CENSUS_HEADERS:
-        min = data[header].min()
-        max = data[header].max()
-        data[header] = data[header].apply(lambda x: (x-min)/(max-min))
-    return data
+def minmax_norm(data: pd.DataFrame):
+   normalized_data = data.copy()
+   for header in TRANSPORT_CENSUS_HEADERS:
+        min = normalized_data[header].min()
+        max = normalized_data[header].max()
+        normalized_data[header] = normalized_data[header].apply(lambda x: (x-min)/(max-min))
+    
+   return normalized_data
 
 def clean_data(data: pd.DataFrame) -> pd.DataFrame:
     data.set_index(['State', 'County Name'], drop=True, inplace=True)
@@ -590,9 +592,10 @@ def clean_transport_data(data: pd.DataFrame, epc: pd.DataFrame) -> pd.DataFrame:
         averages[x] = data[x].mean()
         epc_averages[x] = data.loc[data['tract_id'].isin(epc['tract_id'])][x].mean()
     transport_epc = data.loc[data['tract_id'].isin(epc['tract_id'])]
+    
     normalized_data = minmax_norm(transport_epc)
     
-    return transport_epc, averages, epc_averages, data, normalized_data
+    return transport_epc, data, normalized_data, averages, epc_averages
 
 def get_equity_geographies(epc: pd.DataFrame, coeff: float) -> pd.DataFrame:
     concentration_thresholds = dict()
