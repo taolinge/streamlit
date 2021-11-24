@@ -274,4 +274,4 @@ def census_equity_explorer():
         selected_geo['value'] = selected_geo['Census Tract'].apply(lambda x: round(transport_index.loc[x]))
         
         visualization.make_transport_census_map(selected_geo, selected_tracts, 'value')
-        visualization.make_transit_map(selected_geo, selected_tracts, 'value')
+        # visualization.make_transit_map(selected_geo, selected_tracts, 'value')
