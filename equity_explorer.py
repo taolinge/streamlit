@@ -122,8 +122,8 @@ def census_equity_explorer():
         df_copy = df.copy()
         df.drop(['geom'], inplace=True, axis=1)
         total_census_tracts.drop(['geom'], inplace=True, axis=1)
-        geo_df = geo_df[['geom', 'Census Tract', 'tract_id']]
-        geo_total = geo_total[['geom', 'Census Tract', 'tract_id']]
+        geo_df = geo_df[['geom', 'Census Tract']]
+        geo_total = geo_total[['geom', 'Census Tract']]
 
         st.write('')
         st.write('')
@@ -198,8 +198,8 @@ def census_equity_explorer():
 
         geo_df = transport_df.copy()
         geo_epc = transport_epc.copy()
-        geo_df = geo_df[['geom', 'Census Tract', 'tract_id']]
-        geo_epc = geo_epc[['geom', 'Census Tract', 'tract_id']]
+        geo_df = geo_df[['geom', 'Census Tract']]
+        geo_epc = geo_epc[['geom', 'Census Tract']]
         st.markdown("""---""")
         
         st.write('''
@@ -254,9 +254,9 @@ def census_equity_explorer():
             for header in queries.TRANSPORT_CENSUS_HEADERS[5:7]:
                 index_value[header] = st.select_slider(header, options = index_options, key = header, value = 1)
 
-        normalized_data = normalized_data.melt('tract_id', queries.TRANSPORT_CENSUS_HEADERS, 'Indicators')
+        normalized_data = normalized_data.melt('Census Tract', queries.TRANSPORT_CENSUS_HEADERS, 'Indicators')
         normalized_data['value'] = normalized_data['Indicators'].apply(lambda x: index_value[x])*normalized_data['value']
-        transport_index = normalized_data.groupby(['tract_id'])['value'].sum()
+        transport_index = normalized_data.groupby(['Census Tract'])['value'].sum()
         visualization.make_stacked(normalized_data)
 
         transport_index.sort_values(ascending=False, inplace=True)
@@ -268,9 +268,10 @@ def census_equity_explorer():
                   )[0]
         
         selected = transport_index.head(num_tracts).reset_index()
-        selected_tracts = transport_epc.loc[transport_epc['tract_id'].isin(selected['tract_id'])]
-        selected_tracts['value'] = selected_tracts['tract_id'].apply(lambda x: transport_index.loc[x])
-        selected_geo = geo_epc.loc[geo_epc['tract_id'].isin(selected['tract_id'])]
-        selected_geo['value'] = selected_geo['tract_id'].apply(lambda x: transport_index.loc[x])
+        selected_tracts = transport_epc.loc[transport_epc['Census Tract'].isin(selected['Census Tract'])]
+        selected_tracts['value'] = selected_tracts['Census Tract'].apply(lambda x: transport_index.loc[x])
+        selected_geo = geo_epc.loc[geo_epc['Census Tract'].isin(selected['Census Tract'])]
+        selected_geo['value'] = selected_geo['Census Tract'].apply(lambda x: round(transport_index.loc[x]))
         
         visualization.make_transport_census_map(selected_geo, selected_tracts, 'value')
+        visualization.make_transit_map(selected_geo, selected_tracts, 'value')

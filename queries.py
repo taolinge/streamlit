@@ -669,8 +669,8 @@ def clean_transport_data(data: pd.DataFrame, epc: pd.DataFrame) -> pd.DataFrame:
     
     for x in TRANSPORT_CENSUS_HEADERS:
         averages[x] = data[x].mean()
-        epc_averages[x] = data.loc[data['tract_id'].isin(epc['tract_id'])][x].mean()
-    transport_epc = data.loc[data['tract_id'].isin(epc['tract_id'])]
+        epc_averages[x] = data.loc[data['Census Tract'].isin(epc['Census Tract'])][x].mean()
+    transport_epc = data.loc[data['Census Tract'].isin(epc['Census Tract'])]
     
     normalized_data = minmax_norm(transport_epc)
     
