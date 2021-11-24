@@ -147,9 +147,8 @@ def census_data_explorer():
                 feature_2 = st.selectbox('Y Feature', feature_labels, 1)
                 with col3:
                     scaling_feature = st.selectbox('Scaling Feature', feature_labels, len(feature_labels)-1)
-                if feature_1 and feature_2:
-                    print(df.head())
-                    visualization.make_scatter_plot_census_tracts(df, feature_1, feature_2, scaling_feature)
+            if feature_1 and feature_2:
+                visualization.make_scatter_plot_census_tracts(df, feature_1, feature_2, scaling_feature)
 
         df.drop(list(set(df.columns) - set(feature_labels)), axis=1, inplace=True)
         display_columns = []
