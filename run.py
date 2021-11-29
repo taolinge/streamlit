@@ -188,10 +188,10 @@ def run_UI():
         subcol_1, subcol_2 = st.columns(2)
         with subcol_1:
             st.session_state.data_type = st.radio("Data resolution:", ('County Level', 'Census Tracts'), index=0)
-        with subcol_2:
-            st.session_state.data_format = st.radio('Data format', ['Raw Values', 'Per Capita', 'Per Square Mile'], 0)
 
         if st.session_state.data_type == 'County Level':
+            with subcol_2:
+                st.session_state.data_format = st.radio('Data format', ['Raw Values', 'Per Capita', 'Per Square Mile'],0)
             data_explorer.county_data_explorer()
         else:
             data_explorer.census_data_explorer()
