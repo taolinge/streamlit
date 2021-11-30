@@ -123,6 +123,7 @@ This data is the most recent data we could get, but some datasets are updated mo
 | Hispanic or Latino Origin by Race | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
 | Sex by Age | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
 | Sex of Workers by Vehicles Available | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
+| Commuting Characteristics by Sex | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
 | Household Job Availability | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2013 | |
 | Household Technology Availability | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs)| 2013 | |
 | Household Vehicle Availability | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs)| 2013 | |

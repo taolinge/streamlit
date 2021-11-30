@@ -64,7 +64,7 @@ EQUITY_CENSUS_REMAINING_HEADERS = [
     ]
 
 TRANSPORT_CENSUS_HEADERS = [
-    '0 Vehicle Households', 
+    'Zero-Vehicle Households', 
     'Vehicle Miles Traveled', 
     'No Computer Households', 
     'No Internet Households', 
@@ -73,22 +73,6 @@ TRANSPORT_CENSUS_HEADERS = [
     # 'Drive Alone (#)',
     'Average Commute Time (min)'
     ]
-
-# TRANSPORT_CENSUS_HEADERS = [
-#     'percent_hh_0_veh', 
-#     # 'percent_hh_1_veh', 'percent_hh_2more_veh', 
-#     # 'urbanicity',
-#     'vehicle_miles_traveled', 
-#     # 'person_miles_traveled', 'vehicle_trips', 'person_trips',  
-#     'household_no_computing_device', 
-#     # 'household_smartphone_no_computer','household_computer',  
-#     'household_no_internet', 
-#     # 'household_broadband',
-#     # 'occupied_housing_units', 'owner-occ_units', 
-#     'renter-occ_units',
-#     'percent_drive_alone', 'number_drive_alone',
-#     'mean_travel_time'
-#     ]
 
 POSITIVE_TRANSPORT_CENSUS_HEADERS = [
     'walkability_index', 
@@ -105,27 +89,6 @@ TABLE_UNITS = {
     'unemployment_rate': '%',
     'resident_population': 'Thousands of Persons',
 }
-
-# CENSUS_TABLES = ['disability_status',
-#                  'educational_attainment',
-#                  'employment_status',
-#                  'english_proficiency',
-#                  'family_type',
-#                  'hispanic_or_latino_origin_by_race',
-#                  'household_job_availability',
-#                  'household_technology_availability',
-#                  'household_vehicle_availability',
-#                  'housing_units_in_structure',
-#                  'level_of_urbanicity',
-#                  'occupants_per_bedroom',
-#                  'poverty_status',
-#                  'population_below_poverty_double',
-#                  'resident_population_census_tract',
-#                  'sex_by_age',
-#                  'sex_of_workers_by_vehicles_available',
-#                  'trip_miles',
-#                  'commuting_characteristics'
-#                  'walkability_index']
 
 # @st.cache(allow_output_mutation=True, hash_funcs={"_thread.RLock": lambda _: None})
 CENSUS_TABLES = ['population_below_poverty_double',
@@ -167,11 +130,6 @@ TRANSPORT_CENSUS_TABLES = ['household_vehicle_availability',
     'median_household_income',
     'household_technology_availability',
     'commuting_characteristics']
-
-LINKS = {'mtc_framework': 'https://bayareametro.github.io/Spatial-Analysis-Mapping-Projects/Project-Documentation/Equity-Priority-Communities/#summary-of-mtc-epc-demographic-factors--demographic-factor-definitions',
-         'household_vehicle_availability': 'https://data.census.gov/cedsci/table?q=vehicles&tid=ACSDT1Y2019.B08201&hidePreview=true'}
-
-
 
 def init_engine():
     engine = create_engine(
@@ -653,7 +611,7 @@ def clean_transport_data(data: pd.DataFrame, epc: pd.DataFrame) -> pd.DataFrame:
     data['number_drive_alone'] = data['percent_drive_alone']*data['total_workers_commute']
     data.drop(['total_workers_commute'], axis=1, inplace=True)
     data.rename({
-        'percent_hh_0_veh': '0 Vehicle Households',
+        'percent_hh_0_veh': 'Zero-Vehicle Households',
         'vehicle_miles_traveled': 'Vehicle Miles Traveled',
         'household_no_computing_device': 'No Computer Households',
         'household_no_internet': 'No Internet Households',
