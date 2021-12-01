@@ -5,6 +5,7 @@ import pandas as pd
 from sqlalchemy import create_engine
 from shapely import wkb
 import streamlit as st
+from sklearn import preprocessing
 
 import credentials
 from constants import STATES
@@ -533,15 +534,6 @@ def load_all_data() -> pd.DataFrame:
 
     return df
 
-def minmax_norm(data: pd.DataFrame):
-   normalized_data = data.copy()
-   for header in TRANSPORT_CENSUS_HEADERS:
-        min = normalized_data[header].min()
-        max = normalized_data[header].max()
-        normalized_data[header] = normalized_data[header].apply(lambda x: (x-min)/(max-min))
-    
-   return normalized_data
-
 def clean_data(df: pd.DataFrame) -> pd.DataFrame:
     df.set_index(['State', 'County Name'], drop=True, inplace=True)
 
@@ -630,7 +622,8 @@ def clean_transport_data(data: pd.DataFrame, epc: pd.DataFrame) -> pd.DataFrame:
         epc_averages[x] = data.loc[data['Census Tract'].isin(epc['Census Tract'])][x].mean()
     transport_epc = data.loc[data['Census Tract'].isin(epc['Census Tract'])]
     
-    normalized_data = minmax_norm(transport_epc)
+    normalized_data = transport_epc.copy()
+    normalized_data[TRANSPORT_CENSUS_HEADERS] = preprocessing.MinMaxScaler().fit_transform(normalized_data[TRANSPORT_CENSUS_HEADERS])
     
     return transport_epc, data, normalized_data, averages, epc_averages
 

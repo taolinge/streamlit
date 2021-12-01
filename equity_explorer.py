@@ -1,17 +1,17 @@
 from numpy import maximum
 import pandas as pd
 import streamlit as st
-from fpdf import FPDF
-import base64
+# from fpdf import FPDF
+# import base64
 
 import queries
 import utils
 import visualization
 from constants import STATES as STATES, EQUITY_DATA_TABLE as EQUITY_DATA_TABLE, TRANSPORT_DATA_TABLE as TRANSPORT_DATA_TABLE, LINKS as LINKS
 
-def create_download_link(val, filename):
-    b64 = base64.b64encode(val)  # val looks like b'...'
-    return f'<a href="data:application/octet-stream;base64,{b64.decode()}" download="{filename}.pdf">Download file</a>'
+# def create_download_link(val, filename):
+#     b64 = base64.b64encode(val)  # val looks like b'...'
+#     return f'<a href="data:application/octet-stream;base64,{b64.decode()}" download="{filename}.pdf">Download file</a>'
 
 def county_equity_explorer():
     st.write('## County Equity Explorer')

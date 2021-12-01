@@ -6,10 +6,10 @@ import altair as alt
 from sklearn import preprocessing as pre
 from constants import BREAKS, COLOR_RANGE
 import utils
-import queries
-from fpdf import FPDF
+# from fpdf import FPDF
 from ipywidgets import HTML
 
+import queries
 
 def color_scale(val: float) -> list:
     for i, b in enumerate(BREAKS):
@@ -239,19 +239,6 @@ def make_scatter_plot_census_tracts(df: pd.DataFrame, feature_1: str, feature_2:
                 tooltip=['Census Tract', scaling_feature, feature_1, feature_2],
                 size=scaling_feature).interactive()
     st.altair_chart(scatter, use_container_width=True)
-
-text = HTML(value='Move the viewport')   
-def filter_by_bbox(row, west_lng, east_lng, north_lat, south_lat):
-    return west_lng < row['lng'] < east_lng and south_lat < row['lat'] < north_lat
-
-def filter_by_viewport(widget_instance, payload):
-    try:
-        west_lng, north_lat = payload['data']['nw']
-        east_lng, south_lat = payload['data']['se']
-        filtered_df = df[df.apply(lambda row: filter_by_bbox(row, west_lng, east_lng, north_lat, south_lat), axis=1)]
-        text.value = 'Points in viewport: %s' % int(filtered_df.count()['lng'])
-    except Exception as e:
-        text.value = 'Error: %s' % e
         
 def make_equity_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
 
@@ -308,7 +295,7 @@ def make_equity_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: 
             # "<b>" + str(EQUITY_CENSUS_HEADERS[0]) + ":</b> {" + str(EQUITY_CENSUS_HEADERS[0]) + "}" +
             }
     if len(geo_df_copy['coordinates'][0][0][0]) > 0:
-        view_state = pdk.ViewState(**{"latitude": geo_df_copy['coordinates'][0][0][0][1], "longitude": geo_df_copy['coordinates'][0][0][0][0], "zoom": 10, "maxZoom": 16, "pitch": 0, "bearing": 0})
+        view_state = pdk.ViewState(**{"latitude": geo_df_copy['coordinates'][0][0][0][1], "longitude": geo_df_copy['coordinates'][0][0][0][0], "zoom": 7, "maxZoom": 16, "pitch": 0, "bearing": 0})
     else:
         view_state = pdk.ViewState(**{"latitude": 36, "longitude": -95, "zoom": 3, "maxZoom": 16, "pitch": 0, "bearing": 0})
 
@@ -333,7 +320,7 @@ def make_equity_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: 
         map_style=pdk.map_styles.LIGHT,
         tooltip=tooltip
     )
-    r.deck_widget.on_click(filter_by_viewport)
+    
     st.pydeck_chart(r)
 
 def make_transport_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
@@ -385,7 +372,7 @@ def make_transport_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_featur
             # "<b>" + str(EQUITY_CENSUS_HEADERS[0]) + ":</b> {" + str(EQUITY_CENSUS_HEADERS[0]) + "}" +
             }
     if len(geo_df_copy['coordinates'][0][0][0]) > 0:
-        view_state = pdk.ViewState(**{"latitude": geo_df_copy['coordinates'][0][0][0][1], "longitude": geo_df_copy['coordinates'][0][0][0][0], "zoom": 10, "maxZoom": 16, "pitch": 0, "bearing": 0})
+        view_state = pdk.ViewState(**{"latitude": geo_df_copy['coordinates'][0][0][0][1], "longitude": geo_df_copy['coordinates'][0][0][0][0], "zoom": 7, "maxZoom": 16, "pitch": 0, "bearing": 0})
     else:
         view_state = pdk.ViewState(**{"latitude": 36, "longitude": -95, "zoom": 3, "maxZoom": 16, "pitch": 0, "bearing": 0})
 
@@ -627,7 +614,7 @@ def make_transit_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
     #         # "<b>" + str(EQUITY_CENSUS_HEADERS[0]) + ":</b> {" + str(EQUITY_CENSUS_HEADERS[0]) + "}" +
     #         }
     if len(geo_df_copy['coordinates'][0][0][0]) > 0:
-        view_state = pdk.ViewState(**{"latitude": geo_df_copy['coordinates'][0][0][0][1], "longitude": geo_df_copy['coordinates'][0][0][0][0], "zoom": 10, "maxZoom": 16, "pitch": 0, "bearing": 0})
+        view_state = pdk.ViewState(**{"latitude": geo_df_copy['coordinates'][0][0][0][1], "longitude": geo_df_copy['coordinates'][0][0][0][0], "zoom": 7, "maxZoom": 16, "pitch": 0, "bearing": 0})
     else:
         view_state = pdk.ViewState(**{"latitude": 36, "longitude": -95, "zoom": 3, "maxZoom": 16, "pitch": 0, "bearing": 0})
 

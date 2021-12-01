@@ -149,7 +149,7 @@ def run_UI():
 
     pages = [
         'Data Explorer',
-        'Equity Index',
+        'Equity Explorer',
         'Eviction Analysis'
     ]
     url_params = st.experimental_get_query_params()
@@ -171,11 +171,11 @@ def run_UI():
         """)
         eviction_analysis.eviction_UI()
 
-    elif page == 'Equity Index':
+    elif page == 'Equity Explorer':
         st.sidebar.write("""
             ## About
 
-            The Equity Index is a set of Arup-designed analysis to show access to transit and other equity indicators at the census tract level.  
+            The Equity Explorer is a set of Arup-designed analyses to identify vulnerable geographies at the census tract level. It also includes a transit analysis that shows relative access to transit and other equity indicators for the identified equity geographies.  
         """)
         equity_explorer.census_equity_explorer()
     else:
