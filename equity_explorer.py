@@ -238,29 +238,38 @@ def census_equity_explorer():
         st.write('''
                 # \n
                 #### Create Transportation Vulnerability Index
-                *Select weights for the following indicators to compare the vulnerability of Equity Geographies*                 
+                *Consider the vulnerability of Equity Geographies with regard to their access to transit*                 
+                # \n
+                ###### Select which indicators to use in the Transportation Vulnerability Index
                 ''')
-        col1, col2, col3 = st.columns((1,1,1))
-        with col1:
-            index_options = [0,1,2,3]
-            index_value = {}
-            for header in queries.TRANSPORT_CENSUS_HEADERS[:3]:
-                index_value[header] = st.select_slider(header, options = index_options, key = header, value = 1)
-        with col2:
-            for header in queries.TRANSPORT_CENSUS_HEADERS[3:5]:
-                index_value[header] = st.select_slider(header, options = index_options, key = header, value = 1)
-        with col3:
-            for header in queries.TRANSPORT_CENSUS_HEADERS[5:7]:
-                index_value[header] = st.select_slider(header, options = index_options, key = header, value = 1)
-
-        normalized_data = normalized_data.melt('Census Tract', queries.TRANSPORT_CENSUS_HEADERS, 'Indicators')
+        
+        selected_indicators = st.multiselect('Transportation Indicators', queries.TRANSPORT_CENSUS_HEADERS, 
+                    default =['Zero-Vehicle Households', 'Vehicle Miles Traveled', 'Drive Alone Commuters', 'No Computer Households']
+                    )
+        
+        st.write('''
+                # \n
+                ###### Select weights for the selected indicators to compare the Equity Geographies                
+                ''')
+        index_value = {}
+        for header in selected_indicators:
+                index_value[header] = st.number_input(header, min_value=0, max_value=100, value=round((100/len(selected_indicators))), key = header)
+        
+        if sum(index_value.values())>101 or sum(index_value.values())<99:
+            st.error("Weights must sum to 100")
+        
+        st.write('''
+                # \n
+                ###### Equity Geographies are sorted below based on the assigned Transportation Vulnerability index values                
+                ''')
+        normalized_data = normalized_data.melt('Census Tract', selected_indicators, 'Indicators')
         normalized_data['value'] = normalized_data['Indicators'].apply(lambda x: index_value[x])*normalized_data['value']
         transport_index = normalized_data.groupby(['Census Tract'])['value'].sum()
         visualization.make_stacked(normalized_data)
 
         transport_index.sort_values(ascending=False, inplace=True)
         
-        st.write('###### View census tracts with highest index values')
+        st.write('###### View the census tracts with the highest index values')
         num_tracts = st.slider('Select number of census tracts to view', 
                   min_value = 1, max_value = len(transport_index),
                   value = [5 if 5 < len(transport_index) else len(transport_index)]

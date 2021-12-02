@@ -1,3 +1,4 @@
+from os import name
 import streamlit as st
 import pandas as pd
 import geopandas as gpd
@@ -364,8 +365,8 @@ def make_transport_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_featur
         keep_cols = ['coordinates', 'name', 'fill_color', 'geom', map_feature]
         geo_df_copy.drop(list(set(geo_df_copy.columns) - set(keep_cols)), axis=1, inplace=True)
         tooltip = {
-            "html": "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "} </br>"
-            # "<b>" + str(EQUITY_CENSUS_HEADERS[0]) + ":</b> {" + str(EQUITY_CENSUS_HEADERS[0]) + "} </br>" +
+            "html": "<b>Tract ID:</b> {" + str('name') + "} </br>" +
+            "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "} </br>"
             }
 
     elif 'County Name' in set(geo_df_copy.columns):
@@ -387,7 +388,7 @@ def make_transport_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_featur
         geo_df_copy,
         get_polygon="coordinates",
         filled=True,
-        get_fill_color='fill_color',
+        get_fill_color=['yellow' if map_feature=='Both' else 'fill_color'],
         stroked=False,
         opacity=0.15,
         pickable=True,

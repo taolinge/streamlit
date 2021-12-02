@@ -68,11 +68,11 @@ TRANSPORT_CENSUS_HEADERS = [
     'Zero-Vehicle Households', 
     'Vehicle Miles Traveled', 
     'No Computer Households', 
-    'No Internet Households', 
     'Renter Occupied Units',
     'Drive Alone Commuters', 
     # 'Drive Alone (#)',
-    'Average Commute Time (min)'
+    'Average Commute Time (min)',
+    'People of Color', "200% Below Poverty Level"
     ]
 
 POSITIVE_TRANSPORT_CENSUS_HEADERS = [
@@ -123,7 +123,9 @@ EQUITY_CENSUS_TABLES = ['poverty_status',
                 'family_type'
                 ]
 
-TRANSPORT_CENSUS_TABLES = ['household_vehicle_availability',
+TRANSPORT_CENSUS_TABLES = ['population_below_poverty_double',
+    'hispanic_or_latino_origin_by_race',
+    'household_vehicle_availability',
     'level_of_urbanicity',
     'trip_miles',
     'walkability_index',
@@ -601,6 +603,10 @@ def clean_transport_data(data: pd.DataFrame, epc: pd.DataFrame) -> pd.DataFrame:
     data['walkability_index'] = round(data['walkability_index'])
     data['number_drive_alone'] = data['percent_drive_alone']*data['total_workers_commute']
     data.drop(['total_workers_commute'], axis=1, inplace=True)
+    
+    data['non-white'] = data['total_population'] - data['not_hisp_or_latino_white']
+    data['People of Color'] = data['non-white']/data['total_population']
+    
     data.rename({
         'percent_hh_0_veh': 'Zero-Vehicle Households',
         'vehicle_miles_traveled': 'Vehicle Miles Traveled',
@@ -609,7 +615,8 @@ def clean_transport_data(data: pd.DataFrame, epc: pd.DataFrame) -> pd.DataFrame:
         'renter-occ_units': 'Renter Occupied Units',
         'percent_drive_alone': 'Drive Alone Commuters',
         # 'number_drive_alone': 'Drive Alone (#)',
-        'mean_travel_time': "Average Commute Time (min)"
+        'mean_travel_time': "Average Commute Time (min)",
+        '200_below_pov_level': '200% Below Poverty Level'
         },
         axis=1, inplace=True)
     
