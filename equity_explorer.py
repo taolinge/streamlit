@@ -7,7 +7,7 @@ import streamlit as st
 import queries
 import utils
 import visualization
-from constants import STATES as STATES, EQUITY_DATA_TABLE as EQUITY_DATA_TABLE, TRANSPORT_DATA_TABLE as TRANSPORT_DATA_TABLE, LINKS as LINKS
+from constants import STATES, EQUITY_DATA_TABLE, TRANSPORT_DATA_TABLE, LINKS
 
 # def create_download_link(val, filename):
 #     b64 = base64.b64encode(val)  # val looks like b'...'
@@ -130,8 +130,9 @@ def census_equity_explorer():
                  ##### View Equity Geographies on Map
                  ''')
         st.caption('The map below shows all the equity geographies based on the selected coefficient above. Scroll over the equity geographies to view which of the criteria is met.')
-        visualization.make_equity_census_map(geo_df, df, 'Criteria')    
-
+        visualization.make_equity_census_map(geo_df, df, 'Criteria')  
+        # visualization.make_equity_census_map(geo_total, total_census_tracts, 'Criteria')    
+        
         st.write('''
                 #  \n  \n
                 ### Equity Indicators

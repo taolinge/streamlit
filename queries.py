@@ -558,8 +558,7 @@ def clean_equity_data(data: pd.DataFrame) -> pd.DataFrame:
         data['male_75_to_79']+ data['male_80_to_84']+ data['male_85_and_over']
         )
 
-    data.rename({'below_pov_level': 'Below Poverty Level'}, axis=1, inplace=True)
-    data.rename({'200_below_pov_level': '200% Below Poverty Level'}, axis=1, inplace=True) 
+    data.rename({'below_pov_level': 'Below Poverty Level', '200_below_pov_level': '200% Below Poverty Level'}, axis=1, inplace=True)
 
     data['total_w_a_disability'] = (data['male_under_5_w_a_disability']+data['male_5_to_17_w_a_disability']+ data['male_18_to_34_w_a_disability']+
         data['male_35_to_64_w_a_disability']+data['male_65_to_74_w_a_disability']+data['male_75_and_over_w_a_disability']+

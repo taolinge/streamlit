@@ -273,6 +273,9 @@ def make_equity_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: 
     # norm_df = pd.DataFrame(feat_series)
     colors = list(map(color_scale, normalized_vals))
     geo_df_copy['fill_color'] = colors
+    # for x in range(len(geo_df_copy['fill_color'])):
+    #     if not any((df['Criteria A'].iloc[x], df['Criteria B'].iloc[x])):
+    #         geo_df_copy['fill_color'][x] = 'gray'
     geo_df_copy.fillna(0, inplace=True)
 
     tooltip = {"html": ""}
