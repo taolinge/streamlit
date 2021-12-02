@@ -388,7 +388,7 @@ def make_transport_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_featur
         geo_df_copy,
         get_polygon="coordinates",
         filled=True,
-        get_fill_color=['yellow' if map_feature=='Both' else 'fill_color'],
+        get_fill_color='fill_color',
         stroked=False,
         opacity=0.15,
         pickable=True,
