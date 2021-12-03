@@ -271,12 +271,9 @@ def make_equity_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: 
         normalized_vals = scaler.fit_transform(
             pd.DataFrame(feat_series)
         )
-    # norm_df = pd.DataFrame(feat_series)
+  
     colors = list(map(color_scale, normalized_vals))
     geo_df_copy['fill_color'] = colors
-    # for x in range(len(geo_df_copy['fill_color'])):
-    #     if not any((df['Criteria A'].iloc[x], df['Criteria B'].iloc[x])):
-    #         geo_df_copy['fill_color'][x] = 'gray'
     geo_df_copy.fillna(0, inplace=True)
 
     tooltip = {"html": ""}
@@ -285,21 +282,22 @@ def make_equity_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: 
         geo_df_copy.drop(list(set(geo_df_copy.columns) - set(keep_cols)), axis=1, inplace=True)
         if feat_type == 'numerical':
             tooltip = {
-                "html": "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "}% </br>"
+                "html": "<b>Tract ID:</b> {" + str('name') + "} </br>" +
+                "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "}% </br>"
                 }
         else:
             tooltip = {
-                "html": "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "} </br>"
+                "html": "<b> {" + str(map_feature) + "} </b> </br>" +
+                "<b>Tract ID:</b> {" + str('name') + "} </br>" 
                 }
 
     elif 'County Name' in set(geo_df_copy.columns):
         geo_df_copy.drop(['geom', 'County Name'], axis=1, inplace=True)
         tooltip = {
             "html": "<b>County:</b> {name} </br>" + "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "}"
-            # "<b>" + str(EQUITY_CENSUS_HEADERS[0]) + ":</b> {" + str(EQUITY_CENSUS_HEADERS[0]) + "}" +
             }
     if len(geo_df_copy['coordinates'][0][0][0]) > 0:
-        view_state = pdk.ViewState(**{"latitude": geo_df_copy['coordinates'][0][0][0][1], "longitude": geo_df_copy['coordinates'][0][0][0][0], "zoom": 7, "maxZoom": 16, "pitch": 0, "bearing": 0})
+        view_state = pdk.ViewState(**{"latitude": geo_df_copy['coordinates'][0][0][0][1], "longitude": geo_df_copy['coordinates'][0][0][0][0], "zoom": 5, "maxZoom": 16, "pitch": 0, "bearing": 0})
     else:
         view_state = pdk.ViewState(**{"latitude": 36, "longitude": -95, "zoom": 3, "maxZoom": 16, "pitch": 0, "bearing": 0})
 
@@ -355,7 +353,7 @@ def make_transport_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_featur
         normalized_vals = scaler.fit_transform(
             pd.DataFrame(feat_series)
         )
-    # norm_df = pd.DataFrame(feat_series)
+
     colors = list(map(color_scale, normalized_vals))
     geo_df_copy['fill_color'] = colors
     geo_df_copy.fillna(0, inplace=True)
@@ -364,19 +362,19 @@ def make_transport_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_featur
     if 'Census Tract' in set(geo_df_copy.columns):
         keep_cols = ['coordinates', 'name', 'fill_color', 'geom', map_feature]
         geo_df_copy.drop(list(set(geo_df_copy.columns) - set(keep_cols)), axis=1, inplace=True)
-        tooltip = {
+        if map_feature == 'Index Value':
+            tooltip = {
             "html": "<b>Tract ID:</b> {" + str('name') + "} </br>" +
             "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "} </br>"
             }
-
-    elif 'County Name' in set(geo_df_copy.columns):
-        geo_df_copy.drop(['geom', 'County Name'], axis=1, inplace=True)
-        tooltip = {
-            "html": "<b>County:</b> {name} </br>" + "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "}"
-            # "<b>" + str(EQUITY_CENSUS_HEADERS[0]) + ":</b> {" + str(EQUITY_CENSUS_HEADERS[0]) + "}" +
-            }
+        else:
+            tooltip = {
+            "html": "<b>Tract ID:</b> {" + str('name') + "} </br>" +
+            "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "}% </br>"
+            }  
+        
     if len(geo_df_copy['coordinates'][0][0][0]) > 0:
-        view_state = pdk.ViewState(**{"latitude": geo_df_copy['coordinates'][0][0][0][1], "longitude": geo_df_copy['coordinates'][0][0][0][0], "zoom": 7, "maxZoom": 16, "pitch": 0, "bearing": 0})
+        view_state = pdk.ViewState(**{"latitude": geo_df_copy['coordinates'][0][0][0][1], "longitude": geo_df_copy['coordinates'][0][0][0][0], "zoom": 5, "maxZoom": 16, "pitch": 0, "bearing": 0})
     else:
         view_state = pdk.ViewState(**{"latitude": 36, "longitude": -95, "zoom": 3, "maxZoom": 16, "pitch": 0, "bearing": 0})
 
@@ -499,21 +497,12 @@ def make_horizontal_bar_chart(average: dict, epc_average: dict, feature: str):
             .encode(x=alt.X('value:Q', title = 'Households (%)'), 
                     y=alt.Y('name:O', axis=alt.Axis(title = "")),
                     color=alt.Color('name', legend=None))
-    
-    # text = bar.mark_text(
-    #     align='left',
-    #     baseline='middle',
-    #     dx=3
-    #     ).encode(
-    #         text='value:Q'
-    #     )
 
     st.altair_chart(bar, use_container_width=True)
 
 def make_grouped_bar_chart(df: pd.DataFrame, id_var: str, features: list, features_name: str):
     df = df.melt( [id_var], features, features_name)
-    # st.write(df)
-    # df['tract_id']=df['tract_id'].astype('category')
+
     bar = alt.Chart(df)\
             .mark_bar() \
             .encode(column=alt.Column(features_name+':N'), x=alt.X(id_var+':O'), 
@@ -528,7 +517,7 @@ def make_stacked(df:pd.DataFrame):
     bar = alt.Chart(df)\
             .mark_bar() \
             .encode(x=alt.X('Census Tract:O', axis = alt.Axis(labels=False), title='Census Tracts', sort='y'),
-                    y=alt.Y('sum(value):Q', title='Transportation Vulnerability Index'),
+                    y=alt.Y('sum(Index Value):Q', title='Transportation Vulnerability Index'),
                     color=alt.Color('Indicators:N', legend=alt.Legend(orient='left')),
                     tooltip=['Census Tract'])\
             .interactive()
@@ -539,7 +528,6 @@ def make_histogram(df: pd.DataFrame, feature: str):
     base = alt.Chart(df)
     hist = base.mark_bar().encode(
         x = alt.X(feature+':Q', bin=alt.BinParams()
-        # , axis=None
         ),
         y='count()'
         )
@@ -559,113 +547,115 @@ def make_simple_chart(df: pd.DataFrame, feature: str):
         .interactive()
     st.altair_chart(bar, use_container_width=True)
 
-def make_transit_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
+#This function can be used with shapefiles (point and linestring geometries)
+
+# def make_transit_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
     
-    NTM_shapes = gpd.read_file('NTM_shapes.json')
-    NTM_shapes['start']=NTM_shapes['geometry'].apply(lambda x: [x.coords[0][0], x.coords[0][1]])
-    NTM_shapes['end']=NTM_shapes['geometry'].apply(lambda x: [x.coords[1][0], x.coords[1][1]])
+#     NTM_shapes = gpd.read_file('NTM_shapes.json')
+#     NTM_shapes['start']=NTM_shapes['geometry'].apply(lambda x: [x.coords[0][0], x.coords[0][1]])
+#     NTM_shapes['end']=NTM_shapes['geometry'].apply(lambda x: [x.coords[1][0], x.coords[1][1]])
     
-    NTM_stops = gpd.read_file('NTM_stops.json')
-    NTM_stops['coordinates']=NTM_stops['geometry'].apply(lambda p: [p.x, p.y])
-    NTM_stops.rename(columns={"stop_name":"route_desc"})
+#     NTM_stops = gpd.read_file('NTM_stops.json')
+#     NTM_stops['coordinates']=NTM_stops['geometry'].apply(lambda p: [p.x, p.y])
+#     NTM_stops.rename(columns={"stop_name":"route_desc"})
     
-    if 'Census Tract' in geo_df.columns:
-        geo_df.reset_index(inplace=True)
-    # if 'Census Tract' in df.columns:
-        # df.reset_index(inplace=True)
-    geo_df_copy = geo_df.copy()
-    geojson = utils.convert_geom(geo_df_copy, df, queries.TRANSPORT_CENSUS_HEADERS)
-    geojson_df = pd.DataFrame(geojson)
+#     if 'Census Tract' in geo_df.columns:
+#         geo_df.reset_index(inplace=True)
+#     # if 'Census Tract' in df.columns:
+#         # df.reset_index(inplace=True)
+#     geo_df_copy = geo_df.copy()
+#     geojson = utils.convert_geom(geo_df_copy, df, queries.TRANSPORT_CENSUS_HEADERS)
+#     geojson_df = pd.DataFrame(geojson)
 
-    geo_df_copy["coordinates"] = geojson_df["features"].apply(lambda row: row["geometry"]["coordinates"])
-    geo_df_copy["name"] = geojson_df["features"].apply(lambda row: row["properties"]["name"])
+#     geo_df_copy["coordinates"] = geojson_df["features"].apply(lambda row: row["geometry"]["coordinates"])
+#     geo_df_copy["name"] = geojson_df["features"].apply(lambda row: row["properties"]["name"])
 
-    for header in queries.TRANSPORT_CENSUS_HEADERS:
-        geo_df_copy[header] = geojson_df["features"].apply(lambda row: row["properties"][header])
+#     for header in queries.TRANSPORT_CENSUS_HEADERS:
+#         geo_df_copy[header] = geojson_df["features"].apply(lambda row: row["properties"][header])
 
-    scaler = pre.MinMaxScaler()
-    feat_series = geo_df_copy[map_feature]
-    feat_type = None
-    if feat_series.dtype == 'object':
-        feat_type = 'category'
-        feat_dict = {k: (i % 10) / 10 for i, k in enumerate(feat_series.unique())} # max 10 categories, following from constants.BREAK, enumerated rather than encoded
-        normalized_vals = feat_series.apply(lambda x: feat_dict[x]) # getting normalized vals, manually.
-    else:
-        feat_type = 'numerical'
-        normalized_vals = scaler.fit_transform(
-            pd.DataFrame(feat_series)
-        )
-    # norm_df = pd.DataFrame(feat_series)
-    colors = list(map(color_scale, normalized_vals))
-    geo_df_copy['fill_color'] = colors
-    geo_df_copy.fillna(0, inplace=True)
+#     scaler = pre.MinMaxScaler()
+#     feat_series = geo_df_copy[map_feature]
+#     feat_type = None
+#     if feat_series.dtype == 'object':
+#         feat_type = 'category'
+#         feat_dict = {k: (i % 10) / 10 for i, k in enumerate(feat_series.unique())} # max 10 categories, following from constants.BREAK, enumerated rather than encoded
+#         normalized_vals = feat_series.apply(lambda x: feat_dict[x]) # getting normalized vals, manually.
+#     else:
+#         feat_type = 'numerical'
+#         normalized_vals = scaler.fit_transform(
+#             pd.DataFrame(feat_series)
+#         )
+#     # norm_df = pd.DataFrame(feat_series)
+#     colors = list(map(color_scale, normalized_vals))
+#     geo_df_copy['fill_color'] = colors
+#     geo_df_copy.fillna(0, inplace=True)
 
-    tooltip = {"html": ""}
-    if 'Census Tract' in set(geo_df_copy.columns):
-        keep_cols = ['coordinates', 'name', 'fill_color', 'geom', map_feature]
-        geo_df_copy.drop(list(set(geo_df_copy.columns) - set(keep_cols)), axis=1, inplace=True)
-        tooltip = {
-            "html": "<b> Description:</b> {route_desc} </br>" +
-            # "<b> Type: </b>" + 
-            " {route_type_text} </br>" + 
-            # "<b> Link: </b>" +
-            "{route_url}" }
+#     tooltip = {"html": ""}
+#     if 'Census Tract' in set(geo_df_copy.columns):
+#         keep_cols = ['coordinates', 'name', 'fill_color', 'geom', map_feature]
+#         geo_df_copy.drop(list(set(geo_df_copy.columns) - set(keep_cols)), axis=1, inplace=True)
+#         tooltip = {
+#             "html": "<b> Description:</b> {route_desc} </br>" +
+#             # "<b> Type: </b>" + 
+#             " {route_type_text} </br>" + 
+#             # "<b> Link: </b>" +
+#             "{route_url}" }
 
-    # elif 'County Name' in set(geo_df_copy.columns):
-    #     geo_df_copy.drop(['geom', 'County Name'], axis=1, inplace=True)
-    #     tooltip = {
-    #         "html": "<b>County:</b> {name} </br>" + "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "}"
-    #         # "<b>" + str(EQUITY_CENSUS_HEADERS[0]) + ":</b> {" + str(EQUITY_CENSUS_HEADERS[0]) + "}" +
-    #         }
-    if len(geo_df_copy['coordinates'][0][0][0]) > 0:
-        view_state = pdk.ViewState(**{"latitude": geo_df_copy['coordinates'][0][0][0][1], "longitude": geo_df_copy['coordinates'][0][0][0][0], "zoom": 7, "maxZoom": 16, "pitch": 0, "bearing": 0})
-    else:
-        view_state = pdk.ViewState(**{"latitude": 36, "longitude": -95, "zoom": 3, "maxZoom": 16, "pitch": 0, "bearing": 0})
+#     # elif 'County Name' in set(geo_df_copy.columns):
+#     #     geo_df_copy.drop(['geom', 'County Name'], axis=1, inplace=True)
+#     #     tooltip = {
+#     #         "html": "<b>County:</b> {name} </br>" + "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "}"
+#     #         # "<b>" + str(EQUITY_CENSUS_HEADERS[0]) + ":</b> {" + str(EQUITY_CENSUS_HEADERS[0]) + "}" +
+#     #         }
+#     if len(geo_df_copy['coordinates'][0][0][0]) > 0:
+#         view_state = pdk.ViewState(**{"latitude": geo_df_copy['coordinates'][0][0][0][1], "longitude": geo_df_copy['coordinates'][0][0][0][0], "zoom": 5, "maxZoom": 16, "pitch": 0, "bearing": 0})
+#     else:
+#         view_state = pdk.ViewState(**{"latitude": 36, "longitude": -95, "zoom": 3, "maxZoom": 16, "pitch": 0, "bearing": 0})
 
-    if feat_type == 'numerical':
-        geo_df_copy = geo_df_copy.astype({map_feature: 'float64'})
+#     if feat_type == 'numerical':
+#         geo_df_copy = geo_df_copy.astype({map_feature: 'float64'})
         
-    polygon_layer = pdk.Layer(
-        "PolygonLayer",
-        geo_df_copy,
-        get_polygon="coordinates",
-        filled=True,
-        get_fill_color='fill_color',
-        stroked=False,
-        opacity=0.15,
-        pickable=False,
-        auto_highlight=True,
-    )
+#     polygon_layer = pdk.Layer(
+#         "PolygonLayer",
+#         geo_df_copy,
+#         get_polygon="coordinates",
+#         filled=True,
+#         get_fill_color='fill_color',
+#         stroked=False,
+#         opacity=0.15,
+#         pickable=False,
+#         auto_highlight=True,
+#     )
     
-    shape_layer = pdk.Layer(
-        "LineLayer",
-        NTM_shapes,
-        get_source_position='start',
-        get_target_position='end',
-        get_color=[176, 203, 156],
-        get_width=10,
-        highlight_color=[176, 203, 156],
-        picking_radius=10,
-        auto_highlight=True,
-        pickable=True,
-        )
+#     shape_layer = pdk.Layer(
+#         "LineLayer",
+#         NTM_shapes,
+#         get_source_position='start',
+#         get_target_position='end',
+#         get_color=[176, 203, 156],
+#         get_width=10,
+#         highlight_color=[176, 203, 156],
+#         picking_radius=10,
+#         auto_highlight=True,
+#         pickable=True,
+#         )
     
-    stop_layer = pdk.Layer(
-        'ScatterplotLayer',
-        NTM_stops,
-        get_position='coordinates',
-        auto_highlight=True,
-        get_radius=10,
-        # get_fill_color='color',
-        pickable=True)
+#     stop_layer = pdk.Layer(
+#         'ScatterplotLayer',
+#         NTM_stops,
+#         get_position='coordinates',
+#         auto_highlight=True,
+#         get_radius=10,
+#         # get_fill_color='color',
+#         pickable=True)
     
-    r = pdk.Deck(
-        layers=[polygon_layer, shape_layer, stop_layer],
-        initial_view_state=view_state,
-        map_style=pdk.map_styles.LIGHT,
-        tooltip=tooltip
-    )
+#     r = pdk.Deck(
+#         layers=[polygon_layer, shape_layer, stop_layer],
+#         initial_view_state=view_state,
+#         map_style=pdk.map_styles.LIGHT,
+#         tooltip=tooltip
+#     )
     
-    st.pydeck_chart(r)
+#     st.pydeck_chart(r)
 
    

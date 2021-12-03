@@ -650,31 +650,22 @@ def get_equity_geographies(epc: pd.DataFrame, coeff: float) -> pd.DataFrame:
     temp = epc['200% Below Poverty Level (%)'].apply(lambda x: x>concentration_thresholds['200% Below Poverty Level'])
     epc['Criteria B'] = (epc['criteria_B'].apply(lambda x: bool(x>=3)) + temp.astype(int)) == 2
 
-    # df = epc.drop_duplicates(subset=['tract_id'])
     df = epc
 
-    epc['Criteria'] = epc[['Criteria A', 'Criteria B']].apply(lambda x: 'Both' if (x['Criteria A'] & x['Criteria B']) else 
-        ('Criteria A Only' if x['Criteria A'] else
-        ('Criteria B Only' if x['Criteria B'] else 'Other')), 
+    epc['Criteria'] = epc[['Criteria A', 'Criteria B']].apply(lambda x: 'Equity Geography (Meets Both Criteria)' if (x['Criteria A'] & x['Criteria B']) else 
+        ('Equity Geography (Meets Criteria A)' if x['Criteria A'] else
+        ('Equity Geography (Meets Criteria B)' if x['Criteria B'] else 'Not selected as an Equity Geography')), 
         axis=1)
     # epc['Criteria'] = epc.apply(lambda x: 'Both' if (x['Criteria A'] | x['Criteria B']) else 'Other')
     epc = epc.loc[(epc['Criteria A'] | epc['Criteria B'])]
-    df['Census Tract'] = (df['Criteria A'].apply(lambda x: bool(x))|df['Criteria B'].apply(lambda x: bool(x)))
-    df['Census Tract'] = df['Census Tract'].apply(lambda x: 'Equity Geography' if x is True else 'Other')
+    df['Category'] = (df['Criteria A'].apply(lambda x: bool(x))|df['Criteria B'].apply(lambda x: bool(x)))
+    df['Category'] = df['Category'].apply(lambda x: 'Equity Geography' if x is True else 'Other')
 
     epc_averages = {}
     for header in (EQUITY_CENSUS_POC_LOW_INCOME + EQUITY_CENSUS_REMAINING_HEADERS):
         epc_averages[header] = epc[header + ' (%)'].mean()
 
     return epc, df, concentration_thresholds, averages, epc_averages
-
-def get_county_level_data (df: pd.DataFrame) -> pd.DataFrame:
-    county_df = None
-    
-    for header in (EQUITY_CENSUS_POC_LOW_INCOME + EQUITY_CENSUS_REMAINING_HEADERS):
-        county_df['average', header] = df[header].mean()
-    
-    return county_df
 
 def get_existing_policies(df: pd.DataFrame) -> pd.DataFrame:
     policy_df = policy_query()
