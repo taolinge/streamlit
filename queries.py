@@ -606,12 +606,13 @@ def clean_transport_data(data: pd.DataFrame, epc: pd.DataFrame) -> pd.DataFrame:
     
     data['non-white'] = data['total_population'] - data['not_hisp_or_latino_white']
     data['People of Color'] = data['non-white']/data['total_population']
+    data['No Computer Households'] = 100*(data['household_no_computing_device']/(data['household_no_computing_device']+data['household_computer']+data['household_smartphone_no_computer']+data['household_no_internet']+data['household_broadband']))
     
     data.rename({
         'percent_hh_0_veh': 'Zero-Vehicle Households',
         'vehicle_miles_traveled': 'Vehicle Miles Traveled',
-        'household_no_computing_device': 'No Computer Households',
-        'household_no_internet': 'No Internet Households',
+        # 'household_no_computing_device': 'No Computer Households',
+        # 'household_no_internet': 'No Internet Households',
         'renter-occ_units': 'Renter Occupied Units',
         'percent_drive_alone': 'Drive Alone Commuters',
         # 'number_drive_alone': 'Drive Alone (#)',

@@ -124,8 +124,6 @@ def census_equity_explorer():
                  ##### View Equity Geographies on Map
                  ''')
         st.caption('The map below shows all the equity geographies based on the selected coefficient above. Scroll over the equity geographies to view which of the criteria is met.')
-        # visualization.make_equity_census_map(geo_df, df, 'Criteria')
-
         visualization.make_equity_census_map(geo_total, total_census_tracts, 'Criteria')    
         
         st.write('''
@@ -142,6 +140,7 @@ def census_equity_explorer():
         st.write('''
                 # \n  
                 ###### How does the Equity Geography average compare to the county-wide average?''')
+        st.caption('The chart below compares the average values for the selected Equity Indicator.')
         visualization.make_horizontal_bar_chart(averages, epc_averages, feature)
         
         st.write('###### View variation by geography')
@@ -150,6 +149,7 @@ def census_equity_explorer():
         select_data = {'All census tracts in selected region':total_census_tracts, 'Equity Geographies only':df}
         select_geo = {'All census tracts in selected region':geo_total, 'Equity Geographies only':geo_df}
         
+        st.caption('The map below shows the variation across the region for the selected Equity Indicator. Scroll over the map to view the data at the census tract level.')
         visualization.make_equity_census_map(select_geo[radio_data], select_data[radio_data], feature+' (%)') 
         
         with st.expander('View data at the census tract level'):
@@ -202,7 +202,10 @@ def census_equity_explorer():
         feature = st.selectbox("Select an indicator to see how the census tract levels compare to the county average",
             queries.TRANSPORT_CENSUS_HEADERS)
 
-        st.write('###### How does the Equity Geography average compare to the county-wide average?')
+        st.write('''
+                # \n  
+                ###### How does the Equity Geography average compare to the county-wide average?''')
+        st.caption('The chart below compares the average values for the selected Transportation Indicator.')
         visualization.make_horizontal_bar_chart(averages, epc_averages, feature)
 
         st.write('###### View variation by geography')
@@ -210,6 +213,7 @@ def census_equity_explorer():
         select_data = {'All census tracts in selected region':transport_df, 'Equity Geographies only':transport_epc}
         select_geo = {'All census tracts in selected region':geo_df, 'Equity Geographies only':geo_epc}
         
+        st.caption('The map below shows the variation across the region for the selected Transportation Indicator. Scroll over the map to view the data at the census tract level.')
         visualization.make_transport_census_map(select_geo[radio_data], select_data[radio_data], feature) 
         
         transport_epc.drop(['geom'], inplace=True, axis=1)
@@ -217,7 +221,7 @@ def census_equity_explorer():
         normalized_data.drop(['geom'], inplace=True, axis=1)
         st.write('')
         st.write('###### Equity Geography Census Tracts (', feature, '):')
-        
+        st.caption('The chart below shows the value for each of the Equity Geographies for the selected Transportation Indicator. Further analysis is available below at the Census Tract level.')
         visualization.make_transport_census_chart(transport_epc, averages, feature)
         
         st.write('''
@@ -253,6 +257,7 @@ def census_equity_explorer():
                 # \n
                 ###### Equity Geographies are sorted below based on the assigned Transportation Vulnerability index values                
                 ''')
+        
         normalized_data = normalized_data.melt('Census Tract', selected_indicators, 'Indicators')
         normalized_data.rename({'value':'Index Value'}, axis=1, inplace=True)
         normalized_data['Index Value'] = normalized_data['Indicators'].apply(lambda x: index_value[x])*normalized_data['Index Value']
@@ -273,5 +278,30 @@ def census_equity_explorer():
         selected_geo = geo_epc.loc[geo_epc['Census Tract'].isin(selected['Census Tract'])]
         selected_geo['Index Value'] = selected_geo['Census Tract'].apply(lambda x: round(transport_index.loc[x]))
         
+        st.caption('The map below shows the census tracts with the highest transportation vulnerability index values. Scroll over the equity geographies to view the corresponding index value.')
         visualization.make_transport_census_map(selected_geo, selected_tracts, 'Index Value')
         # visualization.make_transit_map(selected_geo, selected_tracts, 'Index Value')
+        
+        st.write('''
+                # \n
+                ###### Transportation vulnerability at the census tract level            
+                ''')
+        st.caption('Select a census tract from the list below to investigate relative transit access and demand.')
+        col1, col2, col3= st.columns((1,1,1))
+        with col1:
+            selected_tract = st.radio('Identified Census Tracts', selected_tracts['Census Tract'])
+        with col2:
+            for header in selected_indicators[(int(len(selected_indicators)/2)):]:
+                st.metric(header, value=str(round(transport_df.loc[selected_tract,header]*100,0)) + '%', delta=str(round(averages[header],2)) + '% from county average')
+                st.write('')
+        with col3:
+            for header in selected_indicators[:(int(len(selected_indicators)/2))]:
+                st.metric(header, value=str(round(transport_df.loc[selected_tract,header]*100,0)) + '%', delta=str(round(averages[header],2)) + '% from county average')
+                st.write('')
+                
+        with st.expander('View data at the census tract level'):
+            st.caption('Values for selected indicators are shown for the census tracts with the highest index values')
+            transport_df.set_index('Census Tract',inplace=True)
+            transport_df = transport_df.select_dtypes(include=['number']).div(100).round(2)
+            st.dataframe(transport_df.loc[(transport_df.index).isin(selected['Census Tract'])][selected_indicators].style.format("{:.1%}"))
+        

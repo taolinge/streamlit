@@ -275,6 +275,9 @@ def make_equity_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: 
     colors = list(map(color_scale, normalized_vals))
     geo_df_copy['fill_color'] = colors
     geo_df_copy.fillna(0, inplace=True)
+    
+    for x in range(len(geo_df_copy.index)):
+        geo_df_copy['fill_color'].iloc[x]= [0, 0, 0, 25] if df[map_feature].iloc[x]=='Not selected as an Equity Geography' else geo_df_copy['fill_color'].iloc[x]
 
     tooltip = {"html": ""}
     if 'Census Tract' in set(geo_df_copy.columns):
@@ -490,7 +493,7 @@ def make_transport_census_chart(df: pd.DataFrame, average: dict, feature: str):
 
 def make_horizontal_bar_chart(average: dict, epc_average: dict, feature: str):
     df = pd.DataFrame([{"name":'County average', "value": average[feature]},
-        {"name":'EPC average', "value": epc_average[feature]}])
+        {"name":'Equity Geography average', "value": epc_average[feature]}])
 
     bar = alt.Chart(df)\
             .mark_bar() \
