@@ -45,40 +45,40 @@ TABLE_HEADERS = {
 }
 
 EQUITY_COUNTY_HEADERS = [
-    'Age 19 or Under', 'Age 65 or Over', 
+    'Age 19 or Under', 'Age 65 or Over',
     'Non-White Population (%)'
-    ]
+]
 
 CENSUS_HEADERS = [
     'People of Color (%)', '200% Below Poverty Level (%)',
-    'People with Disability (%)', 'Age 19 or Under (%)', 'Age 65 or Over (%)', 
+    'People with Disability (%)', 'Age 19 or Under (%)', 'Age 65 or Over (%)',
     'Limited English Proficiency (%)', 'Single Parent Family (%)', 'Zero-Vehicle Household (%)'
 ]
 
 EQUITY_CENSUS_POC_LOW_INCOME = [
     'People of Color', "200% Below Poverty Level"
-    ]
+]
 
 EQUITY_CENSUS_REMAINING_HEADERS = [
-    'People with Disability', 'Age 19 or Under', 'Age 65 or Over', 
+    'People with Disability', 'Age 19 or Under', 'Age 65 or Over',
     'Limited English Proficiency', 'Single Parent Family', 'Zero-Vehicle Household'
-    ]
+]
 
 TRANSPORT_CENSUS_HEADERS = [
-    'Zero-Vehicle Households', 
-    'Vehicle Miles Traveled', 
-    'No Computer Households', 
+    'Zero-Vehicle Households',
+    'Vehicle Miles Traveled',
+    'No Computer Households',
     'Renter Occupied Units',
-    'Drive Alone Commuters', 
+    'Drive Alone Commuters',
     # 'Drive Alone (#)',
     'Average Commute Time (min)',
     'People of Color', "200% Below Poverty Level"
-    ]
+]
 
 POSITIVE_TRANSPORT_CENSUS_HEADERS = [
-    'walkability_index', 
+    'walkability_index',
     'percent_public_transport', 'percent_bicycle'
-    ]
+]
 
 TABLE_UNITS = {
     'burdened_households': '%',
@@ -91,48 +91,48 @@ TABLE_UNITS = {
     'resident_population': 'Thousands of Persons',
 }
 
-# @st.cache(allow_output_mutation=True, hash_funcs={"_thread.RLock": lambda _: None})
 CENSUS_TABLES = ['population_below_poverty_double',
-    'commuting_characteristics',
-    'disability_status',
-    'educational_attainment',
-    'employment_status',
-    'english_proficiency',
-    'family_type',
-    'hispanic_or_latino_origin_by_race',
-    'household_job_availability',
-    'household_technology_availability',
-    'household_vehicle_availability',
-    'housing_units_in_structure',
-    'level_of_urbanicity',
-    'occupants_per_bedroom',
-    'poverty_status',
-    'resident_population_census_tract',
-    'sex_by_age',
-    'sex_of_workers_by_vehicles_available',
-    'trip_miles',
-    'walkability_index'
-    ]
+                 'commuting_characteristics',
+                 'disability_status',
+                 'educational_attainment',
+                 'employment_status',
+                 'english_proficiency',
+                 'family_type',
+                 'hispanic_or_latino_origin_by_race',
+                 'household_job_availability',
+                 'household_technology_availability',
+                 'household_vehicle_availability',
+                 'housing_units_in_structure',
+                 'level_of_urbanicity',
+                 'occupants_per_bedroom',
+                 'poverty_status',
+                 'resident_population_census_tract',
+                 'sex_by_age',
+                 'sex_of_workers_by_vehicles_available',
+                 'trip_miles',
+                 'walkability_index'
+                 ]
 
 EQUITY_CENSUS_TABLES = ['poverty_status',
-                #  'resident_population_census_tract',
-                 'population_below_poverty_double',
-                 'sex_by_age',
-                 'english_proficiency','household_vehicle_availability',
-                'hispanic_or_latino_origin_by_race', 'disability_status',
-                'family_type'
-                ]
+                        #  'resident_population_census_tract',
+                        'population_below_poverty_double',
+                        'sex_by_age',
+                        'english_proficiency', 'household_vehicle_availability',
+                        'hispanic_or_latino_origin_by_race', 'disability_status',
+                        'family_type'
+                        ]
 
 TRANSPORT_CENSUS_TABLES = ['population_below_poverty_double',
-    'hispanic_or_latino_origin_by_race',
-    'household_vehicle_availability',
-    'level_of_urbanicity',
-    'trip_miles',
-    'walkability_index',
-    'housing_units_in_structure',
-    'median_household_income',
-    'household_technology_availability',
-    'commuting_characteristics']
+                           'hispanic_or_latino_origin_by_race',
+                           'household_vehicle_availability',
+                           'level_of_urbanicity',
+                           'trip_miles',
+                           'walkability_index',
+                           'housing_units_in_structure',
+                           'median_household_income',
+                           'household_technology_availability',
+                           'commuting_characteristics']
+
 
 def init_engine():
     engine = create_engine(
@@ -159,13 +159,13 @@ def write_table(df: pd.DataFrame, table: str):
     df.to_sql(table, engine, if_exists='replace', method='multi')
 
 
-def all_counties_query(where:str=None) -> pd.DataFrame:
+def all_counties_query(where: str = None) -> pd.DataFrame:
     conn = init_connection()
     cur = conn.cursor()
-    query=f"SELECT DISTINCT county_name, state_name, county_id FROM id_index"
+    query = f"SELECT DISTINCT county_name, state_name, county_id FROM id_index"
     if where:
-        query+=f" WHERE {where}"
-    query+=";"
+        query += f" WHERE {where}"
+    query += ";"
     cur.execute(query)
     colnames = [desc[0] for desc in cur.description]
     results = cur.fetchall()
@@ -260,6 +260,7 @@ def load_distributions() -> tuple:
 
     return metro_areas, locations
 
+
 def policy_query() -> pd.DataFrame:
     conn = init_connection()
     cur = conn.cursor()
@@ -296,7 +297,7 @@ def latest_data_single_table(table_name: str, require_counties: bool = True) -> 
 
 
 @st.experimental_memo(ttl=1200)
-def fred_query(counties_str:str)->pd.DataFrame:
+def fred_query(counties_str: str) -> pd.DataFrame:
     frames = []
     for table_name in FRED_TABLES:
         # Todo: update in database and remove new suffix
@@ -318,22 +319,24 @@ def get_all_county_data(state: str, counties: list) -> pd.DataFrame:
     if counties:
         counties_str = "(" + ",".join(["'" + str(_) + "'" for _ in counties]) + ")"
         demo_df = read_table('county_demographics', where=f"county_id in {counties_str}")
-        fred_df=fred_query(counties_str)
-        demo_df = demo_df.merge(fred_df, on='county_id', how='inner', suffixes=('', '_DROP')).filter(regex='^(?!.*_DROP)')
+        fred_df = fred_query(counties_str)
+        demo_df = demo_df.merge(fred_df, on='county_id', how='inner', suffixes=('', '_DROP')).filter(
+            regex='^(?!.*_DROP)')
 
     else:
         demo_df = read_table('county_demographics', where=f"state_name='{state}';")
-        counties=all_counties_query(f"state_name='{state}'")
-        county_ids=counties['county_id'].to_list()
+        counties = all_counties_query(f"state_name='{state}'")
+        county_ids = counties['county_id'].to_list()
         counties_str = "(" + ",".join(["'" + str(_) + "'" for _ in county_ids]) + ")"
-        fred_df=fred_query(counties_str=counties_str)
+        fred_df = fred_query(counties_str=counties_str)
         demo_df = demo_df.merge(fred_df, on='county_id', how='inner', suffixes=('', '_DROP')).filter(
             regex='^(?!.*_DROP)')
 
     demo_df['Non-White Population'] = (demo_df['black'] + demo_df['ameri_es'] + demo_df['asian'] + demo_df[
         'hawn_pi'] + demo_df['hispanic'] + demo_df['other'] + demo_df['mult_race'])
-    demo_df['Age 19 or Under'] = (demo_df['age_under5']+demo_df['age_5_9']+demo_df['age_10_14']+demo_df['age_15_19'])
-    demo_df['Age 65 or Over'] = (demo_df['age_65_74']+demo_df['age_75_84']+demo_df['age_85_up'])
+    demo_df['Age 19 or Under'] = (
+            demo_df['age_under5'] + demo_df['age_5_9'] + demo_df['age_10_14'] + demo_df['age_15_19'])
+    demo_df['Age 65 or Over'] = (demo_df['age_65_74'] + demo_df['age_75_84'] + demo_df['age_85_up'])
     demo_df['Non-White Population (%)'] = demo_df['Non-White Population'] / demo_df['population'] * 100
     demo_df['fips'] = demo_df['fips'].astype(int)
 
@@ -499,6 +502,7 @@ def output_data(df: pd.DataFrame, table_name: str = 'fred_tables', ext: str = 'x
     return path
 
 
+@st.experimental_memo(ttl=1200)
 def fmr_data():
     conn = init_connection()
     cur = conn.cursor()
@@ -536,6 +540,7 @@ def load_all_data() -> pd.DataFrame:
 
     return df
 
+
 def clean_data(df: pd.DataFrame) -> pd.DataFrame:
     df.set_index(['State', 'County Name'], drop=True, inplace=True)
 
@@ -546,49 +551,60 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
+
 def clean_equity_data(data: pd.DataFrame) -> pd.DataFrame:
     data['Age 19 or Under'] = (
-        data['female_under_5']+ data['female_5_to_9']+ data['female_10_to_14']+ 
-        data['female_15_to_17']+ data['female_18_and_19']+
-        data['male_under_5']+ data['male_5_to_9']+ data['male_10_to_14']+ 
-        data['male_15_to_17']+ data['male_18_and_19']
-        )
+            data['female_under_5'] + data['female_5_to_9'] + data['female_10_to_14'] +
+            data['female_15_to_17'] + data['female_18_and_19'] +
+            data['male_under_5'] + data['male_5_to_9'] + data['male_10_to_14'] +
+            data['male_15_to_17'] + data['male_18_and_19']
+    )
     data['Age 65 or Over'] = (
-        data['female_65_and_66']+ data['female_67_to_69']+ data['female_70_to_74']+
-        data['female_75_to_79']+ data['female_80_to_84']+ data['female_85_and_over']+
-        data['male_65_and_66']+ data['male_67_to_69']+ data['male_70_to_74']+
-        data['male_75_to_79']+ data['male_80_to_84']+ data['male_85_and_over']
-        )
+            data['female_65_and_66'] + data['female_67_to_69'] + data['female_70_to_74'] +
+            data['female_75_to_79'] + data['female_80_to_84'] + data['female_85_and_over'] +
+            data['male_65_and_66'] + data['male_67_to_69'] + data['male_70_to_74'] +
+            data['male_75_to_79'] + data['male_80_to_84'] + data['male_85_and_over']
+    )
 
-    data.rename({'below_pov_level': 'Below Poverty Level', '200_below_pov_level': '200% Below Poverty Level'}, axis=1, inplace=True)
+    data.rename({'below_pov_level': 'Below Poverty Level', '200_below_pov_level': '200% Below Poverty Level'}, axis=1,
+                inplace=True)
 
-    data['total_w_a_disability'] = (data['male_under_5_w_a_disability']+data['male_5_to_17_w_a_disability']+ data['male_18_to_34_w_a_disability']+
-        data['male_35_to_64_w_a_disability']+data['male_65_to_74_w_a_disability']+data['male_75_and_over_w_a_disability']+
-        data['female_under_5_w_a_disability']+data['female_5_to_17_w_a_disability']+ data['female_18_to_34_w_a_disability']+
-        data['female_35_to_64_w_a_disability']+data['female_65_to_74_w_a_disability']+data['female_75_and_over_w_a_disability']
-        )
+    data['total_w_a_disability'] = (data['male_under_5_w_a_disability'] + data['male_5_to_17_w_a_disability'] + data[
+        'male_18_to_34_w_a_disability'] +
+                                    data['male_35_to_64_w_a_disability'] + data['male_65_to_74_w_a_disability'] + data[
+                                        'male_75_and_over_w_a_disability'] +
+                                    data['female_under_5_w_a_disability'] + data['female_5_to_17_w_a_disability'] +
+                                    data['female_18_to_34_w_a_disability'] +
+                                    data['female_35_to_64_w_a_disability'] + data['female_65_to_74_w_a_disability'] +
+                                    data['female_75_and_over_w_a_disability']
+                                    )
 
-    data['speak_eng_not_well'] = (data['foreign_speak_spanish_speak_eng_not_well']+ data['foreign_speak_spanish_speak_eng_not_at_all']+
-        data['foreign_speak_other_indo-euro_speak_eng_not_well']+ data['foreign_speak_other_indo-euro_speak_eng_not_at_all']+
-        data['foreign_speak_asian_or_pac_isl_lang_speak_eng_not_well']+ data['foreign_speak_asian_or_pac_isl_lang_speak_eng_not_at_all']+
-        data['foreign_speak_other_speak_eng_not_well']+ data['foreign_speak_other_speak_eng_not_at_all']
-        )
+    data['speak_eng_not_well'] = (
+            data['foreign_speak_spanish_speak_eng_not_well'] + data['foreign_speak_spanish_speak_eng_not_at_all'] +
+            data['foreign_speak_other_indo-euro_speak_eng_not_well'] + data[
+                'foreign_speak_other_indo-euro_speak_eng_not_at_all'] +
+            data['foreign_speak_asian_or_pac_isl_lang_speak_eng_not_well'] + data[
+                'foreign_speak_asian_or_pac_isl_lang_speak_eng_not_at_all'] +
+            data['foreign_speak_other_speak_eng_not_well'] + data['foreign_speak_other_speak_eng_not_at_all']
+    )
 
-    data['single_parent'] = data['other_male_householder_no_spouse_w_kids'] + data['other_female_householder_no_spouse_w_kids']
+    data['single_parent'] = data['other_male_householder_no_spouse_w_kids'] + data[
+        'other_female_householder_no_spouse_w_kids']
 
     data['non-white'] = data['total_population'] - data['not_hisp_or_latino_white']
 
-    data['People with Disability (%)'] = data['total_w_a_disability']/(data['male']+data['female'])
-    data['200% Below Poverty Level (%)'] = data['200% Below Poverty Level']/data['population_for_whom_poverty_status_is_determined']
-    data['Age 19 or Under (%)'] = data['Age 19 or Under']/data['total_population']
-    data['Age 65 or Over (%)'] = data['Age 65 or Over']/data['total_population']
-    data['Limited English Proficiency (%)'] = data['speak_eng_not_well']/(data['native']+data['foreign_born'])
-    data['Single Parent Family (%)'] = data['single_parent']/data['total_families']
+    data['People with Disability (%)'] = data['total_w_a_disability'] / (data['male'] + data['female'])
+    data['200% Below Poverty Level (%)'] = data['200% Below Poverty Level'] / data[
+        'population_for_whom_poverty_status_is_determined']
+    data['Age 19 or Under (%)'] = data['Age 19 or Under'] / data['total_population']
+    data['Age 65 or Over (%)'] = data['Age 65 or Over'] / data['total_population']
+    data['Limited English Proficiency (%)'] = data['speak_eng_not_well'] / (data['native'] + data['foreign_born'])
+    data['Single Parent Family (%)'] = data['single_parent'] / data['total_families']
     data['Zero-Vehicle Household (%)'] = data['percent_hh_0_veh']
-    data['People of Color (%)'] = data['non-white']/data['total_population']
+    data['People of Color (%)'] = data['non-white'] / data['total_population']
 
-    for header in (EQUITY_CENSUS_POC_LOW_INCOME+EQUITY_CENSUS_REMAINING_HEADERS):
-        data[header + ' (%)'] = round(data[header + ' (%)']*100)
+    for header in (EQUITY_CENSUS_POC_LOW_INCOME + EQUITY_CENSUS_REMAINING_HEADERS):
+        data[header + ' (%)'] = round(data[header + ' (%)'] * 100)
 
     data['criteria_A'] = 0
     data['criteria_B'] = 0
@@ -598,15 +614,15 @@ def clean_equity_data(data: pd.DataFrame) -> pd.DataFrame:
 
     return data
 
-def clean_transport_data(data: pd.DataFrame, epc: pd.DataFrame) -> pd.DataFrame:
-    
+
+def clean_transport_data(data: pd.DataFrame, epc: pd.DataFrame) -> tuple:
     data['walkability_index'] = round(data['walkability_index'])
-    data['number_drive_alone'] = data['percent_drive_alone']*data['total_workers_commute']
+    data['number_drive_alone'] = data['percent_drive_alone'] * data['total_workers_commute']
     data.drop(['total_workers_commute'], axis=1, inplace=True)
-    
+
     data['non-white'] = data['total_population'] - data['not_hisp_or_latino_white']
-    data['People of Color'] = data['non-white']/data['total_population']
-    
+    data['People of Color'] = data['non-white'] / data['total_population']
+
     data.rename({
         'percent_hh_0_veh': 'Zero-Vehicle Households',
         'vehicle_miles_traveled': 'Vehicle Miles Traveled',
@@ -617,49 +633,53 @@ def clean_transport_data(data: pd.DataFrame, epc: pd.DataFrame) -> pd.DataFrame:
         # 'number_drive_alone': 'Drive Alone (#)',
         'mean_travel_time': "Average Commute Time (min)",
         '200_below_pov_level': '200% Below Poverty Level'
-        },
+    },
         axis=1, inplace=True)
-    
+
     averages = {}
     epc_averages = {}
-    
+
     for x in TRANSPORT_CENSUS_HEADERS:
         averages[x] = data[x].mean()
         epc_averages[x] = data.loc[data['Census Tract'].isin(epc['Census Tract'])][x].mean()
     transport_epc = data.loc[data['Census Tract'].isin(epc['Census Tract'])]
-    
+
     normalized_data = transport_epc.copy()
-    normalized_data[TRANSPORT_CENSUS_HEADERS] = preprocessing.MinMaxScaler().fit_transform(normalized_data[TRANSPORT_CENSUS_HEADERS])
-    
+    normalized_data[TRANSPORT_CENSUS_HEADERS] = preprocessing.MinMaxScaler().fit_transform(
+        normalized_data[TRANSPORT_CENSUS_HEADERS])
+
     return transport_epc, data, normalized_data, averages, epc_averages
 
-def get_equity_geographies(epc: pd.DataFrame, coeff: float) -> pd.DataFrame:
+
+# Todo: clean up this return
+def get_equity_geographies(epc: pd.DataFrame, coeff: float) -> tuple:
     concentration_thresholds = dict()
     averages = dict()
-    
+
     for header in (EQUITY_CENSUS_POC_LOW_INCOME + EQUITY_CENSUS_REMAINING_HEADERS):
-        averages[header] = epc[header+ ' (%)'].mean()
-        concentration_thresholds[header] = averages[header] + coeff*epc[header+ ' (%)'].std()
-        epc[header+'_check'] = epc[header+' (%)'].apply(lambda x: x>concentration_thresholds[header])
-        epc[header+'_check'] = epc[header+'_check'].astype(int)
+        averages[header] = epc[header + ' (%)'].mean()
+        concentration_thresholds[header] = averages[header] + coeff * epc[header + ' (%)'].std()
+        epc[header + '_check'] = epc[header + ' (%)'].apply(lambda x: x > concentration_thresholds[header])
+        epc[header + '_check'] = epc[header + '_check'].astype(int)
 
     epc['criteria_A'] = epc[[x + '_check' for x in EQUITY_CENSUS_POC_LOW_INCOME]].sum(axis=1, numeric_only=True)
-    epc['Criteria A'] = epc['criteria_A'].apply(lambda x: bool(x==2))
+    epc['Criteria A'] = epc['criteria_A'].apply(lambda x: bool(x == 2))
 
     epc['criteria_B'] = epc[[x + '_check' for x in EQUITY_CENSUS_REMAINING_HEADERS]].sum(axis=1, numeric_only=True)
-    temp = epc['200% Below Poverty Level (%)'].apply(lambda x: x>concentration_thresholds['200% Below Poverty Level'])
-    epc['Criteria B'] = (epc['criteria_B'].apply(lambda x: bool(x>=3)) + temp.astype(int)) == 2
+    temp = epc['200% Below Poverty Level (%)'].apply(lambda x: x > concentration_thresholds['200% Below Poverty Level'])
+    epc['Criteria B'] = (epc['criteria_B'].apply(lambda x: bool(x >= 3)) + temp.astype(int)) == 2
 
     # df = epc.drop_duplicates(subset=['tract_id'])
     df = epc
 
-    epc['Criteria'] = epc[['Criteria A', 'Criteria B']].apply(lambda x: 'Both' if (x['Criteria A'] & x['Criteria B']) else 
+    epc['Criteria'] = epc[['Criteria A', 'Criteria B']].apply(
+        lambda x: 'Both' if (x['Criteria A'] & x['Criteria B']) else
         ('Criteria A Only' if x['Criteria A'] else
-        ('Criteria B Only' if x['Criteria B'] else 'Other')), 
+         ('Criteria B Only' if x['Criteria B'] else 'Other')),
         axis=1)
     # epc['Criteria'] = epc.apply(lambda x: 'Both' if (x['Criteria A'] | x['Criteria B']) else 'Other')
     epc = epc.loc[(epc['Criteria A'] | epc['Criteria B'])]
-    df['Census Tract'] = (df['Criteria A'].apply(lambda x: bool(x))|df['Criteria B'].apply(lambda x: bool(x)))
+    df['Census Tract'] = (df['Criteria A'].apply(lambda x: bool(x)) | df['Criteria B'].apply(lambda x: bool(x)))
     df['Census Tract'] = df['Census Tract'].apply(lambda x: 'Equity Geography' if x is True else 'Other')
 
     epc_averages = {}
@@ -668,13 +688,6 @@ def get_equity_geographies(epc: pd.DataFrame, coeff: float) -> pd.DataFrame:
 
     return epc, df, concentration_thresholds, averages, epc_averages
 
-def get_county_level_data (df: pd.DataFrame) -> pd.DataFrame:
-    county_df = None
-    
-    for header in (EQUITY_CENSUS_POC_LOW_INCOME + EQUITY_CENSUS_REMAINING_HEADERS):
-        county_df['average', header] = df[header].mean()
-    
-    return county_df
 
 def get_existing_policies(df: pd.DataFrame) -> pd.DataFrame:
     policy_df = policy_query()
@@ -793,10 +806,11 @@ if __name__ == '__main__':
     #         path = output_data(df)
     #
     # print('Successful query returned. Output at {}.'.format(path))
-    test_new_counties()
+    # test_new_counties()
     # df=pd.read_csv('Output/clean_counties.csv')
     # print('writing....')
     # write_table(df,'county_geoms')
     # df=pd.read_csv('Output/demographics.csv')
     # print('writing....')
     # write_table(df,'county_demographics')
+    pass
