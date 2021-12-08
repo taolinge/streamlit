@@ -300,7 +300,7 @@ def make_equity_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: 
             "html": "<b>County:</b> {name} </br>" + "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "}"
             }
     if len(geo_df_copy['coordinates'][0][0][0]) > 0:
-        view_state = pdk.ViewState(**{"latitude": geo_df_copy['coordinates'][0][0][0][1], "longitude": geo_df_copy['coordinates'][0][0][0][0], "zoom": 5, "maxZoom": 16, "pitch": 0, "bearing": 0})
+        view_state = pdk.ViewState(**{"latitude": geo_df_copy['coordinates'][0][0][0][1], "longitude": geo_df_copy['coordinates'][0][0][0][0], "zoom": 7, "maxZoom": 16, "pitch": 0, "bearing": 0})
     else:
         view_state = pdk.ViewState(**{"latitude": 36, "longitude": -95, "zoom": 3, "maxZoom": 16, "pitch": 0, "bearing": 0})
 
@@ -377,7 +377,7 @@ def make_transport_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_featur
             }  
         
     if len(geo_df_copy['coordinates'][0][0][0]) > 0:
-        view_state = pdk.ViewState(**{"latitude": geo_df_copy['coordinates'][0][0][0][1], "longitude": geo_df_copy['coordinates'][0][0][0][0], "zoom": 5, "maxZoom": 16, "pitch": 0, "bearing": 0})
+        view_state = pdk.ViewState(**{"latitude": geo_df_copy['coordinates'][0][0][0][1], "longitude": geo_df_copy['coordinates'][0][0][0][0], "zoom": 7, "maxZoom": 16, "pitch": 0, "bearing": 0})
     else:
         view_state = pdk.ViewState(**{"latitude": 36, "longitude": -95, "zoom": 3, "maxZoom": 16, "pitch": 0, "bearing": 0})
 
@@ -516,14 +516,15 @@ def make_grouped_bar_chart(df: pd.DataFrame, id_var: str, features: list, featur
     st.altair_chart(bar, use_container_width=True)
 
 def make_stacked(df:pd.DataFrame):
-
+    single = alt.selection_single()
     bar = alt.Chart(df)\
             .mark_bar() \
             .encode(x=alt.X('Census Tract:O', axis = alt.Axis(labels=False), title='Census Tracts', sort='y'),
                     y=alt.Y('sum(Index Value):Q', title='Transportation Vulnerability Index'),
                     color=alt.Color('Indicators:N', legend=alt.Legend(orient='left')),
                     tooltip=['Census Tract'])\
-            .interactive()
+            .interactive()\
+            .add_selection(single)
         
     st.altair_chart(bar, use_container_width=True)
 
@@ -549,8 +550,6 @@ def make_simple_chart(df: pd.DataFrame, feature: str):
                 tooltip=['index', feature])\
         .interactive()
     st.altair_chart(bar, use_container_width=True)
-
-#This function can be used with shapefiles (point and linestring geometries)
 
 # def make_transit_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
     
@@ -611,7 +610,7 @@ def make_simple_chart(df: pd.DataFrame, feature: str):
 #     #         # "<b>" + str(EQUITY_CENSUS_HEADERS[0]) + ":</b> {" + str(EQUITY_CENSUS_HEADERS[0]) + "}" +
 #     #         }
 #     if len(geo_df_copy['coordinates'][0][0][0]) > 0:
-#         view_state = pdk.ViewState(**{"latitude": geo_df_copy['coordinates'][0][0][0][1], "longitude": geo_df_copy['coordinates'][0][0][0][0], "zoom": 5, "maxZoom": 16, "pitch": 0, "bearing": 0})
+#         view_state = pdk.ViewState(**{"latitude": geo_df_copy['coordinates'][0][0][0][1], "longitude": geo_df_copy['coordinates'][0][0][0][0], "zoom": 7, "maxZoom": 16, "pitch": 0, "bearing": 0})
 #     else:
 #         view_state = pdk.ViewState(**{"latitude": 36, "longitude": -95, "zoom": 3, "maxZoom": 16, "pitch": 0, "bearing": 0})
 

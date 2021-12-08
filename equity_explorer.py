@@ -132,7 +132,6 @@ def census_equity_explorer():
                 *Compare Equity Geographies to the rest of the county for any of the equity indicators. Refer to criteria A and B above for more information on how equity indicators are used to identify Equity Geographies.*  
                 #  \n
                 ''')
-        
       
         feature = st.selectbox("Select an equity indicator to see how the census tract levels compare to the county average",
             queries.EQUITY_CENSUS_POC_LOW_INCOME+queries.EQUITY_CENSUS_REMAINING_HEADERS)
@@ -187,7 +186,7 @@ def census_equity_explorer():
         st.markdown("""---""")
         
         st.write('''
-                ### Equity in Transportation
+                ### Accessibility to Transportation
                 *Analyze behavior and transportation considerations for vulnerable communities in the county.*                 
                 ''')
         with st.expander('More about this dataset'):
@@ -227,13 +226,13 @@ def census_equity_explorer():
         st.write('''
                 # \n
                 #### Create Transportation Vulnerability Index
-                *Consider the vulnerability of Equity Geographies with regard to their access to transit*                 
+                *Craft an index to identify a subset of the Equity Geographies where there may be a gap in access to transit*                 
                 # \n
                 ###### Select which indicators to use in the Transportation Vulnerability Index
                 ''')
         
         selected_indicators = st.multiselect('Transportation Indicators', queries.TRANSPORT_CENSUS_HEADERS, 
-                    default =['Zero-Vehicle Households', 'Vehicle Miles Traveled', 'Drive Alone Commuters', 'No Computer Households']
+                    default =['Zero-Vehicle Households (%)', 'Vehicle Miles Traveled', 'People of Color (%)', 'No Computer Households (%)']
                     )
         
         st.write('''
@@ -245,10 +244,10 @@ def census_equity_explorer():
         col1, col2= st.columns((1,1))
         with col1:
             for header in selected_indicators[:(int(len(selected_indicators)/2))]:
-                    index_value[header] = st.number_input(header+' Weight (%)', min_value=0, max_value=100, value=round((100/len(selected_indicators))), key = header)
+                    index_value[header] = st.number_input(header+' Weight', min_value=0, max_value=100, format = "%d",value=round((100/len(selected_indicators))), key = header)
         with col2:
             for header in selected_indicators[(int(len(selected_indicators)/2)):]:
-                    index_value[header] = st.number_input(header+' Weight (%)', min_value=0, max_value=100, value=round((100/len(selected_indicators))), key = header)
+                    index_value[header] = st.number_input(header+' Weight', min_value=0, max_value=100, value=round((100/len(selected_indicators))), key = header)
         
         if sum(index_value.values())>101 or sum(index_value.values())<99:
             st.error("Weights must sum to 100")
@@ -287,21 +286,22 @@ def census_equity_explorer():
                 ###### Transportation vulnerability at the census tract level            
                 ''')
         st.caption('Select a census tract from the list below to investigate relative transit access and demand.')
+        transport_df.set_index('Census Tract',inplace=True)
+        
         col1, col2, col3= st.columns((1,1,1))
         with col1:
-            selected_tract = st.radio('Identified Census Tracts', selected_tracts['Census Tract'])
+            selected_tract = st.radio('Identified Census Tracts', selected_tracts['Census Tract'])            
         with col2:
-            for header in selected_indicators[(int(len(selected_indicators)/2)):]:
-                st.metric(header, value=str(round(transport_df.loc[selected_tract,header]*100,0)) + '%', delta=str(round(averages[header],2)) + '% from county average')
+            for header in queries.TRANSPORT_CENSUS_HEADERS[(int(len(queries.TRANSPORT_CENSUS_HEADERS)/2)):]:
+                st.metric(header, value=str(round(transport_df.loc[selected_tract,header],1)) + queries.TABLE_UNITS[header], delta=str(round(transport_df.loc[selected_tract,header]-averages[header],1)) + queries.TABLE_UNITS[header] + ' from county average')
                 st.write('')
         with col3:
-            for header in selected_indicators[:(int(len(selected_indicators)/2))]:
-                st.metric(header, value=str(round(transport_df.loc[selected_tract,header]*100,0)) + '%', delta=str(round(averages[header],2)) + '% from county average')
+            for header in queries.TRANSPORT_CENSUS_HEADERS[:(int(len(queries.TRANSPORT_CENSUS_HEADERS)/2))]:
+                st.metric(header, value=str(round(transport_df.loc[selected_tract,header],1)) + queries.TABLE_UNITS[header], delta=str(round(transport_df.loc[selected_tract,header]-averages[header],1)) + queries.TABLE_UNITS[header] + ' from county average')
                 st.write('')
                 
         with st.expander('View data at the census tract level'):
             st.caption('Values for selected indicators are shown for the census tracts with the highest index values')
-            transport_df.set_index('Census Tract',inplace=True)
-            transport_df = transport_df.select_dtypes(include=['number']).div(100).round(2)
-            st.dataframe(transport_df.loc[(transport_df.index).isin(selected['Census Tract'])][selected_indicators].style.format("{:.1%}"))
+            st.dataframe(transport_df.loc[(transport_df.index).isin(selected['Census Tract'])][queries.TRANSPORT_CENSUS_HEADERS+queries.POSITIVE_TRANSPORT_CENSUS_HEADERS].style.format("{:.1%}"))
+        
         

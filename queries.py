@@ -65,19 +65,19 @@ EQUITY_CENSUS_REMAINING_HEADERS = [
     ]
 
 TRANSPORT_CENSUS_HEADERS = [
-    'Zero-Vehicle Households', 
+    'Zero-Vehicle Households (%)', 
     'Vehicle Miles Traveled', 
-    'No Computer Households', 
-    'Renter Occupied Units',
-    'Drive Alone Commuters', 
+    'No Computer Households (%)', 
+    'Renter Occupied Units (%)',
+    'Drive Alone Commuters (%)', 
     # 'Drive Alone (#)',
     'Average Commute Time (min)',
-    'People of Color', "200% Below Poverty Level"
+    'People of Color (%)', "200% Below Poverty Level (%)"
     ]
 
 POSITIVE_TRANSPORT_CENSUS_HEADERS = [
-    'walkability_index', 
-    'percent_public_transport', 'percent_bicycle'
+    'Walkability Index', 
+    'Public Transport Commuters (%)', 'Bicycle Commuters (%)'
     ]
 
 TABLE_UNITS = {
@@ -89,6 +89,18 @@ TABLE_UNITS = {
     'snap_benefits_recipients': 'Persons',
     'unemployment_rate': '%',
     'resident_population': 'Thousands of Persons',
+    'Zero-Vehicle Households (%)': '%', 
+    'Vehicle Miles Traveled': ' miles', 
+    'No Computer Households (%)': '%', 
+    'Renter Occupied Units (%)': '%',
+    'Drive Alone Commuters (%)': '%', 
+    # 'Drive Alone (#)': '',
+    'Average Commute Time (min)': ' min',
+    'People of Color (%)': '%',
+    "200% Below Poverty Level (%)": '%',
+    'Walkability Index': '', 
+    'Public Transport Commuters (%)': '%', 
+    'Bicycle Commuters (%)': '%'
 }
 
 # @st.cache(allow_output_mutation=True, hash_funcs={"_thread.RLock": lambda _: None})
@@ -605,19 +617,22 @@ def clean_transport_data(data: pd.DataFrame, epc: pd.DataFrame) -> pd.DataFrame:
     data.drop(['total_workers_commute'], axis=1, inplace=True)
     
     data['non-white'] = data['total_population'] - data['not_hisp_or_latino_white']
-    data['People of Color'] = data['non-white']/data['total_population']
-    data['No Computer Households'] = 100*(data['household_no_computing_device']/(data['household_no_computing_device']+data['household_computer']+data['household_smartphone_no_computer']+data['household_no_internet']+data['household_broadband']))
+    data['People of Color (%)'] = 100*(data['non-white']/data['total_population'])
+    data['No Computer Households (%)'] = 100*(data['household_no_computing_device']/(data['household_no_computing_device']+data['household_computer']+data['household_smartphone_no_computer']+data['household_no_internet']+data['household_broadband']))
+    data['200% Below Poverty Level (%)'] = 100*(data['200_below_pov_level']/data['population_for_whom_poverty_status_is_determined'])
+    data['Renter Occupied Units (%)'] = 100*(data['renter-occ_units']/data['occupied_housing_units'])
     
     data.rename({
-        'percent_hh_0_veh': 'Zero-Vehicle Households',
+        'percent_hh_0_veh': 'Zero-Vehicle Households (%)',
         'vehicle_miles_traveled': 'Vehicle Miles Traveled',
         # 'household_no_computing_device': 'No Computer Households',
         # 'household_no_internet': 'No Internet Households',
-        'renter-occ_units': 'Renter Occupied Units',
-        'percent_drive_alone': 'Drive Alone Commuters',
+        'percent_drive_alone': 'Drive Alone Commuters (%)',
         # 'number_drive_alone': 'Drive Alone (#)',
         'mean_travel_time': "Average Commute Time (min)",
-        '200_below_pov_level': '200% Below Poverty Level'
+        'walkability_index': "Walkability Index",
+        'percent_public_transport': 'Public Transport Commuters (%)',
+        'percent_bicycle': 'Bicycle Commuters (%)'
         },
         axis=1, inplace=True)
     
