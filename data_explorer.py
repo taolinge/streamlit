@@ -1,4 +1,3 @@
-import pandas as pd
 import streamlit as st
 
 import queries
@@ -8,7 +7,6 @@ from constants import STATES
 
 
 def county_data_explorer():
-    # st.write('This interface allows you to see and interact with county data in our database.')
     task = st.selectbox('How much data do you want to look at?', ['Counties', 'State', 'National'], 0)
     state, counties, name, df = None, None, None, None
     if task == 'Counties':
@@ -38,12 +36,9 @@ def county_data_explorer():
             tmp_df = df.copy()
             st.caption(str(tmp_df.shape))
             st.dataframe(tmp_df)
-            st.markdown(utils.get_table_download_link(df, name, 'Download raw data'), unsafe_allow_html=True)
             st.download_button('Download raw data', utils.to_excel(df), file_name=f'{name}.xlsx')
 
-        st.write('''
-                ### View Feature
-                ''')
+        st.write('''### View Feature''')
         temp = df.copy()
         temp.reset_index(inplace=True)
         feature_labels = list(
