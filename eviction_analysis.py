@@ -52,7 +52,6 @@ def eviction_UI():
                     st.dataframe(df)
                     st.download_button('Download raw data', utils.to_excel(df), file_name=f'{county}_data.xlsx')
 
-
                 with st.expander('Cost to avoid evictions'):
                     st.write("""
                             The cost to avoid evictions is defined as the cost to a municipality or other entity if it was to pay 

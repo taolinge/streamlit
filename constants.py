@@ -82,3 +82,30 @@ COLOR_RANGE = [
 ]
 
 BREAKS = [0, .1, .2, .3, .4, .5, .6, .7, .8, .9, 1]
+
+
+
+EQUITY_DATA_TABLE = '''
+| Feature Name | Resolution | Source | Updated | Notes | 
+| ------------ | ---------- | ------ | ------- | ----- |
+| English Proficiency | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | Used to find percent of population with Limited English Proficiency |
+| Disability Status | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | Used to find percent of population with People with Disability |
+| Poverty Status | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | Used to find percent of population 200% Below Poverty Line |
+| Hispanic or Latino Origin by Race | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | Used to find percent of population that are People of Color |
+| Family Type | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | Used to find percent of population with Single Parent Families |
+| Sex by Age | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | Used to find percent of population Aged 65 and Over and Aged 19 and Under |
+| Household Vehicle Availability | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs)| 2013 | Used to find percent of population in Zero-Vehicle Households |
+'''
+
+TRANSPORT_DATA_TABLE = '''
+| Feature Name | Resolution | Source | Updated | Notes | 
+| ------------ | ---------- | ------ | ------- | ----- |
+| Housing Units in Structure | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | Used to find percent that are Renter Occupied Units |
+| Poverty Status | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | Used to find percent of population 200% Below Poverty Line |
+| Commuting Characteristics by Sex | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | Used to find percent that are Drive Alone Commuters |
+| Household Technology Availability | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs)| 2013 | Used to find percent that are No Computer Households |
+| Household Vehicle Availability | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs)| 2013 | Used to find percent of population in Zero-Vehicle Households |
+| Trip Miles | Census Tracts | [BTS](https://www.bts.gov/latch/latch-data) | 2013 | Used to find average Vehicle Miles Traveled |
+'''
+
+LINKS = {'mtc_framework': 'https://bayareametro.github.io/Spatial-Analysis-Mapping-Projects/Project-Documentation/Equity-Priority-Communities/#summary-of-mtc-epc-demographic-factors--demographic-factor-definitions'}

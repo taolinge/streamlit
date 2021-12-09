@@ -109,25 +109,26 @@ This data is the most recent data we could get, but some datasets are updated mo
 | County Geometries | County | [US Census](https://catalog.data.gov/dataset/tiger-line-shapefile-2017-nation-u-s-current-county-and-equivalent-national-shapefile) | 2017 | PostGIS compatible geometry data |
 | Socio-Demographics | County | [ArcGIS](https://hub.arcgis.com/datasets/48f9af87daa241c4b267c5931ad3b226_0) | 2017 | A collection of fields including each race & ethnicity break down, the count of males and females, median age, the number of housing units, vacant units, renter occupied units, and more. |
 | Census Tract Geometries | Census Tracts | -- | 2010 | |
-| English Proficiency | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
+| English Proficiency | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | Used to find percent of population with Limited English Proficiency |
 | Group Quarters Population | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
-| Housing Units in Structure | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
+| Housing Units in Structure | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | Used to find percent that are Renter Occupied Units |
 | Occupants per Bedroom | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
 | Median Household Income | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
 | Employment Status | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
 | Per Capita Income | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
-| Disability Status | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
-| Poverty Status | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
-| Family Type | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
+| Disability Status | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | Used to find percent of population with People with Disability |
+| Poverty Status | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | Used to find percent of population 200% Below Poverty Line |
+| Family Type | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | Used to find percent of population with Single Parent Families |
 | Educational Attainment | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
-| Hispanic or Latino Origin by Race | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
-| Sex by Age | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
+| Hispanic or Latino Origin by Race | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | Used to find percent of population that are People of Color |
+| Sex by Age | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | Used to find percent of population Aged 65 and Over and Aged 19 and Under |
 | Sex of Workers by Vehicles Available | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | |
+| Commuting Characteristics by Sex | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2019 | Used to find percent that are Drive Alone Commuters |
 | Household Job Availability | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs) | 2013 | |
-| Household Technology Availability | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs)| 2013 | |
-| Household Vehicle Availability | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs)| 2013 | |
+| Household Technology Availability | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs)| 2013 | Used to find percent that are No Computer Households |
+| Household Vehicle Availability | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs)| 2013 | Used to find percent of population in Zero-Vehicle Households |
 | National Walkability Index | Census Tracts | [EPA](https://www.epa.gov/smartgrowth/smart-location-mapping#SLD) | 2012 | |
-| Trip Miles | Census Tracts | [BTS](https://www.bts.gov/latch/latch-data) | 2013 | |
+| Trip Miles | Census Tracts | [BTS](https://www.bts.gov/latch/latch-data) | 2013 | Used to find average Vehicle Miles Traveled |
 | Level of Urbanicity | Census Tracts | [EPA](https://www.epa.gov/smartgrowth/smart-location-mapping#SLD) | 2013 | |
 
 
@@ -156,6 +157,27 @@ Performing this calculation for each proportion and each housing stock will calc
 This script uses Fair Market Rent values.  Median rent values are also available in the database.  The script can be manually adjusted by the user to reference median rent values rather than fair market rent if they choose.  
 
 Upon script completion, an excel file will be created within the output folder displaying all values mentioned above.  If you experience problems with the script or have questions about methodologies, please reach out to a member of the development team.  
+
+### How are Equity Geographies identified?
+Equity Geographies must meet at least one of the following 2 criteria.
+    A) Census tracts have a concentration of BOTH people of color AND low-income households
+    B) Census tracts have a concentration of three or more of the remaining six equity indicators AND a concentration of low-income households
+
+All of the equity indicators considered in the analysis are here:
+    1) People of Color
+    2) 200% Below Poverty Level
+    3) People with Disability
+    4) Age 19 or Under
+    5) Age 65 of Over
+    6) Limited English Proficiency
+    7) Single Parent Family
+    8) Zero Vehicle Household
+
+Equity geographies are compared against concentration thresholds as defined below. The coefficient value varies on user input. 
+    `concentration threshold = average + (standard deviation * coefficient)`
+
+### How is the Transportation Vulnerability Index created?
+First, values for each of the indicators are normalized across the entire region. The script uses preprocessing.MinMaxScaler() to normalize values. Index values are the sume of the normalized values times the corresponding weights of each selected indicator. 
 
 ### FRED Queries
 You can get the most recent Federal Reserve Economic Data (FRED) using the following commands:
