@@ -17,6 +17,11 @@ pd.set_option('expand_frame_repr', True)
 pd.set_option('large_repr', 'truncate')
 pd.options.display.float_format = '{:.2f}'.format
 
+PAGES = [
+    'Data Explorer',
+    'Equity Explorer',
+    'Eviction Analysis'
+]
 
 def print_summary(df: pd.DataFrame, output: str):
     print('*** Results ***')
@@ -60,8 +65,6 @@ def run_shell() -> pd.DataFrame:
     elif task == '2':
         state = input("Which state are you looking for? (ie: California)").strip()
         counties = input('Please specify one or more counties, separated by commas.').strip().split(',')
-        # counties = [_.strip().lower() for _ in counties]
-        # counties = [_ + ' county' for _ in counties if ' county' not in _]
         df = queries.get_county_data(state, counties)
         cost_of_evictions = input(
             'Run an analysis to estimate the cost to avoid evictions? (Y/n) ')
@@ -147,17 +150,11 @@ def run_UI():
     )
     st.sidebar.title('Arup Social Data')
 
-    pages = [
-        'Data Explorer',
-        'Equity Explorer',
-        'Eviction Analysis'
-    ]
-    url_params = st.experimental_get_query_params()
-    i = pages.index(url_params['page'][0])
-    st.session_state.page = st.sidebar.radio('Navigation', pages, i)
-    st.experimental_set_query_params(page=st.session_state.page)
-    st.session_state.loaded = True
-    if st.session_state.page == 'Eviction Analysis':
+    page=st.sidebar.radio('Navigation', PAGES, index=st.session_state.page)
+
+    st.experimental_set_query_params(page=page)
+
+    if page == 'Eviction Analysis':
         st.sidebar.write("""
             ## About
             
@@ -165,7 +162,7 @@ def run_UI():
         """)
         eviction_analysis.eviction_UI()
 
-    elif st.session_state.page == 'Equity Explorer':
+    elif page == 'Equity Explorer':
         st.sidebar.write("""
             ## About
 
@@ -198,12 +195,19 @@ if __name__ == '__main__':
     if not os.path.exists('Output'):
         os.makedirs('Output')
     if st._is_running_with_streamlit:
+        url_params = st.experimental_get_query_params()
         if 'loaded' not in st.session_state:
             print('init state')
-            st.session_state['page'] = 'Data Explorer'
+            if len(url_params.keys()) == 0:
+                st.experimental_set_query_params(page='Data Explorer')
+                url_params = st.experimental_get_query_params()
+
+            st.session_state.page = PAGES.index(url_params['page'][0])
             st.session_state['data_type'] = 'County Level'
             st.session_state['data_format'] = 'Raw Values'
             st.session_state['loaded'] = False
+
+
         run_UI()
     else:
         run_shell()

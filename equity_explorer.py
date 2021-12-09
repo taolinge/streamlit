@@ -171,18 +171,18 @@ def census_equity_explorer():
 
         st.write('''
                 ### Equity in Transportation
-                *Analyze behavior and transportation considerations for vulnerable communities in the county.*                 
+                
+                Analyze behavior and transportation considerations for vulnerable communities in the county.          
                 ''')
         with st.expander('More about this dataset'):
             st.write('''
                      We currently have almost 40 tables in the database, representing over 2 million rows of data. The following datasets were used for the transportation indicators considered.
-                      \n  \n  
                     ''',
                      TRANSPORT_DATA_TABLE)
         st.write('''
                 ### Transportation Considerations in the Region
-                *Compare Equity Geographies to the rest of the county for any of the transportation indicators. Analyze behavior and transportation considerations for vulnerable communities in the county.*  
-                #  \n
+                
+                Compare Equity Geographies to the rest of the county for any of the transportation indicators. Analyze behavior and transportation considerations for vulnerable communities in the county.
                 ''')
         feature = st.selectbox(
             "Transportation indicator to compare",
@@ -201,15 +201,14 @@ def census_equity_explorer():
 
         transport_epc.drop(['geom'], inplace=True, axis=1)
         transport_df.drop(['geom'], inplace=True, axis=1)
-        st.write('')
-        st.write('### Equity Geography Census Tracts (', feature, '):')
+        st.write(f'### Equity Geography Census Tracts ({feature}):')
 
         visualization.make_transport_census_chart(transport_epc, averages, feature)
 
         st.write('''
                 ### Create Transportation Vulnerability Index
                 
-                Create a framework to identify a subset of the Equity Geographies where there may be a gap in access to transit               
+                Create a framework to identify a subset of the Equity Geographies where there may be a gap in access to transit.
                 
                 #### Customize the Transportation Vulnerability Index              
                 ''')
@@ -244,9 +243,7 @@ def census_equity_explorer():
         if sum(index_value.values()) > 101 or sum(index_value.values()) < 99:
             st.error("Weights must sum to 100")
 
-        st.write('''
-                ### Equity Geographies are sorted below based on the assigned Transportation Vulnerability index values                
-                ''')
+        st.write('''### Transportation Vulnerability Index''')
         st.caption('Equity geographies are sorted based on each of the transportation vulnerability index values')
 
         normalized_data = normalized_data.melt('Census Tract', selected_indicators, 'Indicators')
@@ -258,7 +255,7 @@ def census_equity_explorer():
 
         transport_index.sort_values(ascending=False, inplace=True)
 
-        st.write('### View the census tracts with the highest index values')
+        st.write('#### View the census tracts with the highest index values')
         num_tracts = st.slider('Select number of census tracts to view',
                                min_value=1, max_value=len(transport_index),
                                value=[5 if 5 < len(transport_index) else len(transport_index)]
@@ -274,7 +271,7 @@ def census_equity_explorer():
         # visualization.make_transit_map(selected_geo, selected_tracts, 'Index Value')
 
         st.write('''
-                ### How are these Equity Geographies most vulnerable?            
+                #### How are these Equity Geographies most vulnerable?            
                 ''')
         st.caption('Select a census tract from the list below to investigate relative transit access and demand.')
         transport_df.set_index('Census Tract', inplace=True)
