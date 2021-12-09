@@ -1,7 +1,6 @@
 import os
 import sys
 import psycopg2
-import geopandas as gpd
 import pandas as pd
 import geopandas as gpd
 from sqlalchemy import create_engine
@@ -67,18 +66,18 @@ EQUITY_CENSUS_REMAINING_HEADERS = [
 ]
 
 TRANSPORT_CENSUS_HEADERS = [
-    'Zero-Vehicle Households (%)', 
-    'Vehicle Miles Traveled', 
-    'No Computer Households (%)', 
+    'Zero-Vehicle Households (%)',
+    'Vehicle Miles Traveled',
+    'No Computer Households (%)',
     'Renter Occupied Units (%)',
-    'Drive Alone Commuters (%)', 
+    'Drive Alone Commuters (%)',
     # 'Drive Alone (#)',
     'Average Commute Time (min)',
     'People of Color (%)', "200% Below Poverty Level (%)"
 ]
 
 POSITIVE_TRANSPORT_CENSUS_HEADERS = [
-    'Walkability Index', 
+    'Walkability Index',
     'Public Transport Commuters (%)', 'Bicycle Commuters (%)'
 ]
 
@@ -91,17 +90,17 @@ TABLE_UNITS = {
     'snap_benefits_recipients': 'Persons',
     'unemployment_rate': '%',
     'resident_population': 'Thousands of Persons',
-    'Zero-Vehicle Households (%)': '%', 
-    'Vehicle Miles Traveled': ' miles', 
-    'No Computer Households (%)': '%', 
+    'Zero-Vehicle Households (%)': '%',
+    'Vehicle Miles Traveled': ' miles',
+    'No Computer Households (%)': '%',
     'Renter Occupied Units (%)': '%',
-    'Drive Alone Commuters (%)': '%', 
+    'Drive Alone Commuters (%)': '%',
     # 'Drive Alone (#)': '',
     'Average Commute Time (min)': ' min',
     'People of Color (%)': '%',
     "200% Below Poverty Level (%)": '%',
-    'Walkability Index': '', 
-    'Public Transport Commuters (%)': '%', 
+    'Walkability Index': '',
+    'Public Transport Commuters (%)': '%',
     'Bicycle Commuters (%)': '%'
 }
 
@@ -201,6 +200,7 @@ def table_names_query() -> list:
     res = [_[0] for _ in results]
     return res
 
+
 def postgis_query() -> pd.DataFrame:
     conn = init_connection()
     shapes_query = f"SELECT * FROM NTM_shapes"
@@ -208,6 +208,7 @@ def postgis_query() -> pd.DataFrame:
     shapes_df = gpd.GeoDataFrame.from_postgis(shapes_query, conn)
     stops_df = gpd.GeoDataFrame.from_postgis(stops_query, conn)
     return shapes_df, stops_df
+
 
 @st.experimental_memo(ttl=1200)
 def read_table(table: str, columns: list = None, where: str = None, order_by: str = None,
@@ -357,7 +358,7 @@ def get_all_county_data(state: str, counties: list) -> pd.DataFrame:
     demo_df['Non-White Population'] = (demo_df['black'] + demo_df['ameri_es'] + demo_df['asian'] + demo_df[
         'hawn_pi'] + demo_df['hispanic'] + demo_df['other'] + demo_df['mult_race'])
     demo_df['Age 19 or Under'] = (
-                demo_df['age_under5'] + demo_df['age_5_9'] + demo_df['age_10_14'] + demo_df['age_15_19'])
+            demo_df['age_under5'] + demo_df['age_5_9'] + demo_df['age_10_14'] + demo_df['age_15_19'])
     demo_df['Age 65 or Over'] = (demo_df['age_65_74'] + demo_df['age_75_84'] + demo_df['age_85_up'])
     demo_df['Non-White Population (%)'] = demo_df['Non-White Population'] / demo_df['population'] * 100
     demo_df['fips'] = demo_df['fips'].astype(int)
@@ -530,6 +531,7 @@ def get_transit_shapes_geoms(columns: list = [], where: str = None) -> pd.DataFr
     df = gpd.read_postgis(query, conn)
     return df
 
+
 @st.experimental_memo(ttl=1200)
 def static_data_all_table() -> pd.DataFrame:
     counties_df = all_counties_query()
@@ -630,13 +632,13 @@ def clean_equity_data(data: pd.DataFrame) -> pd.DataFrame:
                                     )
 
     data['speak_eng_not_well'] = (
-                data['foreign_speak_spanish_speak_eng_not_well'] + data['foreign_speak_spanish_speak_eng_not_at_all'] +
-                data['foreign_speak_other_indo-euro_speak_eng_not_well'] + data[
-                    'foreign_speak_other_indo-euro_speak_eng_not_at_all'] +
-                data['foreign_speak_asian_or_pac_isl_lang_speak_eng_not_well'] + data[
-                    'foreign_speak_asian_or_pac_isl_lang_speak_eng_not_at_all'] +
-                data['foreign_speak_other_speak_eng_not_well'] + data['foreign_speak_other_speak_eng_not_at_all']
-                )
+            data['foreign_speak_spanish_speak_eng_not_well'] + data['foreign_speak_spanish_speak_eng_not_at_all'] +
+            data['foreign_speak_other_indo-euro_speak_eng_not_well'] + data[
+                'foreign_speak_other_indo-euro_speak_eng_not_at_all'] +
+            data['foreign_speak_asian_or_pac_isl_lang_speak_eng_not_well'] + data[
+                'foreign_speak_asian_or_pac_isl_lang_speak_eng_not_at_all'] +
+            data['foreign_speak_other_speak_eng_not_well'] + data['foreign_speak_other_speak_eng_not_at_all']
+    )
 
     data['single_parent'] = data['other_male_householder_no_spouse_w_kids'] + data[
         'other_female_householder_no_spouse_w_kids']
@@ -671,11 +673,14 @@ def clean_transport_data(data: pd.DataFrame, epc: pd.DataFrame) -> pd.DataFrame:
     data.drop(['total_workers_commute'], axis=1, inplace=True)
 
     data['non-white'] = data['total_population'] - data['not_hisp_or_latino_white']
-    data['People of Color (%)'] = 100*(data['non-white']/data['total_population'])
-    data['No Computer Households (%)'] = 100*(data['household_no_computing_device']/(data['household_no_computing_device']+data['household_computer']+data['household_smartphone_no_computer']+data['household_no_internet']+data['household_broadband']))
-    data['200% Below Poverty Level (%)'] = 100*(data['200_below_pov_level']/data['population_for_whom_poverty_status_is_determined'])
-    data['Renter Occupied Units (%)'] = 100*(data['renter-occ_units']/data['occupied_housing_units'])
-    
+    data['People of Color (%)'] = 100 * (data['non-white'] / data['total_population'])
+    data['No Computer Households (%)'] = 100 * (data['household_no_computing_device'] / (
+                data['household_no_computing_device'] + data['household_computer'] + data[
+            'household_smartphone_no_computer'] + data['household_no_internet'] + data['household_broadband']))
+    data['200% Below Poverty Level (%)'] = 100 * (
+                data['200_below_pov_level'] / data['population_for_whom_poverty_status_is_determined'])
+    data['Renter Occupied Units (%)'] = 100 * (data['renter-occ_units'] / data['occupied_housing_units'])
+
     data.rename({
         'percent_hh_0_veh': 'Zero-Vehicle Households (%)',
         'vehicle_miles_traveled': 'Vehicle Miles Traveled',
@@ -697,11 +702,11 @@ def clean_transport_data(data: pd.DataFrame, epc: pd.DataFrame) -> pd.DataFrame:
         averages[x] = data[x].mean()
         epc_averages[x] = data.loc[data['Census Tract'].isin(epc['Census Tract'])][x].mean()
     transport_epc = data.loc[data['Census Tract'].isin(epc['Census Tract'])]
-    
+
     normalized_data = data.copy()
     normalized_data[TRANSPORT_CENSUS_HEADERS] = preprocessing.MinMaxScaler().fit_transform(
         normalized_data[TRANSPORT_CENSUS_HEADERS])
-    
+
     return transport_epc, data, normalized_data, averages, epc_averages
 
 

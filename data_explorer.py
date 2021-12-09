@@ -8,7 +8,6 @@ from constants import STATES
 
 
 def county_data_explorer():
-    # st.write('This interface allows you to see and interact with county data in our database.')
     task = st.selectbox('How much data do you want to look at?', ['Counties', 'State', 'National'], 0)
     state, counties, name, df = None, None, None, None
     if task == 'Counties':

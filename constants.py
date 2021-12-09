@@ -83,8 +83,6 @@ COLOR_RANGE = [
 
 BREAKS = [0, .1, .2, .3, .4, .5, .6, .7, .8, .9, 1]
 
-
-
 EQUITY_DATA_TABLE = '''
 | Feature Name | Resolution | Source | Updated | Notes | 
 | ------------ | ---------- | ------ | ------- | ----- |
@@ -108,4 +106,5 @@ TRANSPORT_DATA_TABLE = '''
 | Trip Miles | Census Tracts | [BTS](https://www.bts.gov/latch/latch-data) | 2013 | Used to find average Vehicle Miles Traveled |
 '''
 
-LINKS = {'mtc_framework': 'https://bayareametro.github.io/Spatial-Analysis-Mapping-Projects/Project-Documentation/Equity-Priority-Communities/#summary-of-mtc-epc-demographic-factors--demographic-factor-definitions'}
+LINKS = {
+    'mtc_framework': 'https://bayareametro.github.io/Spatial-Analysis-Mapping-Projects/Project-Documentation/Equity-Priority-Communities/#summary-of-mtc-epc-demographic-factors--demographic-factor-definitions'}

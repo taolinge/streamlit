@@ -1,15 +1,12 @@
-from os import name
 import streamlit as st
 import pandas as pd
 import geopandas as gpd
 import pydeck as pdk
 import altair as alt
 from sklearn import preprocessing as pre
+
 from constants import BREAKS, COLOR_RANGE
 import utils
-# from fpdf import FPDF
-from ipywidgets import HTML
-
 import queries
 
 
@@ -29,12 +26,10 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str, data_form
 
     label = map_feature
     if data_format == 'Per Capita':
-        print('Per Cap')
         label = f"{map_feature} per capita"
         df[label] = df[map_feature] / df['Total Population']
         pass
     elif data_format == 'Per Square Mile':
-        print('SQMI')
         label = f"{map_feature} per sqmi"
         df[label] = df[map_feature] / df['sqmi']
 
@@ -63,7 +58,6 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str, data_form
         normalized_vals = scaler.fit_transform(
             pd.DataFrame(feat_series)
         )
-    # norm_df = pd.DataFrame(feat_series)
     colors = list(map(color_scale, normalized_vals))
     geo_df_copy['fill_color'] = colors
     geo_df_copy.fillna(0, inplace=True)
@@ -279,9 +273,11 @@ def make_equity_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: 
     colors = list(map(color_scale, normalized_vals))
     geo_df_copy['fill_color'] = colors
     geo_df_copy.fillna(0, inplace=True)
-    
+
     for x in range(len(geo_df_copy.index)):
-        geo_df_copy['fill_color'].iloc[x]= [0, 0, 0, 25] if df[map_feature].iloc[x]=='Not selected as an Equity Geography' else geo_df_copy['fill_color'].iloc[x]
+        geo_df_copy['fill_color'].iloc[x] = [0, 0, 0, 25] if df[map_feature].iloc[
+                                                                 x] == 'Not selected as an Equity Geography' else \
+            geo_df_copy['fill_color'].iloc[x]
 
     tooltip = {"html": ""}
     if 'Census Tract' in set(geo_df_copy.columns):
@@ -431,7 +427,6 @@ def make_equity_census_chart(df: pd.DataFrame, threshold: dict, average: dict, f
     if feat_type == 'category':
         data_df = pd.DataFrame(data_df.groupby(['county_name', feature]).size())
         data_df = data_df.rename(columns={0: "tract count"})
-        # print(data_df)
         data_df = data_df.reset_index()
         bar = alt.Chart(data_df) \
             .mark_bar() \
@@ -568,15 +563,15 @@ def make_simple_chart(df: pd.DataFrame, feature: str):
 
 
 def make_transit_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
-    NTM_shapes = queries.get_transit_shapes_geoms(columns=['route_desc','route_type_text', 'length','geom'])
+    NTM_shapes = queries.get_transit_shapes_geoms(columns=['route_desc', 'route_type_text', 'length', 'geom'])
     print(NTM_shapes.shape)
-    NTM_shapes.dropna(inplace=True,subset=['geom'])
+    NTM_shapes.dropna(inplace=True, subset=['geom'])
     print(NTM_shapes.shape)
     # NTM_shapes['geom'].apply(lambda x: print(x.coords[0]))
     NTM_shapes['start'] = NTM_shapes['geom'].apply(lambda x: x.coords[0])
     NTM_shapes['end'] = NTM_shapes['geom'].apply(lambda x: x.coords[-1])
 
-    NTM_stops = queries.get_transit_stops_geoms(columns=['stop_name','stop_lat','stop_lon', 'geom'])
+    NTM_stops = queries.get_transit_stops_geoms(columns=['stop_name', 'stop_lat', 'stop_lon', 'geom'])
     print(NTM_stops)
     NTM_stops['coordinates'] = NTM_stops['geom'].apply(lambda p: [p.x, p.y])
     NTM_stops.rename(columns={"stop_name": "route_desc"})

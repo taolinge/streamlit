@@ -153,17 +153,11 @@ def run_UI():
         'Eviction Analysis'
     ]
     url_params = st.experimental_get_query_params()
-    page = 'Data Explorer'
-    if 'page' in url_params.keys() and not st.session_state.loaded:
-        i = pages.index(url_params['page'][0])
-        page = st.sidebar.radio('Navigation', pages, i)
-        st.experimental_set_query_params(page=page)
-    else:
-        page = st.sidebar.radio('Navigation', pages)
-        st.experimental_set_query_params(page=page)
+    i = pages.index(url_params['page'][0])
+    st.session_state.page = st.sidebar.radio('Navigation', pages, i)
+    st.experimental_set_query_params(page=st.session_state.page)
     st.session_state.loaded = True
-
-    if page == 'Eviction Analysis':
+    if st.session_state.page == 'Eviction Analysis':
         st.sidebar.write("""
             ## About
             
@@ -171,7 +165,7 @@ def run_UI():
         """)
         eviction_analysis.eviction_UI()
 
-    elif page == 'Equity Explorer':
+    elif st.session_state.page == 'Equity Explorer':
         st.sidebar.write("""
             ## About
 
@@ -206,7 +200,7 @@ if __name__ == '__main__':
     if st._is_running_with_streamlit:
         if 'loaded' not in st.session_state:
             print('init state')
-            st.session_state['workflow'] = 'Data Explorer'
+            st.session_state['page'] = 'Data Explorer'
             st.session_state['data_type'] = 'County Level'
             st.session_state['data_format'] = 'Raw Values'
             st.session_state['loaded'] = False
