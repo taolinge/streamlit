@@ -55,9 +55,9 @@ def census_equity_explorer():
         df = queries.clean_equity_data(df)
 
         st.write('''
-                ### Equity Geographies
+                ### Identify Equity Geographies in the Region
                 
-                Census tracts qualify as Equity Geographies by meeting at least one of the two criteria below. This methodology is based on the equity priority community [methodology](https://bayareametro.github.io/Spatial-Analysis-Mapping-Projects/Project-Documentation/Equity-Priority-Communities/#summary-of-mtc-epc-demographic-factors--demographic-factor-definitions) developed by the San Francisco Bay Area Metropolitan Transportation Commission (MTC).                
+                "Equity Geographies" are census tracts that may be considered areas of concern. Each of these census tracts meet at least one of the two criteria below. This methodology is based on the equity priority community [methodology](https://bayareametro.github.io/Spatial-Analysis-Mapping-Projects/Project-Documentation/Equity-Priority-Communities/#summary-of-mtc-epc-demographic-factors--demographic-factor-definitions) developed by the San Francisco Bay Area Metropolitan Transportation Commission (MTC).                
                 ''')
 
         col1, col2, col3 = st.columns((5, 1, 5))
@@ -81,15 +81,13 @@ def census_equity_explorer():
                      EQUITY_DATA_TABLE,
                      "For more information on the framework that the criteria is based on, read [here](" + LINKS[
                          'mtc_framework'] + ") for more info.")
-        st.write('''
-                 ### Identify a concentration threshold
-                 
-                 Equity geographies are compared against concentration thresholds as defined below.
-                 ''')
-        st.caption('*concentration threshold = average + (standard deviation x coefficient)*')
-
+        
+        st.write('### View Equity Geographies on Map')
+        st.caption(
+            'The map below shows all the equity geographies based on the criteria above. Scroll over the equity geographies to view which of the criteria is met.')
+        
         concentration = st.select_slider(
-            'Limit the number of equity geographies by setting the coefficient to low (0.5), medium (1), or high (1.5).',
+            'Limit the number of equity geographies by increasing the concentration requirements',
             options=['Low', 'Medium', 'High'])
         coeff = {'Low': 0.5, 'Medium': 1, 'High': 1.5}
 
@@ -105,10 +103,15 @@ def census_equity_explorer():
         geo_df = geo_df[['geom', 'Census Tract']]
         geo_total = geo_total[['geom', 'Census Tract']]
 
-        st.write('### View Equity Geographies on Map')
-        st.caption(
-            'The map below shows all the equity geographies based on the selected coefficient above. Scroll over the equity geographies to view which of the criteria is met.')
+        
         visualization.make_equity_census_map(geo_total, total_census_tracts, 'Criteria')
+        
+        with st.expander('More on how concentrations are defined'):
+            st.write('''
+                    Equity geographies are compared against concentration thresholds as defined below.
+                    ''')
+            st.caption('*concentration threshold = average + (standard deviation x coefficient)*')
+            st.write('Coefficients default to be 0.5. Coefficients can be increased to 1 or 1.5 to narrow the search.')
 
         st.write('''
                 ### Equity Indicators
@@ -185,7 +188,9 @@ def census_equity_explorer():
                 *Compare Equity Geographies to the rest of the county for any of the transportation indicators. Analyze behavior and transportation considerations for vulnerable communities in the county.*  
                 #  \n
                 ''')
-       
+        feature = st.selectbox(
+            "Transportation indicator to compare",
+            queries.TRANSPORT_CENSUS_HEADERS)
 
         st.write('###### How does the Equity Geography average compare to the county-wide average?')
         visualization.make_horizontal_bar_chart(averages, epc_averages, feature)
