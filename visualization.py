@@ -159,11 +159,9 @@ def make_chart(df: pd.DataFrame, feature: str, data_format: str = 'Raw Values'):
     # else:
     label = feature
     if data_format == 'Per Capita':
-        print('Per Cap')
         label = f"{feature} per capita"
         data_df[label] = data_df[feature] / df['Total Population']
     elif data_format == 'Per Square Mile':
-        print('SQMI')
         label = f"{feature} per sqmi"
         data_df[label] = data_df[feature] / df['sqmi']
     data_df = data_df.round(3)
@@ -206,13 +204,11 @@ def make_scatter_plot_counties(df: pd.DataFrame, feature_1: str, feature_2: str,
     label_1 = feature_1
     label_2 = feature_2
     if data_format == 'Per Capita':
-        print('Per Cap')
         label_1 = f"{feature_1} per capita"
         df[label_1] = df[feature_1] / df['Total Population']
         label_2 = f"{feature_2} per capita"
         df[label_2] = df[feature_2] / df['Total Population']
     elif data_format == 'Per Square Mile':
-        print('SQMI')
         label_1 = f"{feature_1} per sqmi"
         df[label_1] = df[feature_1] / df['sqmi']
         label_2 = f"{feature_2} per sqmi"
@@ -470,7 +466,6 @@ def make_transport_census_chart(df: pd.DataFrame, average: dict, feature: str):
     if feat_type == 'category':
         data_df = pd.DataFrame(data_df.groupby(['county_name', feature]).size())
         data_df = data_df.rename(columns={0: "tract count"})
-        # print(data_df)
         data_df = data_df.reset_index()
         bar = alt.Chart(data_df) \
             .mark_bar() \

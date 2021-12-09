@@ -1,4 +1,3 @@
-import pandas as pd
 import streamlit as st
 
 import queries
@@ -37,12 +36,9 @@ def county_data_explorer():
             tmp_df = df.copy()
             st.caption(str(tmp_df.shape))
             st.dataframe(tmp_df)
-            st.markdown(utils.get_table_download_link(df, name, 'Download raw data'), unsafe_allow_html=True)
             st.download_button('Download raw data', utils.to_excel(df), file_name=f'{name}.xlsx')
 
-        st.write('''
-                ### View Feature
-                ''')
+        st.write('''### View Feature''')
         temp = df.copy()
         temp.reset_index(inplace=True)
         feature_labels = list(
