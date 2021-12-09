@@ -1,6 +1,7 @@
 import os
 import sys
 import psycopg2
+import geopandas as gpd
 import pandas as pd
 from sqlalchemy import create_engine
 from shapely import wkb
@@ -198,6 +199,13 @@ def table_names_query() -> list:
     res = [_[0] for _ in results]
     return res
 
+def postgis_query() -> pd.DataFrame:
+    conn = init_connection()
+    shapes_query = f"SELECT * FROM NTM_shapes"
+    stops_query = f"SELECT * FROM NTM_stops"
+    shapes_df = gpd.GeoDataFrame.from_postgis(shapes_query, conn)
+    stops_df = gpd.GeoDataFrame.from_postgis(stops_query, conn)
+    return shapes_df, stops_df
 
 @st.experimental_memo(ttl=1200)
 def read_table(table: str, columns: list = None, where: str = None, order_by: str = None,
@@ -644,7 +652,7 @@ def clean_transport_data(data: pd.DataFrame, epc: pd.DataFrame) -> pd.DataFrame:
         epc_averages[x] = data.loc[data['Census Tract'].isin(epc['Census Tract'])][x].mean()
     transport_epc = data.loc[data['Census Tract'].isin(epc['Census Tract'])]
     
-    normalized_data = transport_epc.copy()
+    normalized_data = data.copy()
     normalized_data[TRANSPORT_CENSUS_HEADERS] = preprocessing.MinMaxScaler().fit_transform(normalized_data[TRANSPORT_CENSUS_HEADERS])
     
     return transport_epc, data, normalized_data, averages, epc_averages

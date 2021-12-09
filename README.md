@@ -158,6 +158,27 @@ This script uses Fair Market Rent values.  Median rent values are also available
 
 Upon script completion, an excel file will be created within the output folder displaying all values mentioned above.  If you experience problems with the script or have questions about methodologies, please reach out to a member of the development team.  
 
+### How are Equity Geographies identified?
+Equity Geographies must meet at least one of the following 2 criteria.
+    A) Census tracts have a concentration of BOTH people of color AND low-income households
+    B) Census tracts have a concentration of three or more of the remaining six equity indicators AND a concentration of low-income households
+
+All of the equity indicators considered in the analysis are here:
+    1) People of Color
+    2) 200% Below Poverty Level
+    3) People with Disability
+    4) Age 19 or Under
+    5) Age 65 of Over
+    6) Limited English Proficiency
+    7) Single Parent Family
+    8) Zero Vehicle Household
+
+Equity geographies are compared against concentration thresholds as defined below. The coefficient value varies on user input. 
+    `concentration threshold = average + (standard deviation * coefficient)`
+
+### How is the Transportation Vulnerability Index created?
+First, values for each of the indicators are normalized across the entire region. The script uses preprocessing.MinMaxScaler() to normalize values. Index values are the sume of the normalized values times the corresponding weights of each selected indicator. 
+
 ### FRED Queries
 You can get the most recent Federal Reserve Economic Data (FRED) using the following commands:
 
