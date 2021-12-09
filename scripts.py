@@ -6,8 +6,6 @@ import psycopg2
 import credentials
 
 
-# engine = create_engine(f'postgresql+psycopg2://postgres:Password@localhost:5432/test_counties')
-
 def init_engine():
     engine = create_engine(
         f'postgresql://{credentials.DB_USER}:{credentials.DB_PASSWORD}@{credentials.DB_HOST}:{credentials.DB_PORT}/{credentials.DB_NAME}')
@@ -32,17 +30,22 @@ def fix_chmura_counties():
 def populate_table(path: str, name: str):
     engine = init_engine()
     df = pd.read_csv(path)
-    df.drop(['tract'], inplace=True, axis=1)
-    df.replace('N', None, inplace=True)
-    # print(df.columns)
-    # print(df.tail())
+    df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
+
+    # df.drop(['OBJECTID'], inplace=True, axis=1)
+    # df.replace('N', None, inplace=True)
+    print(df.columns)
 
     df.to_sql(name, engine, if_exists='replace', method='multi', index=False)
 
 
 def import_geojson():
-    gdf = gpd.read_file('temp/USA_Counties.geojson', rows=2)
-    gdf['geometry'].apply(lambda x: print(type(x)))
+
+    df = gpd.read_file('temp/NTM_shapes.json')
+    # df['geometry'].apply(lambda x: print(type(x)))
+    df.to_csv('temp/NTM_shapes.csv')
+    # df.to_sql('ntm_shapes', engine, if_exists='replace', method='multi', index=False)
+
 
 
 FRED_TABLES = [
@@ -82,7 +85,7 @@ def update_FRED():
 
 if __name__ == '__main__':
     # fix_chmura_counties()
-    # populate_table('temp/commuting_characteristics.csv', 'commuting_characteristics')
     # import_geojson()
-    update_FRED()
+    # populate_table('temp/NTM_shapes.csv', 'ntm_shapes')
+    # update_FRED()
     pass
