@@ -159,7 +159,9 @@ This script uses Fair Market Rent values.  Median rent values are also available
 Upon script completion, an excel file will be created within the output folder displaying all values mentioned above.  If you experience problems with the script or have questions about methodologies, please reach out to a member of the development team.  
 
 ### How are Equity Geographies identified?
-Equity Geographies must meet at least one of the following 2 criteria.
+"Equity Geographies" are census tracts that have a significicant concentration of underserved populations, such as households with low incomes and people of color. By identifying historically underserved communities, planning and funding can be targeted to enable more equitable access to transportation. 
+
+Equity Geographies must meet at least one of the following 2 criteria. This methodology is based on the equity priority community [methodology](https://bayareametro.github.io/Spatial-Analysis-Mapping-Projects/Project-Documentation/Equity-Priority-Communities/#summary-of-mtc-epc-demographic-factors--demographic-factor-definitions) developed by the San Francisco Bay Area Metropolitan Transportation Commission (MTC).       
     A) Census tracts have a concentration of BOTH people of color AND low-income households
     B) Census tracts have a concentration of three or more of the remaining six equity indicators AND a concentration of low-income households
 

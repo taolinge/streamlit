@@ -38,7 +38,7 @@ def census_equity_explorer():
                 df = queries.latest_data_census_tracts(state, counties, tables)
         except:
             df = pd.DataFrame()
-
+        
         if st.checkbox('Show raw data'):
             st.subheader('Raw Data')
             st.caption(str(df.shape))
@@ -57,7 +57,7 @@ def census_equity_explorer():
         st.write('''
                 ### Identify Equity Geographies in the Region
                 
-                "Equity Geographies" are census tracts that may be considered areas of concern. Each of these census tracts meet at least one of the two criteria below. This methodology is based on the equity priority community [methodology](https://bayareametro.github.io/Spatial-Analysis-Mapping-Projects/Project-Documentation/Equity-Priority-Communities/#summary-of-mtc-epc-demographic-factors--demographic-factor-definitions) developed by the San Francisco Bay Area Metropolitan Transportation Commission (MTC).                
+                "Equity Geographies" are census tracts that have a significicant concentration of underserved populations, such as households with low incomes and people of color. Each of these census tracts meet at least one of the two criteria below. This methodology is based on the equity priority community [methodology](https://bayareametro.github.io/Spatial-Analysis-Mapping-Projects/Project-Documentation/Equity-Priority-Communities/#summary-of-mtc-epc-demographic-factors--demographic-factor-definitions) developed by the San Francisco Bay Area Metropolitan Transportation Commission (MTC).                
                 ''')
 
         col1, col2, col3 = st.columns((5, 1, 5))
@@ -104,7 +104,6 @@ def census_equity_explorer():
         geo_df = geo_df[['geom', 'Census Tract']]
         geo_total = geo_total[['geom', 'Census Tract']]
 
-        
         visualization.make_equity_census_map(geo_total, total_census_tracts, 'Criteria')
         
         with st.expander('More on how concentrations are defined'):
@@ -136,7 +135,7 @@ def census_equity_explorer():
                                 key='equity')
         select_data = {'All census tracts in selected region': total_census_tracts, 'Equity Geographies only': df}
         select_geo = {'All census tracts in selected region': geo_total, 'Equity Geographies only': geo_df}
-
+        
         visualization.make_equity_census_map(select_geo[filter_level], select_data[filter_level], feature + ' (%)')
 
         if st.checkbox('View data at the census tract level'):
@@ -151,7 +150,7 @@ def census_equity_explorer():
         tables = queries.TRANSPORT_CENSUS_TABLES
         tables = [_.strip().lower() for _ in tables]
         tables.sort()
-
+        
         if len(tables) > 0 and len(counties) > 0:
             try:
                 if 'All' in counties:
@@ -167,10 +166,10 @@ def census_equity_explorer():
         if 'county_name' in transport_df.columns:
             transport_df['County Name'] = transport_df['county_name']
         transport_df.set_index(['State', 'County Name'], drop=True, inplace=True)
-
+        
         transport_epc, transport_df, normalized_data, averages, epc_averages = queries.clean_transport_data(
             transport_df, df_copy)
-
+        
         geo_df = transport_df.copy()
         geo_epc = transport_epc.copy()
         geo_df = geo_df[['geom', 'Census Tract']]
@@ -197,7 +196,7 @@ def census_equity_explorer():
                               key='transport')
         select_data = {'All census tracts in selected region': transport_df, 'Equity Geographies only': transport_epc}
         select_geo = {'All census tracts in selected region': geo_df, 'Equity Geographies only': geo_epc}
-
+        
         visualization.make_transport_census_map(select_geo[radio_data], select_data[radio_data], feature)
 
         transport_epc.drop(['geom'], inplace=True, axis=1)
@@ -257,7 +256,7 @@ def census_equity_explorer():
                 # \n
                 #### Equity Geographies sorted by Transportation Vulnerability Index              
                 ''')
-        st.caption('Equity geographies are sorted based on each of the transportation vulnerability index values')
+        st.caption('Transportation Vulnerability Index values are the sum of the values for each of the selected indicators multiplied by the respective weights.')
         normalized_data = normalized_data.loc[normalized_data['Census Tract'].isin(transport_epc['Census Tract'])]
         normalized_data = normalized_data.melt('Census Tract', selected_indicators, 'Indicators')
         normalized_data.rename({'value': 'Index Value'}, axis=1, inplace=True)

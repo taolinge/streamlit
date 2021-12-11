@@ -175,7 +175,7 @@ def run_UI():
         st.sidebar.write("""
             ## About
 
-            The Equity Explorer is a set of Arup-designed analyses to identify vulnerable geographies at the census tract level. It also includes a transit analysis that shows relative access to transit and other equity indicators for the identified equity geographies.  
+            The Equity Explorer is a set of Arup-designed analyses to identify vulnerable and historically under-served geographies at the census tract level. The tool provides a transparent, Arup-approved framework for approaching equity and allows users to compare indicators and explore the data for census tracts across the US. Users can also customize a transportation vulnerability index for their specific planning purposes to best understand which areas have the biggest gaps in accessibility and demand.     
         """)
         equity_explorer.census_equity_explorer()
     else:
