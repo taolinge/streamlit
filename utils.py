@@ -1,5 +1,4 @@
 import base64
-import streamlit as st
 import pandas as pd
 from six import BytesIO
 import geopandas as gpd

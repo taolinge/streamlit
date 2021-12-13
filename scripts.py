@@ -82,10 +82,35 @@ def update_FRED():
         df.to_sql(f"{table}_new", engine, if_exists='replace', method='multi', index=False)
         print(df.head())
 
+def map_ntm():
+    conn=queries.init_connection()
+    # query="""
+    # SELECT a.route_type_text, a.route_long_name, a.route_url, a.route_desc,a.length, a.geom, b.tract_id
+    # FROM ntm_shapes a, census_tracts_geom b, id_index c
+    # WHERE ST_Intersects(a.geom, b.geom) AND b.tract_id = c.tract_id;
+    # """
+#     query="""
+# SELECT a.stop_name, a.stop_lat, a.stop_lon, a.wheelchair_boarding,a.direction, a.geom, b.tract_id
+# FROM ntm_stops a, census_tracts_geom b
+# WHERE ST_CoveredBy(a.geom, b.geom);
+#     """
+
+    # df = pd.read_sql(query, con=conn)
+    # df.to_csv('temp/new_ntm_shapes.csv')
+    df=pd.read_csv('temp/new_ntm_shapes.csv')
+    print(df.shape)
+    print(df.dtypes)
+    print(df.describe())
+    df=pd.read_csv('temp/new_ntm_stops.csv')
+    print(df.shape)
+    print(df.dtypes)
+    print(df.describe())
+
 
 if __name__ == '__main__':
     # fix_chmura_counties()
     # import_geojson()
     # populate_table('temp/NTM_shapes.csv', 'ntm_shapes')
     # update_FRED()
+    map_ntm()
     pass
