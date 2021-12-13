@@ -1,3 +1,4 @@
+import random
 from os import name
 import streamlit as st
 import pandas as pd
@@ -6,7 +7,7 @@ import pydeck as pdk
 import altair as alt
 from sklearn import preprocessing as pre
 
-from constants import BREAKS, COLOR_RANGE
+from constants import BREAKS, COLOR_RANGE, COLOR_VALUES
 import utils
 import queries
 
@@ -329,7 +330,7 @@ def make_equity_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: 
     st.pydeck_chart(r)
 
 
-def make_transport_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
+def make_transport_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str, show_transit: bool = False):
     if 'Census Tract' in geo_df.columns:
         geo_df.reset_index(inplace=True)
     if 'Census Tract' in df.columns:
@@ -399,12 +400,18 @@ def make_transport_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_featur
         pickable=True,
         auto_highlight=True,
     )
+    layers = [polygon_layer]
+
+    if show_transit:
+        transit_layers = make_transit_layers(tract_df=df)
+        layers += transit_layers
 
     r = pdk.Deck(
-        layers=[polygon_layer],
+        layers=layers,
         initial_view_state=view_state,
         map_style=pdk.map_styles.LIGHT,
         tooltip=tooltip
+
     )
 
     st.pydeck_chart(r)
@@ -558,112 +565,54 @@ def make_simple_chart(df: pd.DataFrame, feature: str):
     st.altair_chart(bar, use_container_width=True)
 
 
-def make_transit_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str):
-    NTM_shapes = queries.get_transit_shapes_geoms(columns=['route_desc', 'route_type_text', 'length', 'geom'])
-    print(NTM_shapes.shape)
-    NTM_shapes.dropna(inplace=True, subset=['geom'])
-    print(NTM_shapes.shape)
-    # NTM_shapes['geom'].apply(lambda x: print(x.coords[0]))
-    NTM_shapes['start'] = NTM_shapes['geom'].apply(lambda x: x.coords[0])
-    NTM_shapes['end'] = NTM_shapes['geom'].apply(lambda x: x.coords[-1])
+def make_transit_layers(tract_df: pd.DataFrame):
+    tracts = tract_df['Census Tract'].to_list()
+    tracts_str = str(tuple(tracts)).replace(',)', ')')
 
-    NTM_stops = queries.get_transit_stops_geoms(columns=['stop_name', 'stop_lat', 'stop_lon', 'geom'])
-    print(NTM_stops)
-    NTM_stops['coordinates'] = NTM_stops['geom'].apply(lambda p: [p.x, p.y])
-    NTM_stops.rename(columns={"stop_name": "route_desc"})
+    NTM_shapes = queries.get_transit_shapes_geoms(columns=['route_desc', 'route_type_text', 'length', 'geom'],
+                                                  where=f" tract_id IN {tracts_str}")
+    lines=NTM_shapes['route_desc'].tolist()
+    NTM_shapes['color'] = [random.choice(COLOR_VALUES) for _ in lines]
+    NTM_shapes['path']=NTM_shapes['geom'].apply(utils.coord_extractor)
 
-    if 'Census Tract' in geo_df.columns:
-        geo_df.reset_index(inplace=True)
-    # if 'Census Tract' in df.columns:
-    # df.reset_index(inplace=True)
-    geo_df_copy = geo_df.copy()
-    geojson = utils.convert_geom(geo_df_copy, df, queries.TRANSPORT_CENSUS_HEADERS)
-    geojson_df = pd.DataFrame(geojson)
 
-    geo_df_copy["coordinates"] = geojson_df["features"].apply(lambda row: row["geometry"]["coordinates"])
-    geo_df_copy["name"] = geojson_df["features"].apply(lambda row: row["properties"]["name"])
+    NTM_stops = queries.get_transit_stops_geoms(columns=['stop_name', 'stop_lat', 'stop_lon', 'geom'],
+                                                where=f" tract_id IN {tracts_str}")
+    # NTM_stops.rename(columns={"stop_name": "route_desc"})
 
-    for header in queries.TRANSPORT_CENSUS_HEADERS:
-        geo_df_copy[header] = geojson_df["features"].apply(lambda row: row["properties"][header])
-
-    scaler = pre.MinMaxScaler()
-    feat_series = geo_df_copy[map_feature]
-    feat_type = None
-    if feat_series.dtype == 'object':
-        feat_type = 'category'
-        feat_dict = {k: (i % 10) / 10 for i, k in enumerate(
-            feat_series.unique())}  # max 10 categories, following from constants.BREAK, enumerated rather than encoded
-        normalized_vals = feat_series.apply(lambda x: feat_dict[x])  # getting normalized vals, manually.
-    else:
-        feat_type = 'numerical'
-        normalized_vals = scaler.fit_transform(
-            pd.DataFrame(feat_series)
-        )
-    # norm_df = pd.DataFrame(feat_series)
-    colors = list(map(color_scale, normalized_vals))
-    geo_df_copy['fill_color'] = colors
-    geo_df_copy.fillna(0, inplace=True)
-
-    tooltip = {"html": ""}
-    if 'Census Tract' in set(geo_df_copy.columns):
-        keep_cols = ['coordinates', 'name', 'fill_color', 'geom', map_feature]
-        geo_df_copy.drop(list(set(geo_df_copy.columns) - set(keep_cols)), axis=1, inplace=True)
-        tooltip = {
-            "html": "<b> Description:</b> {route_desc} </br>" +
-                    # "<b> Type: </b>" +
-                    " {route_type_text} </br>" +
-                    # "<b> Link: </b>" +
-                    "{route_url}"}
-
-    if len(geo_df_copy['coordinates'][0][0][0]) > 0:
-        view_state = pdk.ViewState(
-            **{"latitude": geo_df_copy['coordinates'][0][0][0][1], "longitude": geo_df_copy['coordinates'][0][0][0][0],
-               "zoom": 5, "maxZoom": 16, "pitch": 0, "bearing": 0})
-    else:
-        view_state = pdk.ViewState(
-            **{"latitude": 36, "longitude": -95, "zoom": 3, "maxZoom": 16, "pitch": 0, "bearing": 0})
-
-    if feat_type == 'numerical':
-        geo_df_copy = geo_df_copy.astype({map_feature: 'float64'})
-
-    polygon_layer = pdk.Layer(
-        "PolygonLayer",
-        geo_df_copy,
-        get_polygon="coordinates",
-        filled=True,
-        get_fill_color='fill_color',
-        stroked=False,
-        opacity=0.15,
-        pickable=False,
-        auto_highlight=True,
-    )
-    shape_layer = pdk.Layer(
-        "LineLayer",
+    # tooltip = {
+    #     "html": "<b>Description:</b>{route_desc}</br>" +
+    #             "<b>Type:</b>{route_type_text}</br>" +
+    #             "<b>Length:</b>{length}"
+    # }
+    line_layer = pdk.Layer(
+        "PathLayer",
         NTM_shapes,
-        get_source_position='start',
-        get_target_position='end',
-        get_color=[176, 203, 156],
-        get_width=10,
-        highlight_color=[176, 203, 156],
-        picking_radius=10,
+        get_color='color',
+        get_width=8,
+        # highlight_color=[176, 203, 156],
+        # picking_radius=6,
         auto_highlight=True,
-        pickable=True,
+        # pickable=True,
+        width_min_pixels=2,
+        get_path="path",
     )
 
+    tooltip_stops = {
+        "html": "<b>{stop_name}</b>"
+    }
     stop_layer = pdk.Layer(
         'ScatterplotLayer',
         NTM_stops,
-        get_position='coordinates',
+        get_position=['stop_lon', 'stop_lat'],
         auto_highlight=True,
-        get_radius=10,
-        # get_fill_color='color',
-        pickable=True)
-
-    r = pdk.Deck(
-        layers=[polygon_layer, shape_layer, stop_layer],
-        initial_view_state=view_state,
-        map_style=pdk.map_styles.LIGHT,
-        tooltip=tooltip
+        get_radius=48,
+        get_fill_color=[255, 140, 0],
+        # pickable=True,
+        tooltip=tooltip_stops
     )
 
-    st.pydeck_chart(r)
+    return [
+        line_layer,
+        stop_layer
+    ]

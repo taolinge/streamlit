@@ -224,15 +224,6 @@ def table_names_query() -> list:
     return res
 
 
-def postgis_query() -> pd.DataFrame:
-    conn = init_connection()
-    shapes_query = f"SELECT * FROM NTM_shapes"
-    stops_query = f"SELECT * FROM NTM_stops"
-    shapes_df = gpd.GeoDataFrame.from_postgis(shapes_query, conn)
-    stops_df = gpd.GeoDataFrame.from_postgis(stops_query, conn)
-    return shapes_df, stops_df
-
-
 @st.experimental_memo(ttl=1200)
 def read_table(table: str, columns: list = None, where: str = None, order_by: str = None,
                order: str = 'ASC', fred=False) -> pd.DataFrame:
@@ -552,6 +543,7 @@ def get_transit_shapes_geoms(columns: list = [], where: str = None) -> pd.DataFr
         query += f" WHERE {where}"
     query += ';'
     df = gpd.read_postgis(query, conn)
+    df.drop_duplicates(subset=['geom'], inplace=True)
     return df
 
 

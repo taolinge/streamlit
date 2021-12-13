@@ -1,5 +1,6 @@
 import base64
 import pandas as pd
+import numpy as np
 from six import BytesIO
 import geopandas as gpd
 
@@ -90,3 +91,17 @@ def convert_geom(geo_df: pd.DataFrame, data_df: pd.DataFrame, map_features: list
     geo_df['coordinates'] = geo_df.apply(lambda row: convert_coordinates(row), axis=1)
     geojson = make_geojson(geo_df, map_features)
     return geojson
+
+
+def coord_extractor(input_geom):
+    if (input_geom is None) or (input_geom is np.nan):
+        return []
+    else:
+        if input_geom.type[:len('multi')].lower() == 'multi':
+            full_coord_list = []
+            for geom_part in input_geom.geoms:
+                geom_part_2d_coords = [[coord[0],coord[1]] for coord in list(geom_part.coords)]
+                full_coord_list.append(geom_part_2d_coords)
+        else:
+            full_coord_list = [[coord[0],coord[1]] for coord in list(input_geom.coords)]
+        return full_coord_list

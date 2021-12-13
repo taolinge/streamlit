@@ -197,11 +197,11 @@ def census_equity_explorer():
         select_data = {'All census tracts in selected region': transport_df, 'Equity Geographies only': transport_epc}
         select_geo = {'All census tracts in selected region': geo_df, 'Equity Geographies only': geo_epc}
 
-        visualization.make_transport_census_map(select_geo[radio_data], select_data[radio_data], feature)
+        visualization.make_transport_census_map(select_geo[radio_data], select_data[radio_data], feature, show_transit=False)
 
         transport_epc.drop(['geom'], inplace=True, axis=1)
         transport_df.drop(['geom'], inplace=True, axis=1)
-        st.write(f'### {feature}  across all Equity Geographies')
+        st.write(f'### {feature} across all Equity Geographies')
 
         visualization.make_transport_census_chart(transport_epc, averages, feature)
 
@@ -262,13 +262,12 @@ def census_equity_explorer():
                                )[0]
 
         selected = transport_index.head(num_tracts).reset_index()
-        selected_tracts = transport_epc.loc[transport_epc['Census Tract'].isin(selected['Census Tract'])]
+        selected_tracts = transport_epc.copy().loc[transport_epc['Census Tract'].isin(selected['Census Tract'])]
         selected_tracts['value'] = selected_tracts['Census Tract'].apply(lambda x: transport_index.loc[x])
-        selected_geo = geo_epc.loc[geo_epc['Census Tract'].isin(selected['Census Tract'])]
+        selected_geo = geo_epc.copy().loc[geo_epc['Census Tract'].isin(selected['Census Tract'])]
         selected_geo['Index Value'] = selected_geo['Census Tract'].apply(lambda x: round(transport_index.loc[x]))
 
-        visualization.make_transport_census_map(selected_geo, selected_tracts, 'Index Value')
-        # visualization.make_transit_map(selected_geo, selected_tracts, 'Index Value')
+        visualization.make_transport_census_map(selected_geo, selected_tracts, 'Index Value', show_transit=True)
 
         st.write('''
                 #### How are these Equity Geographies most vulnerable?            
