@@ -274,29 +274,26 @@ def census_equity_explorer():
                 ''')
         st.caption('Select a census tract from the list below to investigate relative transit access and demand.')
         transport_df.set_index('Census Tract', inplace=True)
+        selected_tract = st.selectbox('Census Tract ID', selected_tracts['Census Tract'])
 
-        col1, col2, col3 = st.columns((1, 1, 1))
+        col1, col2 = st.columns(2)
         with col1:
-            selected_tract = st.radio('Census Tract IDs', selected_tracts['Census Tract'])
-        with col2:
             for header in queries.TRANSPORT_CENSUS_HEADERS[(int(len(queries.TRANSPORT_CENSUS_HEADERS) / 2)):]:
                 st.metric(header,
                           value=str(round(transport_df.loc[selected_tract, header], 1)) + queries.TABLE_UNITS[header],
                           delta=str(round(transport_df.loc[selected_tract, header] - averages[header], 1)) +
                                 queries.TABLE_UNITS[header] + ' from county average')
-                st.write('')
-        with col3:
+        with col2:
             for header in queries.TRANSPORT_CENSUS_HEADERS[:(int(len(queries.TRANSPORT_CENSUS_HEADERS) / 2))]:
                 st.metric(header,
                           value=str(round(transport_df.loc[selected_tract, header], 1)) + queries.TABLE_UNITS[header],
                           delta=str(round(transport_df.loc[selected_tract, header] - averages[header], 1)) +
                                 queries.TABLE_UNITS[header] + ' from county average')
-                st.write('')
 
         with st.expander('View data at the census tract level'):
             st.caption('Values for selected indicators are shown for the census tracts with the highest index values')
             df = transport_df.loc[(transport_df.index).isin(selected['Census Tract'])][
-                queries.TRANSPORT_CENSUS_HEADERS + queries.POSITIVE_TRANSPORT_CENSUS_HEADERS].style.format("{:.1%}")
+                queries.TRANSPORT_CENSUS_HEADERS + queries.POSITIVE_TRANSPORT_CENSUS_HEADERS]
             st.dataframe(df)
             st.download_button('Download selected tract data', utils.to_excel(df),
                                file_name=f'{state}_selected_transport_data.xlsx')

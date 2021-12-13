@@ -578,7 +578,6 @@ def make_transit_layers(tract_df: pd.DataFrame):
 
     NTM_stops = queries.get_transit_stops_geoms(columns=['stop_name', 'stop_lat', 'stop_lon', 'geom'],
                                                 where=f" tract_id IN {tracts_str}")
-    # NTM_stops.rename(columns={"stop_name": "route_desc"})
 
     # tooltip = {
     #     "html": "<b>Description:</b>{route_desc}</br>" +
