@@ -388,31 +388,54 @@ def make_transport_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_featur
 
     if feat_type == 'numerical':
         geo_df_copy = geo_df_copy.astype({map_feature: 'float64'})
-
-    polygon_layer = pdk.Layer(
-        "PolygonLayer",
-        geo_df_copy,
-        get_polygon="coordinates",
-        filled=True,
-        get_fill_color='fill_color',
-        stroked=False,
-        opacity=0.15,
-        pickable=True,
-        auto_highlight=True,
-    )
-    layers = [polygon_layer]
-
+    
     if show_transit:
+        polygon_layer = pdk.Layer(
+            "PolygonLayer",
+            geo_df_copy,
+            get_polygon="coordinates",
+            filled=True,
+            get_fill_color= [210,43,161],
+            stroked=False,
+            opacity=0.15,
+            pickable=False,
+            auto_highlight=True,
+        )
+        layers = [polygon_layer]
+        
         transit_layers = make_transit_layers(tract_df=df)
         layers += transit_layers
+        tooltip = {
+            "html": "<b>Description: </b>{route_long_name}</br>" +
+                    "<b>Type: </b>{route_type_text}</br>"
+    }
+        r = pdk.Deck(
+            layers=layers,
+            initial_view_state=view_state,
+            map_style=pdk.map_styles.LIGHT,
+            tooltip=tooltip
+        )
+        
+    else:
+        polygon_layer = pdk.Layer(
+            "PolygonLayer",
+            geo_df_copy,
+            get_polygon="coordinates",
+            filled=True,
+            get_fill_color='fill_color',
+            stroked=False,
+            opacity=0.15,
+            pickable=True,
+            auto_highlight=True,
+        )
+        layers = [polygon_layer]
 
-    r = pdk.Deck(
-        layers=layers,
-        initial_view_state=view_state,
-        map_style=pdk.map_styles.LIGHT,
-        tooltip=tooltip
-
-    )
+        r = pdk.Deck(
+            layers=layers,
+            initial_view_state=view_state,
+            map_style=pdk.map_styles.LIGHT,
+            tooltip=tooltip
+        )
 
     st.pydeck_chart(r)
 
@@ -569,47 +592,65 @@ def make_transit_layers(tract_df: pd.DataFrame):
     tracts = tract_df['Census Tract'].to_list()
     tracts_str = str(tuple(tracts)).replace(',)', ')')
 
-    NTM_shapes = queries.get_transit_shapes_geoms(columns=['route_desc', 'route_type_text', 'length', 'geom'],
+    NTM_shapes = queries.get_transit_shapes_geoms(columns=['route_desc', 'route_type_text', 'length', 'geom', 'tract_id', 'route_long_name'],
                                                   where=f" tract_id IN {tracts_str}")
-    lines=NTM_shapes['route_desc'].tolist()
-    NTM_shapes['color'] = [random.choice(COLOR_VALUES) for _ in lines]
-    NTM_shapes['path']=NTM_shapes['geom'].apply(utils.coord_extractor)
-
-
     NTM_stops = queries.get_transit_stops_geoms(columns=['stop_name', 'stop_lat', 'stop_lon', 'geom'],
                                                 where=f" tract_id IN {tracts_str}")
+    # lines=NTM_shapes['route_desc'].tolist()
+    # NTM_shapes['color'] = [random.choice(COLOR_VALUES) for _ in lines]
+    
+    if NTM_shapes.empty:
+        st.write("Transit lines have not been identified in this region.")
+        line_layer=None
+    else:
+        NTM_shapes['path']=NTM_shapes['geom'].apply(utils.coord_extractor)
+        NTM_shapes.fillna("N/A", inplace=True)
+        color_lookup = pdk.data_utils.assign_random_colors(NTM_shapes['route_type_text'])
+        NTM_shapes['color'] = NTM_shapes.apply(lambda row: color_lookup.get(row['route_type_text']), axis=1)
+        
+        
+        NTM_shapes['alt_color'] = NTM_shapes['color'].apply(lambda x: "#%02x%02x%02x" % (x[0], x[1], x[2]))
 
-    # tooltip = {
-    #     "html": "<b>Description:</b>{route_desc}</br>" +
-    #             "<b>Type:</b>{route_type_text}</br>" +
-    #             "<b>Length:</b>{length}"
-    # }
-    line_layer = pdk.Layer(
-        "PathLayer",
-        NTM_shapes,
-        get_color='color',
-        get_width=8,
-        # highlight_color=[176, 203, 156],
-        # picking_radius=6,
-        auto_highlight=True,
-        # pickable=True,
-        width_min_pixels=2,
-        get_path="path",
-    )
-
-    tooltip_stops = {
-        "html": "<b>{stop_name}</b>"
-    }
-    stop_layer = pdk.Layer(
-        'ScatterplotLayer',
-        NTM_stops,
-        get_position=['stop_lon', 'stop_lat'],
-        auto_highlight=True,
-        get_radius=48,
-        get_fill_color=[255, 140, 0],
-        # pickable=True,
-        tooltip=tooltip_stops
-    )
+        bar = alt.Chart(NTM_shapes[['length', 'route_type_text', 'alt_color', 'tract_id', 'route_long_name']]).mark_bar().encode(
+            y=alt.Y('route_type_text:O', title=None, axis=alt.Axis(labelFontWeight='bolder')),
+            # column=alt.Column('count(length):Q', title=None, bin=None), 
+            x=alt.X('tract_id:N', title='Equity Geography Census Tracts', axis=alt.Axis(orient='top', labelAngle=0)),
+            color=alt.Color('alt_color', scale = None),
+            tooltip=['tract_id']) \
+            .interactive()
+        
+        st.altair_chart(bar, use_container_width=True)
+        
+        line_layer = pdk.Layer(
+            "PathLayer",
+            NTM_shapes,
+            get_color='color',
+            get_width=12,
+            # highlight_color=[176, 203, 156],
+            picking_radius=6,
+            auto_highlight=True,
+            pickable=True,
+            width_min_pixels=2,
+            get_path="path"
+        )
+        
+    if NTM_stops.empty:
+        st.write("Transit stops have not been identified in this region.")
+        stop_layer=None
+    else:
+        tooltip_stops = {
+            "html": "<b>{stop_name}</b>"
+        }
+        stop_layer = pdk.Layer(
+            'ScatterplotLayer',
+            NTM_stops,
+            get_position=['stop_lon', 'stop_lat'],
+            auto_highlight=True,
+            get_radius=36,
+            get_fill_color=[255, 140, 0],
+            # pickable=True,
+            tooltip=tooltip_stops
+        )
 
     return [
         line_layer,

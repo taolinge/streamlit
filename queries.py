@@ -667,7 +667,7 @@ def clean_equity_data(data: pd.DataFrame) -> pd.DataFrame:
     data['Age 65 or Over (%)'] = data['Age 65 or Over'] / data['total_population']
     data['Limited English Proficiency (%)'] = data['speak_eng_not_well'] / (data['native'] + data['foreign_born'])
     data['Single Parent Family (%)'] = data['single_parent'] / data['total_families']
-    data['Zero-Vehicle Household (%)'] = data['percent_hh_0_veh']
+    data['Zero-Vehicle Household (%)'] = data['percent_hh_0_veh']/100
     data['People of Color (%)'] = data['non-white'] / data['total_population']
 
     for header in (EQUITY_CENSUS_POC_LOW_INCOME + EQUITY_CENSUS_REMAINING_HEADERS):
