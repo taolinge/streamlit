@@ -395,9 +395,9 @@ def make_transport_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_featur
             geo_df_copy,
             get_polygon="coordinates",
             filled=True,
-            get_fill_color= [210,43,161],
+            get_fill_color= [244, 211, 94],
             stroked=False,
-            opacity=0.15,
+            opacity=0.5,
             pickable=False,
             auto_highlight=True,
         )
@@ -605,12 +605,13 @@ def make_transit_layers(tract_df: pd.DataFrame):
     else:
         NTM_shapes['path']=NTM_shapes['geom'].apply(utils.coord_extractor)
         NTM_shapes.fillna("N/A", inplace=True)
-        color_lookup = pdk.data_utils.assign_random_colors(NTM_shapes['route_type_text'])
-        NTM_shapes['color'] = NTM_shapes.apply(lambda row: color_lookup.get(row['route_type_text']), axis=1)
-        
-        
+     
+        route_colors={}
+        for count, value in enumerate(NTM_shapes['route_type_text'].unique()):
+            route_colors[value] = COLOR_VALUES[count]
+        NTM_shapes['color'] = NTM_shapes['route_type_text'].apply(lambda x: route_colors[x])
         NTM_shapes['alt_color'] = NTM_shapes['color'].apply(lambda x: "#%02x%02x%02x" % (x[0], x[1], x[2]))
-
+        
         bar = alt.Chart(NTM_shapes[['length', 'route_type_text', 'alt_color', 'tract_id', 'route_long_name']]).mark_bar().encode(
             y=alt.Y('route_type_text:O', title=None, axis=alt.Axis(labelFontWeight='bolder')),
             # column=alt.Column('count(length):Q', title=None, bin=None), 
