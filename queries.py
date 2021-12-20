@@ -116,59 +116,65 @@ TABLE_UNITS = {
 }
 
 # @st.cache(allow_output_mutation=True, hash_funcs={"_thread.RLock": lambda _: None})
-CENSUS_TABLES = ['population_below_poverty_double',
-                 'commuting_characteristics',
-                 'disability_status',
-                 'educational_attainment',
-                 'employment_status',
-                 'english_proficiency',
-                 'family_type',
-                 'hispanic_or_latino_origin_by_race',
-                 'household_job_availability',
-                 'household_technology_availability',
-                 'household_vehicle_availability',
-                 'housing_units_in_structure',
-                 'level_of_urbanicity',
-                 'occupants_per_bedroom',
-                 'poverty_status',
-                 'resident_population_census_tract',
-                 'sex_by_age',
-                 'sex_of_workers_by_vehicles_available',
-                 'trip_miles',
-                 # 'walkability_index'
-                 ]
+CENSUS_TABLES = [
+    'commuting_characteristics',
+    'disability_status',
+    'educational_attainment',
+    'employment_status',
+    'english_proficiency',
+    'family_type',
+    'group_quarters_population',
+    'hispanic_or_latino_origin_by_race',
+    'household_job_availability',
+    'household_technology_availability',
+    'household_vehicle_availability',
+    'housing_units_in_structure',
+    'level_of_urbanicity',
+    'median_household_income',
+    # 'ntm_shapes',
+    # 'ntm_stops',
+    'occupants_per_bedroom',
+    'per_capita_income',
+    'population_below_poverty_double',
+    'poverty_status',
+    'resident_population_census_tract',
+    'sex_by_age',
+    'sex_of_workers_by_vehicles_available',
+    'trip_miles'
+    # 'walkability_index'
+]
 
 EQUITY_CENSUS_TABLES = [
     'poverty_status',
-                        #  'resident_population_census_tract',
-                        'population_below_poverty_double',
-                        'sex_by_age',
-                        'english_proficiency',
-                        'household_vehicle_availability',
-                        'hispanic_or_latino_origin_by_race',
-                        'disability_status',
-                        'family_type'
-                        ]
+    #  'resident_population_census_tract',
+    'population_below_poverty_double',
+    'sex_by_age',
+    'english_proficiency',
+    'household_vehicle_availability',
+    'hispanic_or_latino_origin_by_race',
+    'disability_status',
+    'family_type'
+]
 
 TRANSPORT_CENSUS_TABLES = [
     'poverty_status',
-                        #  'resident_population_census_tract',
-                        'population_below_poverty_double',
-                        'sex_by_age',
-                        'english_proficiency',
-                        'household_vehicle_availability',
-                        'hispanic_or_latino_origin_by_race',
-                        'disability_status',
-                        'family_type',
-                        'household_vehicle_availability',
-                        'level_of_urbanicity',
-                        'trip_miles',
-                        # 'walkability_index',
-                        'housing_units_in_structure',
-                        'median_household_income',
-                        'household_technology_availability',
-                        'commuting_characteristics'
-                           ]
+    #  'resident_population_census_tract',
+    'population_below_poverty_double',
+    'sex_by_age',
+    'english_proficiency',
+    'household_vehicle_availability',
+    'hispanic_or_latino_origin_by_race',
+    'disability_status',
+    'family_type',
+    'household_vehicle_availability',
+    'level_of_urbanicity',
+    'trip_miles',
+    # 'walkability_index',
+    'housing_units_in_structure',
+    'median_household_income',
+    'household_technology_availability',
+    'commuting_characteristics'
+]
 
 
 def init_engine():
@@ -372,7 +378,7 @@ def get_all_county_data(state: str, counties: list) -> pd.DataFrame:
     demo_df['Non-White Population'] = (demo_df['black'] + demo_df['ameri_es'] + demo_df['asian'] + demo_df[
         'hawn_pi'] + demo_df['hispanic'] + demo_df['other'] + demo_df['mult_race'])
     demo_df['Age 19 or Under'] = (
-                demo_df['age_under5'] + demo_df['age_5_9'] + demo_df['age_10_14'] + demo_df['age_15_19'])
+            demo_df['age_under5'] + demo_df['age_5_9'] + demo_df['age_10_14'] + demo_df['age_15_19'])
     demo_df['Age 65 or Over'] = (demo_df['age_65_74'] + demo_df['age_75_84'] + demo_df['age_85_up'])
     demo_df['Non-White Population (%)'] = demo_df['Non-White Population'] / demo_df['population'] * 100
     demo_df['fips'] = demo_df['fips'].astype(int)
@@ -667,7 +673,7 @@ def clean_equity_data(data: pd.DataFrame) -> pd.DataFrame:
     data['Age 65 or Over (%)'] = data['Age 65 or Over'] / data['total_population']
     data['Limited English Proficiency (%)'] = data['speak_eng_not_well'] / (data['native'] + data['foreign_born'])
     data['Single Parent Family (%)'] = data['single_parent'] / data['total_families']
-    data['Zero-Vehicle Household (%)'] = data['percent_hh_0_veh']/100
+    data['Zero-Vehicle Household (%)'] = data['percent_hh_0_veh'] / 100
     data['People of Color (%)'] = data['non-white'] / data['total_population']
 
     for header in (EQUITY_CENSUS_POC_LOW_INCOME + EQUITY_CENSUS_REMAINING_HEADERS):
@@ -690,10 +696,10 @@ def clean_transport_data(data: pd.DataFrame, epc: pd.DataFrame) -> pd.DataFrame:
     data['non-white'] = data['total_population'] - data['not_hisp_or_latino_white']
     data['People of Color (%)'] = 100 * (data['non-white'] / data['total_population'])
     data['No Computer Households (%)'] = 100 * (data['household_no_computing_device'] / (
-                data['household_no_computing_device'] + data['household_computer'] + data[
-            'household_smartphone_no_computer'] + data['household_no_internet'] + data['household_broadband']))
+            data['household_no_computing_device'] + data['household_computer'] + data[
+        'household_smartphone_no_computer'] + data['household_no_internet'] + data['household_broadband']))
     data['200% Below Poverty Level (%)'] = 100 * (
-                data['200_below_pov_level'] / data['population_for_whom_poverty_status_is_determined'])
+            data['200_below_pov_level'] / data['population_for_whom_poverty_status_is_determined'])
     data['Renter Occupied Units (%)'] = 100 * (data['renter-occ_units'] / data['occupied_housing_units'])
 
     data.rename({
@@ -789,13 +795,13 @@ def clean_equity_data(data: pd.DataFrame) -> pd.DataFrame:
                                     )
 
     data['speak_eng_not_well'] = (
-                data['foreign_speak_spanish_speak_eng_not_well'] + data['foreign_speak_spanish_speak_eng_not_at_all'] +
-                data['foreign_speak_other_indo-euro_speak_eng_not_well'] + data[
-                    'foreign_speak_other_indo-euro_speak_eng_not_at_all'] +
-                data['foreign_speak_asian_or_pac_isl_lang_speak_eng_not_well'] + data[
-                    'foreign_speak_asian_or_pac_isl_lang_speak_eng_not_at_all'] +
-                data['foreign_speak_other_speak_eng_not_well'] + data['foreign_speak_other_speak_eng_not_at_all']
-                )
+            data['foreign_speak_spanish_speak_eng_not_well'] + data['foreign_speak_spanish_speak_eng_not_at_all'] +
+            data['foreign_speak_other_indo-euro_speak_eng_not_well'] + data[
+                'foreign_speak_other_indo-euro_speak_eng_not_at_all'] +
+            data['foreign_speak_asian_or_pac_isl_lang_speak_eng_not_well'] + data[
+                'foreign_speak_asian_or_pac_isl_lang_speak_eng_not_at_all'] +
+            data['foreign_speak_other_speak_eng_not_well'] + data['foreign_speak_other_speak_eng_not_at_all']
+    )
 
     data['single_parent'] = data['other_male_householder_no_spouse_w_kids'] + data[
         'other_female_householder_no_spouse_w_kids']
@@ -830,36 +836,40 @@ def clean_transport_data(data: pd.DataFrame, epc: pd.DataFrame) -> pd.DataFrame:
     data.drop(['total_workers_commute'], axis=1, inplace=True)
 
     data['non-white'] = data['total_population'] - data['not_hisp_or_latino_white']
-    data['People of Color (%)'] = 100*(data['non-white']/data['total_population'])
-    data['No Computer Households (%)'] = 100*(data['household_no_computing_device']/(data['household_no_computing_device']+data['household_computer']+data['household_smartphone_no_computer']+data['household_no_internet']+data['household_broadband']))
-    data['200% Below Poverty Level (%)'] = 100*(data['200_below_pov_level']/data['population_for_whom_poverty_status_is_determined'])
-    data['Renter Occupied Units (%)'] = 100*(data['renter-occ_units']/data['occupied_housing_units'])
+    data['People of Color (%)'] = 100 * (data['non-white'] / data['total_population'])
+    data['No Computer Households (%)'] = 100 * (data['household_no_computing_device'] / (
+                data['household_no_computing_device'] + data['household_computer'] + data[
+            'household_smartphone_no_computer'] + data['household_no_internet'] + data['household_broadband']))
+    data['200% Below Poverty Level (%)'] = 100 * (
+                data['200_below_pov_level'] / data['population_for_whom_poverty_status_is_determined'])
+    data['Renter Occupied Units (%)'] = 100 * (data['renter-occ_units'] / data['occupied_housing_units'])
     data['Age 19 or Under'] = (
             data['female_under_5'] + data['female_5_to_9'] + data['female_10_to_14'] +
             data['female_15_to_17'] + data['female_18_and_19'] +
             data['male_under_5'] + data['male_5_to_9'] + data['male_10_to_14'] +
             data['male_15_to_17'] + data['male_18_and_19']
     )
-    data['Age 19 or Under (%)'] = 100*(data['Age 19 or Under'] / data['total_population'])
+    data['Age 19 or Under (%)'] = 100 * (data['Age 19 or Under'] / data['total_population'])
     data['Age 65 or Over'] = (
             data['female_65_and_66'] + data['female_67_to_69'] + data['female_70_to_74'] +
             data['female_75_to_79'] + data['female_80_to_84'] + data['female_85_and_over'] +
             data['male_65_and_66'] + data['male_67_to_69'] + data['male_70_to_74'] +
             data['male_75_to_79'] + data['male_80_to_84'] + data['male_85_and_over']
     )
-    data['Age 65 or Over (%)'] = 100*(data['Age 65 or Over'] / data['total_population'])
+    data['Age 65 or Over (%)'] = 100 * (data['Age 65 or Over'] / data['total_population'])
     data['speak_eng_not_well'] = (
-                data['foreign_speak_spanish_speak_eng_not_well'] + data['foreign_speak_spanish_speak_eng_not_at_all'] +
-                data['foreign_speak_other_indo-euro_speak_eng_not_well'] + data[
-                    'foreign_speak_other_indo-euro_speak_eng_not_at_all'] +
-                data['foreign_speak_asian_or_pac_isl_lang_speak_eng_not_well'] + data[
-                    'foreign_speak_asian_or_pac_isl_lang_speak_eng_not_at_all'] +
-                data['foreign_speak_other_speak_eng_not_well'] + data['foreign_speak_other_speak_eng_not_at_all']
-                )
-    data['Limited English Proficiency (%)'] = 100*(data['speak_eng_not_well'] / (data['native'] + data['foreign_born']))
+            data['foreign_speak_spanish_speak_eng_not_well'] + data['foreign_speak_spanish_speak_eng_not_at_all'] +
+            data['foreign_speak_other_indo-euro_speak_eng_not_well'] + data[
+                'foreign_speak_other_indo-euro_speak_eng_not_at_all'] +
+            data['foreign_speak_asian_or_pac_isl_lang_speak_eng_not_well'] + data[
+                'foreign_speak_asian_or_pac_isl_lang_speak_eng_not_at_all'] +
+            data['foreign_speak_other_speak_eng_not_well'] + data['foreign_speak_other_speak_eng_not_at_all']
+    )
+    data['Limited English Proficiency (%)'] = 100 * (
+                data['speak_eng_not_well'] / (data['native'] + data['foreign_born']))
     data['single_parent'] = data['other_male_householder_no_spouse_w_kids'] + data[
         'other_female_householder_no_spouse_w_kids']
-    data['Single Parent Family (%)'] = 100*(data['single_parent'] / data['total_families'])
+    data['Single Parent Family (%)'] = 100 * (data['single_parent'] / data['total_families'])
 
     data.rename({
         'percent_hh_0_veh': 'Zero-Vehicle Households (%)',

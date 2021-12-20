@@ -116,7 +116,8 @@ def census_data_explorer():
         visualization.make_census_chart(df, single_feature)
 
         geo_df = geo_df[['geom', 'Census Tract']]
-        visualization.make_map(geo_df, df, single_feature)
+        show_transit=st.checkbox('Show transit lines and stops')
+        visualization.make_map(geo_df, df, single_feature, show_transit=show_transit)
         if len(feature_labels) > 2:
             st.write('''
                 ### Compare Features
