@@ -74,13 +74,13 @@ def convert_coordinates(row) -> list:
 def convert_geom(geo_df: pd.DataFrame, data_df: pd.DataFrame, map_features: list) -> dict:
     if 'Census Tract' not in data_df:
         data_df = data_df[['county_id'] + map_features]
-        data_df=data_df.round(3)
+        data_df = data_df.round(3)
         cols_to_use = list(data_df.columns.difference(geo_df.columns))
         cols_to_use.append('county_id')
         geo_df = geo_df.merge(data_df[cols_to_use], on='county_id', how="outer")
     else:
         data_df = data_df[['Census Tract'] + map_features]
-        data_df=data_df.round(3)
+        data_df = data_df.round(3)
 
         geo_df = geo_df.merge(data_df, on='Census Tract')
 
@@ -100,8 +100,8 @@ def coord_extractor(input_geom):
         if input_geom.type[:len('multi')].lower() == 'multi':
             full_coord_list = []
             for geom_part in input_geom.geoms:
-                geom_part_2d_coords = [[coord[0],coord[1]] for coord in list(geom_part.coords)]
+                geom_part_2d_coords = [[coord[0], coord[1]] for coord in list(geom_part.coords)]
                 full_coord_list.append(geom_part_2d_coords)
         else:
-            full_coord_list = [[coord[0],coord[1]] for coord in list(input_geom.coords)]
+            full_coord_list = [[coord[0], coord[1]] for coord in list(input_geom.coords)]
         return full_coord_list

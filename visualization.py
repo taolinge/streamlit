@@ -1,5 +1,4 @@
 import random
-from os import name
 import streamlit as st
 import pandas as pd
 import geopandas as gpd
@@ -45,25 +44,31 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str, data_form
     scaler = pre.MinMaxScaler()
     feat_series = geo_df_copy[label]
     feat_type = None
+
     if feat_series.dtype == 'object':
         try:
-            feat_type = 'category'
-            feat_dict = {k: (i % 10) / 10 for i, k in enumerate(
-                feat_series.unique())}  # max 10 categories, following from constants.BREAK, enumerated rather than encoded
-            normalized_vals = feat_series.apply(lambda x: feat_dict[x])  # getting normalized vals, manually.
+            # feat_dict = {k: (i % 10) / 10 for i, k in enumerate(
+            #     feat_series.unique())}  # max 10 categories, following from constants.BREAK, enumerated rather than encoded
+            # normalized_vals = feat_series.apply(lambda x: feat_dict[x])  # getting normalized vals, manually.
+            color_lookup = pdk.data_utils.assign_random_colors(geo_df_copy[map_feature])
+            geo_df_copy['fill_color'] = geo_df_copy.apply(lambda row: color_lookup.get(row[map_feature]), axis=1)
         except TypeError:
-            feat_type = 'numerical'
             normalized_vals = scaler.fit_transform(
                 pd.DataFrame(feat_series)
             )
+            colors = list(map(color_scale, normalized_vals))
+            geo_df_copy['fill_color'] = colors
+            geo_df_copy.fillna(0, inplace=True)
+            geo_df_copy = geo_df_copy.astype({label: 'float64'})
     else:
-        feat_type = 'numerical'
         normalized_vals = scaler.fit_transform(
             pd.DataFrame(feat_series)
         )
-    colors = list(map(color_scale, normalized_vals))
-    geo_df_copy['fill_color'] = colors
-    geo_df_copy.fillna(0, inplace=True)
+        colors = list(map(color_scale, normalized_vals))
+        geo_df_copy['fill_color'] = colors
+        geo_df_copy.fillna(0, inplace=True)
+        geo_df_copy = geo_df_copy.astype({label: 'float64'})
+
 
     tooltip = {"html": ""}
     if 'Census Tract' in set(geo_df_copy.columns):
@@ -81,8 +86,6 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str, data_form
     else:
         view_state = pdk.ViewState(
             **{"latitude": 36, "longitude": -95, "zoom": 3, "maxZoom": 16, "pitch": 0, "bearing": 0})
-
-    geo_df_copy = geo_df_copy.astype({label: 'float64'})
 
     polygon_layer = pdk.Layer(
         "PolygonLayer",
@@ -110,6 +113,7 @@ def make_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str, data_form
         st.pydeck_chart(r)
     except Exception as e:
         print(e)
+
 
 def make_correlation_plot(df: pd.DataFrame, feature_cols: list):
     for feature in feature_cols:
@@ -595,7 +599,7 @@ def make_simple_chart(df: pd.DataFrame, feature: str):
     st.altair_chart(bar, use_container_width=True)
 
 
-def make_transit_layers(tract_df: pd.DataFrame, pickable:bool=True):
+def make_transit_layers(tract_df: pd.DataFrame, pickable: bool = True):
     tracts = tract_df['Census Tract'].to_list()
     tracts_str = str(tuple(tracts)).replace(',)', ')')
 
@@ -603,8 +607,8 @@ def make_transit_layers(tract_df: pd.DataFrame, pickable:bool=True):
         columns=['route_desc', 'route_type_text', 'length', 'geom', 'tract_id', 'route_long_name'],
         where=f" tract_id IN {tracts_str}")
 
-    tolerance = 0.00005
-    NTM_shapes['geom']=NTM_shapes['geom'].apply(lambda x: x.simplify(tolerance, preserve_topology=False))
+    tolerance = 0.0000750
+    NTM_shapes['geom'] = NTM_shapes['geom'].apply(lambda x: x.simplify(tolerance, preserve_topology=False))
 
     NTM_stops = queries.get_transit_stops_geoms(columns=['stop_name', 'stop_lat', 'stop_lon', 'geom'],
                                                 where=f" tract_id IN {tracts_str}")
@@ -629,7 +633,7 @@ def make_transit_layers(tract_df: pd.DataFrame, pickable:bool=True):
             NTM_shapes[['length', 'route_type_text', 'alt_color', 'tract_id', 'route_long_name']]).mark_bar().encode(
             y=alt.Y('route_type_text:O', title=None, axis=alt.Axis(labelFontWeight='bolder')),
             # column=alt.Column('count(length):Q', title=None, bin=None), 
-            x=alt.X('tract_id:N', title='Equity Geography Census Tracts', axis=alt.Axis(orient='top', labelAngle=0)),
+            x=alt.X('tract_id:N', title='Census Tracts', axis=alt.Axis(orient='top', labelAngle=0)),
             color=alt.Color('alt_color', scale=None),
             tooltip=['tract_id']) \
             .interactive()
