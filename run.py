@@ -149,8 +149,10 @@ def run_UI():
         }
     )
     st.sidebar.title('Arup Social Data')
-
-    page=st.sidebar.radio('Navigation', PAGES, index=st.session_state.page)
+    if st.session_state.page:
+        page=st.sidebar.radio('Navigation', PAGES, index=st.session_state.page)
+    else:
+        page='Data Explorer'
 
     st.experimental_set_query_params(page=page)
 
@@ -199,7 +201,6 @@ if __name__ == '__main__':
     if st._is_running_with_streamlit:
         url_params = st.experimental_get_query_params()
         if 'loaded' not in st.session_state:
-            print('init state')
             if len(url_params.keys()) == 0:
                 st.experimental_set_query_params(page='Data Explorer')
                 url_params = st.experimental_get_query_params()
@@ -208,7 +209,6 @@ if __name__ == '__main__':
             st.session_state['data_type'] = 'County Level'
             st.session_state['data_format'] = 'Raw Values'
             st.session_state['loaded'] = False
-
 
         run_UI()
     else:
