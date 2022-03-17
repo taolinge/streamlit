@@ -152,7 +152,7 @@ def run_UI():
     if st.session_state.page:
         page=st.sidebar.radio('Navigation', PAGES, index=st.session_state.page)
     else:
-        page=st.sidebar.radio('Navigation', PAGES, index=0)
+        page=st.sidebar.radio('Navigation', PAGES, index=1)
 
     st.experimental_set_query_params(page=page)
 
@@ -205,7 +205,7 @@ if __name__ == '__main__':
                 st.experimental_set_query_params(page='Data Explorer')
                 url_params = st.experimental_get_query_params()
 
-            st.session_state.page = PAGES.index(url_params['page'][0])
+            st.session_state.page = PAGES.index(url_params['page'][1])
             st.session_state['data_type'] = 'County Level'
             st.session_state['data_format'] = 'Raw Values'
             st.session_state['loaded'] = False
