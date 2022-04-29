@@ -3,7 +3,26 @@
 
 This is a repository for collection and analysis of open social data. This type of data can be useful to planners, NGO's, governments, firms, and anyone trying to address social problems through data.
 
-The bulk of the analysis is related to evictions as a result of COVID-19. This repository gathers data from the Federal Reserve Economic Data portal (FRED). There are a number of potential use cases we're aware of to apply that data to address evictions. This analysis allows us to compare counties side by side by their "Relative Risk" of evictions.
+## Workflows
+This repository currently two primary workflows:
+
+1. Data Explorer: View and analyze all the data in the database at the county or census tract level. You can also download a selection of the data as an Excel file for further analysis. 
+2. Equity Explorer: identify vulnerable and historically under-served geographies at the census tract level.
+3. Eviction Analysis: Conduct a specific analysis of the relative risk of eviction for a selection of counties. 
+
+These workflows support a number of use cases, including:
+
+- Determining which areas of a city have the most access to transportation
+- Providing context to determine how to distribute direct assistance to families in one or more counties
+- Comparing different variables across datasets to see how they're correlated, such as household income and educational attainment.
+- Generating out per capita or per square mile indicators such as concentration of houses per square mile in a county
+- Overlaying public transportation routes on top of indicators like median income
+- Comparing the relative risk of eviction between counties
+
+There are three ways to interact with this data.
+- Web interface - You can use the interactive UI either on the web or run locally
+- Python scripts - Include functions to gather, clean, and analyze data to output a relative risk ranking for multiple counties. Can be extended with your own scripts. 
+- Custom SQL Queries - SQL that you write to get the most recent data from our database and use however you want. 
 
 ## No code, no problem
 Not a developer? Just don't want to code today? No problem! You can access the data using our web app at the link below.
@@ -67,28 +86,10 @@ DB_USER = readuser
 DB_PASSWORD = password
 ```
 
-## Workflows
-This repository currently two primary workflows:
-
-1. Viewing and examining the data in the database and downloading raw data for your own analysis
-2. Gathering data for counties in the US and comparing their Relative Risk of eviction
-
-Currently we support census tract level data for the Data Exploration workflow
-
-These workflows support a number of use cases, including:
-- Providing direct assistance to families in one or more counties
-- Driving decisions around future affordable housing projects
-- Directing policy response on the city or county level
-
-There are three ways to interact with this data.
-- Web interface - You can use the interactive UI either on the web or run locally
-- Python scripts - Include functions to gather, clean, and analyze data to output a relative risk ranking for multiple counties. Can be extended with your own scripts. 
-- Custom SQL Queries - SQL that you write to get the most recent data from our database and use however you want. 
-
 ## About the data
-We currently have almost 40 tables in the database, representing over 2 million rows of data.
+We currently have 56 tables in the database, representing over 2 million rows of data.
 
-This data is the most recent data we could get, but some datasets are updated more frequently than others. You can see the date that the data was updated in `all_tables.xlsx`. We refresh the data monthly on the first of the month. Some datasets are at the county level and some are at the census tract level. The following datasets are currently in the database:
+This data is the most recent data we could get, but some datasets are updated more frequently than others. Some datasets are at the county level and some are at the census tract level. The following datasets are currently in the database:
 
 | Feature Name | Resolution | Source | Updated | Notes | 
 | ------------ | ---------- | ------ | ------- | ----- |
@@ -207,8 +208,7 @@ This page is used to keep track of time-dependent policies and generate a "count
 This page is used to collect and represent the specific policy nuanced not captured by the timeline. For each county, enter a `1` in each cell where a policy applies. These values are weighted according the methodology used by EvictionLab (with a couple minor modifications) to get an index score for each county.
 
 #### Analysis Data
-This page collects the results from the previous two pages in a format that can be more easily read by the Python scripts. You may need to copy the countdown and policy index values for each county you're analyzing. 
-
+This page collects the results from the previous two pages in a format that can be more easily read by the Python scripts. You may need to copy the countdown and policy index values for each county you're analyzing.
 
 ## Contributing
 We would love for you to use this code, build on it, and share with others. See [our contribution guide](CONTRIBUTING.md) and [code of conduct](CODE_OF_CONDUCT.md)  for more information.
