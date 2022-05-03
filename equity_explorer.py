@@ -301,7 +301,7 @@ def census_equity_explorer():
                                file_name=f'{state}_selected_transport_data.xlsx')
         
         st.write('''
-                #### Where does transit exist currently?            
+                #### Do the Equity Geographies have access to public transit?            
                 ''')
-        st.caption('The chart and map here show where existing transit lines are located. Scroll over the transit lines in the map to view the name of the transit system.')
+        st.caption('The chart and map here show where existing transit lines are located for the selected Equity Geographies only. Scroll over the transit lines in the map to view the name of the transit system.')
         visualization.make_transport_census_map(selected_geo_copy, selected_tracts_copy, feature, show_transit=True)
