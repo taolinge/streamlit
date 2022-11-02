@@ -2,6 +2,7 @@ import os
 import sys
 import psycopg2
 import pandas as pd
+import fiona
 import geopandas as gpd
 from sqlalchemy import create_engine
 from shapely import wkb
@@ -64,6 +65,11 @@ EQUITY_CENSUS_POC_LOW_INCOME = [
 EQUITY_CENSUS_REMAINING_HEADERS = [
     'People with Disability', 'Age 19 or Under', 'Age 65 or Over',
     'Limited English Proficiency', 'Single Parent Family', 'Zero-Vehicle Household'
+]
+
+CLIMATE_CENSUS_HEADERS = [
+    # 'coastal_flooding', 'hail','hurricane','ice_storm', 'riverine_flooding','tsunami'
+    'Coastal Flooding Risk', 'Hail Risk', 'Hurricane Risk', 'Ice Storm Risk', 'Riverine Flooding Risk', 'Tsunami Risk'
 ]
 
 TRANSPORT_CENSUS_HEADERS = [
@@ -153,7 +159,7 @@ EQUITY_CENSUS_TABLES = [
     'household_vehicle_availability',
     'hispanic_or_latino_origin_by_race',
     'disability_status',
-    'family_type'
+    'family_type',
 ]
 
 TRANSPORT_CENSUS_TABLES = [
@@ -174,6 +180,10 @@ TRANSPORT_CENSUS_TABLES = [
     'median_household_income',
     'household_technology_availability',
     'commuting_characteristics'
+]
+
+CLIMATE_CENSUS_TABLES = [
+    'national_risk_index'
 ]
 
 
@@ -686,6 +696,33 @@ def clean_equity_data(data: pd.DataFrame) -> pd.DataFrame:
     data['Criteria B'] = False
 
     return data
+
+def clean_climate_data(data: pd.DataFrame, epc: pd.DataFrame) -> pd.DataFrame:
+    hazards = ['coastal_flooding', 'hail','hurricane','ice_storm', 'riverine_flooding','tsunami']
+        # 'avalanche', 'coastal_flooding', 'cold_wave', 'drought', 'earthquake', 'hail', 'heat_wave', 'hurricane',
+        #        'ice_storm', 'landslide', 'lightning', 'riverine_flooding', 'strong_wind', 'tornado', 'tsunami',
+        #        'volcanic_activity', 'wildfire', 'winter_weather'
+    risk_score = ['Census Tract', 'geom']+[hazard+ '_risk_score' for hazard in hazards]
+
+    data = data[risk_score].copy()
+    new_column_names = [" ".join([word.capitalize() for word in x]) for x in data.columns.str.split('_')]
+    data.columns = new_column_names
+    data.rename(columns={'Census tract':'Census Tract', 'Geom':'geom'}, inplace=True)
+    # st.table(epc.columns)
+    # st.table(data.columns)
+    averages = {}
+    epc_averages = {}
+
+    for x in data.columns[2:]:
+        averages[x] = data[x].mean()
+        epc_averages[x] = data.loc[data['Census Tract'].isin(epc['Census Tract'])][x].mean()
+    climate_epc = data.loc[data['Census Tract'].isin(epc['Census Tract'])]
+
+    normalized_data = data.copy()
+    normalized_data[data.columns[2:]] = preprocessing.MinMaxScaler().fit_transform(
+        normalized_data[data.columns[2:]])
+
+    return climate_epc, data, normalized_data, averages, epc_averages
 
 
 def clean_transport_data(data: pd.DataFrame, epc: pd.DataFrame) -> pd.DataFrame:

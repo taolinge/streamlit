@@ -139,6 +139,7 @@ def census_equity_explorer():
             st.dataframe(df[filter_data].reset_index(drop=True))
             st.download_button('Download selected data', utils.to_excel(df[filter_data]),
                                file_name=f'{state}_{filter_level}.xlsx')
+################################################################################
 
         tables = queries.TRANSPORT_CENSUS_TABLES
         tables = [_.strip().lower() for _ in tables]
@@ -190,10 +191,62 @@ def census_equity_explorer():
 
         st.write('### How does the Equity Geography average compare to the county-wide average?')
         visualization.make_horizontal_bar_chart(averages, epc_averages, feature)
+            
+################################################################################
+        tables = queries.CLIMATE_CENSUS_TABLES
+        tables = [_.strip().lower() for _ in tables]
+        tables.sort()
+
+        if len(tables) > 0 and len(counties) > 0:
+            try:
+                if 'All' in counties:
+                    climate_df = queries.latest_data_census_tracts(state, county_list, tables)
+                else:
+                    climate_df = queries.latest_data_census_tracts(state, counties, tables)
+            except:
+                climate_df = pd.DataFrame()
+
+        climate_df = climate_df.loc[:, ~climate_df.columns.duplicated()]
+        if 'state_name' in climate_df.columns:
+            climate_df['State'] = climate_df['state_name']
+        if 'county_name' in climate_df.columns:
+            climate_df['County Name'] = climate_df['county_name']
+        climate_df.set_index(['State', 'County Name'], drop=True, inplace=True)
+
+        hazard_epc, climate_df, normalized_data, averages, epc_averages = queries.clean_climate_data(
+            climate_df, df_copy)
+
+        geo_df = climate_df.copy()
+        geo_epc = hazard_epc.copy()
+        geo_df = geo_df[['geom', 'Census Tract']]
+        geo_epc = geo_epc[['geom', 'Census Tract']]
+        st.markdown("""---""")
+
+        st.write('''
+                ### NATURAL HAZARD RISK
+                
+                Analyze natural hazard risk for vulnerable communities in the county.          
+                ''')
+        with st.expander('More about this dataset'):
+            st.write('''
+                     We currently have almost 40 tables in the database, representing over 2 million rows of data. The following datasets were used for the transportation indicators considered.
+                    ''',
+                     TRANSPORT_DATA_TABLE)
+        st.write('''
+                ### Hazard Risk Considerations in the Region
+                
+                Compare Equity Geographies to the rest of the county for any of the natural hazard risk indicators. Analyze hazard risk for vulnerable communities in the county.
+                ''')
+        feature = st.selectbox(
+            "Nautral hazard to compare",
+            queries.CLIMATE_CENSUS_HEADERS)
+
+        st.write('### How does the Equity Geography average compare to the county-wide average?')
+        visualization.make_horizontal_bar_chart(averages, epc_averages, feature)
 
         st.write('### View variation by geography')
         radio_data = st.radio('Filter map for:', ('Equity Geographies only', 'All census tracts in selected region'),
-                              key='transport')
+                              key='natural_hazard')
         select_data = {'All census tracts in selected region': transport_df, 'Equity Geographies only': transport_epc}
         select_geo = {'All census tracts in selected region': geo_df, 'Equity Geographies only': geo_epc}
 
