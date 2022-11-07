@@ -160,10 +160,10 @@ def census_equity_explorer():
         if 'county_name' in transport_df.columns:
             transport_df['County Name'] = transport_df['county_name']
         transport_df.set_index(['State', 'County Name'], drop=True, inplace=True)
-
-        transport_epc, transport_df, normalized_data, averages, epc_averages = queries.clean_transport_data(
+        # st.write(transport_df.columns)
+        transport_epc, transport_df, transport_normalized_data, averages, epc_averages = queries.clean_transport_data(
             transport_df, df_copy)
-
+        # st.write(transport_df.columns)
         geo_df = transport_df.copy()
         geo_epc = transport_epc.copy()
         geo_df = geo_df[['geom', 'Census Tract']]
@@ -191,6 +191,21 @@ def census_equity_explorer():
 
         st.write('### How does the Equity Geography average compare to the county-wide average?')
         visualization.make_horizontal_bar_chart(averages, epc_averages, feature)
+        
+        st.write('### View variation by geography')
+        radio_data = st.radio('Filter map for:', ('Equity Geographies only', 'All census tracts in selected region'),
+                              key='transportation')
+        select_data = {'All census tracts in selected region': transport_df, 'Equity Geographies only': transport_epc}
+        select_geo = {'All census tracts in selected region': geo_df, 'Equity Geographies only': geo_epc}
+
+        visualization.make_transport_census_map(select_geo[radio_data], select_data[radio_data], feature, show_transit=False)
+
+        transport_epc.drop(['geom'], inplace=True, axis=1)
+        transport_df.drop(['geom'], inplace=True, axis=1)
+        st.write(f'### {feature} across all Equity Geographies')
+
+        visualization.make_transport_census_chart(transport_epc, averages, feature)
+
             
 ################################################################################
         tables = queries.CLIMATE_CENSUS_TABLES
@@ -205,7 +220,7 @@ def census_equity_explorer():
                     climate_df = queries.latest_data_census_tracts(state, counties, tables)
             except:
                 climate_df = pd.DataFrame()
-
+        st.write(climate_df.columns)
         climate_df = climate_df.loc[:, ~climate_df.columns.duplicated()]
         if 'state_name' in climate_df.columns:
             climate_df['State'] = climate_df['state_name']
@@ -213,15 +228,15 @@ def census_equity_explorer():
             climate_df['County Name'] = climate_df['county_name']
         climate_df.set_index(['State', 'County Name'], drop=True, inplace=True)
 
-        hazard_epc, climate_df, normalized_data, averages, epc_averages = queries.clean_climate_data(
+        climate_epc, climate_df, climate_normalized_data, averages, epc_averages = queries.clean_climate_data(
             climate_df, df_copy)
-
+        st.write(climate_df.columns)
         geo_df = climate_df.copy()
-        geo_epc = hazard_epc.copy()
+        geo_epc = climate_epc.copy()
         geo_df = geo_df[['geom', 'Census Tract']]
         geo_epc = geo_epc[['geom', 'Census Tract']]
         st.markdown("""---""")
-
+        # st.radio()
         st.write('''
                 ### NATURAL HAZARD RISK
                 
@@ -237,26 +252,27 @@ def census_equity_explorer():
                 
                 Compare Equity Geographies to the rest of the county for any of the natural hazard risk indicators. Analyze hazard risk for vulnerable communities in the county.
                 ''')
+
         feature = st.selectbox(
             "Nautral hazard to compare",
             queries.CLIMATE_CENSUS_HEADERS)
 
         st.write('### How does the Equity Geography average compare to the county-wide average?')
-        visualization.make_horizontal_bar_chart(averages, epc_averages, feature)
+        visualization.make_horizontal_bar_chart_climate(averages, epc_averages, feature)
 
         st.write('### View variation by geography')
         radio_data = st.radio('Filter map for:', ('Equity Geographies only', 'All census tracts in selected region'),
                               key='natural_hazard')
-        select_data = {'All census tracts in selected region': transport_df, 'Equity Geographies only': transport_epc}
+        select_data = {'All census tracts in selected region': climate_df, 'Equity Geographies only': climate_epc}
         select_geo = {'All census tracts in selected region': geo_df, 'Equity Geographies only': geo_epc}
 
         visualization.make_transport_census_map(select_geo[radio_data], select_data[radio_data], feature, show_transit=False)
 
-        transport_epc.drop(['geom'], inplace=True, axis=1)
-        transport_df.drop(['geom'], inplace=True, axis=1)
+        climate_epc.drop(['geom'], inplace=True, axis=1)
+        climate_df.drop(['geom'], inplace=True, axis=1)
         st.write(f'### {feature} across all Equity Geographies')
 
-        visualization.make_transport_census_chart(transport_epc, averages, feature)
+        visualization.make_transport_census_chart(climate_epc, averages, feature)
 
         st.write('''
                 ### Create Transportation Vulnerability Index
@@ -267,7 +283,7 @@ def census_equity_explorer():
                 ''')
 
         selected_indicators = st.multiselect('Select which indicators to use in the Transportation Vulnerability Index',
-                                             queries.TRANSPORT_CENSUS_HEADERS,
+                                             queries.TRANSPORT_CENSUS_HEADERS+queries.CLIMATE_CENSUS_HEADERS,
                                              default=['Zero-Vehicle Households (%)', 'Vehicle Miles Traveled',
                                                       'People of Color (%)', 'No Computer Households (%)']
                                              )
@@ -299,6 +315,7 @@ def census_equity_explorer():
         st.write('''### Transportation Vulnerability Index''')
         st.caption('Equity geographies are sorted based on each of the transportation vulnerability index values')
 
+        normalized_data = transport_normalized_data.merge(climate_normalized_data,how='outer', on='Census Tract')
         normalized_data = normalized_data.melt('Census Tract', selected_indicators, 'Indicators')
         normalized_data.rename({'value': 'Index Value'}, axis=1, inplace=True)
         normalized_data['Index Value'] = normalized_data['Indicators'].apply(lambda x: index_value[x]) * \
@@ -322,6 +339,7 @@ def census_equity_explorer():
 
         selected_geo_copy = selected_geo.copy()
         selected_tracts_copy = selected_tracts.copy()
+        st.write(selected_geo.columns)
         visualization.make_transport_census_map(selected_geo, selected_tracts, 'Index Value', show_transit=False)
         
         st.write('''
