@@ -118,7 +118,8 @@ TABLE_UNITS = {
     'Age 19 or Under (%)': '%',
     'Age 65 or Over (%)': '%',
     'Limited English Proficiency (%)': '%',
-    'Single Parent Family (%)': '%'
+    'Single Parent Family (%)': '%',
+    'Coastal Flooding Risk Score':'', 'Hail Risk Score':'', 'Hurricane Risk Score':'', 'Ice Storm Risk Score':'', 'Riverine Flooding Risk Score':'', 'Tsunami Risk Score':''
 }
 
 # @st.cache(allow_output_mutation=True, hash_funcs={"_thread.RLock": lambda _: None})
@@ -704,6 +705,7 @@ def clean_climate_data(data: pd.DataFrame, epc: pd.DataFrame) -> pd.DataFrame:
         #        'volcanic_activity', 'wildfire', 'winter_weather'
     risk_score = ['Census Tract', 'geom', 'county_name', 'state_name']+[hazard+ '_risk_score' for hazard in hazards]
 
+    data.fillna(0.0, inplace=True)
     data = data[risk_score].copy()
     new_column_names = [" ".join([word.capitalize() for word in x]) for x in data.columns.str.split('_')]
     data.columns = new_column_names
@@ -773,16 +775,16 @@ def get_equity_geographies(epc: pd.DataFrame, coeff: float) -> pd.DataFrame:
     averages = dict()
 
     for header in (EQUITY_CENSUS_POC_LOW_INCOME + EQUITY_CENSUS_REMAINING_HEADERS):
-        averages[header] = epc[header + ' (%)'].mean()
-        concentration_thresholds[header] = averages[header] + coeff * epc[header + ' (%)'].std()
-        epc[header + '_check'] = epc[header + ' (%)'].apply(lambda x: x > concentration_thresholds[header])
+        averages[header+ ' (%)'] = epc[header + ' (%)'].mean()
+        concentration_thresholds[header+ ' (%)'] = averages[header+ ' (%)'] + coeff * epc[header + ' (%)'].std()
+        epc[header + '_check'] = epc[header + ' (%)'].apply(lambda x: x > concentration_thresholds[header+ ' (%)'])
         epc[header + '_check'] = epc[header + '_check'].astype(int)
 
     epc['criteria_A'] = epc[[x + '_check' for x in EQUITY_CENSUS_POC_LOW_INCOME]].sum(axis=1, numeric_only=True)
     epc['Criteria A'] = epc['criteria_A'].apply(lambda x: bool(x == 2))
 
     epc['criteria_B'] = epc[[x + '_check' for x in EQUITY_CENSUS_REMAINING_HEADERS]].sum(axis=1, numeric_only=True)
-    temp = epc['200% Below Poverty Level (%)'].apply(lambda x: x > concentration_thresholds['200% Below Poverty Level'])
+    temp = epc['200% Below Poverty Level (%)'].apply(lambda x: x > concentration_thresholds['200% Below Poverty Level (%)'])
     epc['Criteria B'] = (epc['criteria_B'].apply(lambda x: bool(x >= 3)) + temp.astype(int)) == 2
 
     df = epc
@@ -799,7 +801,7 @@ def get_equity_geographies(epc: pd.DataFrame, coeff: float) -> pd.DataFrame:
 
     epc_averages = {}
     for header in (EQUITY_CENSUS_POC_LOW_INCOME + EQUITY_CENSUS_REMAINING_HEADERS):
-        epc_averages[header] = epc[header + ' (%)'].mean()
+        epc_averages[header+ ' (%)'] = epc[header + ' (%)'].mean()
 
     return epc, df, concentration_thresholds, averages, epc_averages
 
@@ -937,40 +939,40 @@ def clean_transport_data(data: pd.DataFrame, epc: pd.DataFrame) -> pd.DataFrame:
     return transport_epc, data, normalized_data, averages, epc_averages
 
 
-def get_equity_geographies(epc: pd.DataFrame, coeff: float) -> pd.DataFrame:
-    concentration_thresholds = dict()
-    averages = dict()
+# def get_equity_geographies(epc: pd.DataFrame, coeff: float) -> pd.DataFrame:
+#     concentration_thresholds = dict()
+#     averages = dict()
 
-    for header in (EQUITY_CENSUS_POC_LOW_INCOME + EQUITY_CENSUS_REMAINING_HEADERS):
-        averages[header] = epc[header + ' (%)'].mean()
-        concentration_thresholds[header] = averages[header] + coeff * epc[header + ' (%)'].std()
-        epc[header + '_check'] = epc[header + ' (%)'].apply(lambda x: x > concentration_thresholds[header])
-        epc[header + '_check'] = epc[header + '_check'].astype(int)
+#     for header in (EQUITY_CENSUS_POC_LOW_INCOME + EQUITY_CENSUS_REMAINING_HEADERS):
+#         averages[header] = epc[header + ' (%)'].mean()
+#         concentration_thresholds[header] = averages[header] + coeff * epc[header + ' (%)'].std()
+#         epc[header + '_check'] = epc[header + ' (%)'].apply(lambda x: x > concentration_thresholds[header])
+#         epc[header + '_check'] = epc[header + '_check'].astype(int)
 
-    epc['criteria_A'] = epc[[x + '_check' for x in EQUITY_CENSUS_POC_LOW_INCOME]].sum(axis=1, numeric_only=True)
-    epc['Criteria A'] = epc['criteria_A'].apply(lambda x: bool(x == 2))
+#     epc['criteria_A'] = epc[[x + '_check' for x in EQUITY_CENSUS_POC_LOW_INCOME]].sum(axis=1, numeric_only=True)
+#     epc['Criteria A'] = epc['criteria_A'].apply(lambda x: bool(x == 2))
 
-    epc['criteria_B'] = epc[[x + '_check' for x in EQUITY_CENSUS_REMAINING_HEADERS]].sum(axis=1, numeric_only=True)
-    temp = epc['200% Below Poverty Level (%)'].apply(lambda x: x > concentration_thresholds['200% Below Poverty Level'])
-    epc['Criteria B'] = (epc['criteria_B'].apply(lambda x: bool(x >= 3)) + temp.astype(int)) == 2
+#     epc['criteria_B'] = epc[[x + '_check' for x in EQUITY_CENSUS_REMAINING_HEADERS]].sum(axis=1, numeric_only=True)
+#     temp = epc['200% Below Poverty Level (%)'].apply(lambda x: x > concentration_thresholds['200% Below Poverty Level'])
+#     epc['Criteria B'] = (epc['criteria_B'].apply(lambda x: bool(x >= 3)) + temp.astype(int)) == 2
 
-    df = epc
+#     df = epc
 
-    epc['Criteria'] = epc[['Criteria A', 'Criteria B']].apply(
-        lambda x: 'Equity Geography (Meets Both Criteria)' if (x['Criteria A'] & x['Criteria B']) else
-        ('Equity Geography (Meets Criteria A)' if x['Criteria A'] else
-         ('Equity Geography (Meets Criteria B)' if x['Criteria B'] else 'Not selected as an Equity Geography')),
-        axis=1)
-    # epc['Criteria'] = epc.apply(lambda x: 'Both' if (x['Criteria A'] | x['Criteria B']) else 'Other')
-    epc = epc.loc[(epc['Criteria A'] | epc['Criteria B'])]
-    df['Category'] = (df['Criteria A'].apply(lambda x: bool(x)) | df['Criteria B'].apply(lambda x: bool(x)))
-    df['Category'] = df['Category'].apply(lambda x: 'Equity Geography' if x is True else 'Other')
+#     epc['Criteria'] = epc[['Criteria A', 'Criteria B']].apply(
+#         lambda x: 'Equity Geography (Meets Both Criteria)' if (x['Criteria A'] & x['Criteria B']) else
+#         ('Equity Geography (Meets Criteria A)' if x['Criteria A'] else
+#          ('Equity Geography (Meets Criteria B)' if x['Criteria B'] else 'Not selected as an Equity Geography')),
+#         axis=1)
+#     # epc['Criteria'] = epc.apply(lambda x: 'Both' if (x['Criteria A'] | x['Criteria B']) else 'Other')
+#     epc = epc.loc[(epc['Criteria A'] | epc['Criteria B'])]
+#     df['Category'] = (df['Criteria A'].apply(lambda x: bool(x)) | df['Criteria B'].apply(lambda x: bool(x)))
+#     df['Category'] = df['Category'].apply(lambda x: 'Equity Geography' if x is True else 'Other')
 
-    epc_averages = {}
-    for header in (EQUITY_CENSUS_POC_LOW_INCOME + EQUITY_CENSUS_REMAINING_HEADERS):
-        epc_averages[header] = epc[header + ' (%)'].mean()
+#     epc_averages = {}
+#     for header in (EQUITY_CENSUS_POC_LOW_INCOME + EQUITY_CENSUS_REMAINING_HEADERS):
+#         epc_averages[header] = epc[header + ' (%)'].mean()
 
-    return epc, df, concentration_thresholds, averages, epc_averages
+#     return epc, df, concentration_thresholds, averages, epc_averages
 
 
 def get_existing_policies(df: pd.DataFrame) -> pd.DataFrame:

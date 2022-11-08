@@ -88,13 +88,13 @@ def census_equity_explorer():
             options=['Low', 'Medium', 'High'])
         coeff = {'Low': 0.5, 'Medium': 1, 'High': 1.5}
 
-        df, total_census_tracts, concentration_thresholds, averages, epc_averages = queries.get_equity_geographies(
+        equity_df, total_census_tracts, concentration_thresholds, equity_averages, equity_epc_averages = queries.get_equity_geographies(
             df, coeff[concentration])
 
-        geo_df = df.copy()
+        geo_df = equity_df.copy()
         geo_total = total_census_tracts.copy()
-        df_copy = df.copy()
-        df.drop(['geom'], inplace=True, axis=1)
+        df_copy = equity_df.copy()
+        equity_df.drop(['geom'], inplace=True, axis=1)
         total_census_tracts.drop(['geom'], inplace=True, axis=1)
         geo_df = geo_df[['geom', 'Census Tract']]
         geo_total = geo_total[['geom', 'Census Tract']]
@@ -107,40 +107,41 @@ def census_equity_explorer():
                     ''')
             st.caption('*concentration threshold = average + (standard deviation x coefficient)*')
             st.write('Coefficients default to be 0.5. Coefficients can be increased to 1 or 1.5 to narrow the search.')
+            
+################################################################################
+        st.markdown("""---""")
 
         st.write('''
-                ### Equity Indicators
-                Compare Equity Geographies to the rest of the county for any of the equity indicators. 
-                Refer to criteria A and B above for more information on how equity indicators are used to identify Equity Geographies.  
+                ### Deep-dive into the data
+                
+                Analyze demographic data, transportation considerations, and natural hazard risk for vulnerable communities in the county.          
                 ''')
 
+        header_selection = {'Demographic Factors':  [x + ' (%)' for x in queries.EQUITY_CENSUS_POC_LOW_INCOME] + [x + ' (%)' for x in queries.EQUITY_CENSUS_REMAINING_HEADERS], 
+                            'Transportation': queries.TRANSPORT_CENSUS_HEADERS, 
+                            'Climate': queries.CLIMATE_CENSUS_HEADERS}
+
+        selected_category = st.radio('Select category for analysis', header_selection.keys())
+
         feature = st.selectbox(
-            "Equity indicator to compare",
-            queries.EQUITY_CENSUS_POC_LOW_INCOME + queries.EQUITY_CENSUS_REMAINING_HEADERS)
+        "Equity indicator to compare",
+        header_selection[selected_category]
+        )
+        with st.expander('More about this dataset'):
+            st.write('''
+                        We currently have almost 40 tables in the database, representing over 2 million rows of data. The following datasets were used for the transportation indicators considered.
+                    ''',
+                        TRANSPORT_DATA_TABLE)
 
-        st.write('''
-                ### How does the Equity Geography average compare to the county-wide average?''')
-        visualization.make_horizontal_bar_chart(averages, epc_averages, feature)
-
-        st.write('### View variation by geography')
-
-        filter_level = st.radio('Filter map for:', ('Equity Geographies only', 'All census tracts in selected region'),
-                                key='equity')
-        select_data = {'All census tracts in selected region': total_census_tracts, 'Equity Geographies only': df}
-        select_geo = {'All census tracts in selected region': geo_total, 'Equity Geographies only': geo_df}
-
-        visualization.make_equity_census_map(select_geo[filter_level], select_data[filter_level], feature + ' (%)')
-
-        if st.checkbox('View data at the census tract level'):
-            filter_data = (
-                    ['Census Tract'] + ['Criteria'] + [x + ' (%)' for x in queries.EQUITY_CENSUS_POC_LOW_INCOME] +
-                    [x + ' (%)' for x in queries.EQUITY_CENSUS_REMAINING_HEADERS]
-            )
-            st.dataframe(df[filter_data].reset_index(drop=True))
-            st.download_button('Download selected data', utils.to_excel(df[filter_data]),
-                               file_name=f'{state}_{filter_level}.xlsx')
-################################################################################
-
+        # if st.checkbox('View data at the census tract level'):
+        #     filter_data = (
+        #             ['Census Tract'] + ['Criteria'] + [x + ' (%)' for x in queries.EQUITY_CENSUS_POC_LOW_INCOME] +
+        #             [x + ' (%)' for x in queries.EQUITY_CENSUS_REMAINING_HEADERS]
+        #     )
+        #     st.dataframe(df[filter_data].reset_index(drop=True))
+        #     st.download_button('Download selected data', utils.to_excel(df[filter_data]),
+        #                        file_name=f'{state}_{filter_level}.xlsx')
+        
         tables = queries.TRANSPORT_CENSUS_TABLES
         tables = [_.strip().lower() for _ in tables]
         tables.sort()
@@ -160,54 +161,18 @@ def census_equity_explorer():
         if 'county_name' in transport_df.columns:
             transport_df['County Name'] = transport_df['county_name']
         transport_df.set_index(['State', 'County Name'], drop=True, inplace=True)
-        # st.write(transport_df.columns)
-        transport_epc, transport_df, transport_normalized_data, averages, epc_averages = queries.clean_transport_data(
-            transport_df, df_copy)
-        # st.write(transport_df.columns)
-        geo_df = transport_df.copy()
-        geo_epc = transport_epc.copy()
-        geo_df = geo_df[['geom', 'Census Tract']]
-        geo_epc = geo_epc[['geom', 'Census Tract']]
-        st.markdown("""---""")
 
-        st.write('''
-                ### Equity in Transportation
-                
-                Analyze behavior and transportation considerations for vulnerable communities in the county.          
-                ''')
-        with st.expander('More about this dataset'):
-            st.write('''
-                     We currently have almost 40 tables in the database, representing over 2 million rows of data. The following datasets were used for the transportation indicators considered.
-                    ''',
-                     TRANSPORT_DATA_TABLE)
-        st.write('''
-                ### Transportation Considerations in the Region
-                
-                Compare Equity Geographies to the rest of the county for any of the transportation indicators. Analyze behavior and transportation considerations for vulnerable communities in the county.
-                ''')
-        feature = st.selectbox(
-            "Transportation indicator to compare",
-            queries.TRANSPORT_CENSUS_HEADERS)
-
-        st.write('### How does the Equity Geography average compare to the county-wide average?')
-        visualization.make_horizontal_bar_chart(averages, epc_averages, feature)
+        epc = {'Demographic Factors': df_copy}
+        df = {'Demographic Factors': geo_total}
+        normalized_data = {}
+        averages = {'Demographic Factors': equity_averages}
+        epc_averages = {'Demographic Factors': equity_epc_averages}
         
-        st.write('### View variation by geography')
-        radio_data = st.radio('Filter map for:', ('Equity Geographies only', 'All census tracts in selected region'),
-                              key='transportation')
-        select_data = {'All census tracts in selected region': transport_df, 'Equity Geographies only': transport_epc}
-        select_geo = {'All census tracts in selected region': geo_df, 'Equity Geographies only': geo_epc}
+        epc['Transportation'], df['Transportation'], normalized_data['Transportation'], averages['Transportation'], epc_averages['Transportation'] = queries.clean_transport_data(transport_df, df_copy)
 
-        visualization.make_transport_census_map(select_geo[radio_data], select_data[radio_data], feature, show_transit=False)
-
-        transport_epc.drop(['geom'], inplace=True, axis=1)
-        transport_df.drop(['geom'], inplace=True, axis=1)
-        st.write(f'### {feature} across all Equity Geographies')
-
-        visualization.make_transport_census_chart(transport_epc, averages, feature)
-
-            
-################################################################################
+        geo_df = df['Transportation'].copy()[['geom', 'Census Tract']]
+        geo_epc = epc['Transportation'].copy()[['geom', 'Census Tract']]
+        
         tables = queries.CLIMATE_CENSUS_TABLES
         tables = [_.strip().lower() for _ in tables]
         tables.sort()
@@ -220,7 +185,6 @@ def census_equity_explorer():
                     climate_df = queries.latest_data_census_tracts(state, counties, tables)
             except:
                 climate_df = pd.DataFrame()
-        st.write(climate_df.columns)
         climate_df = climate_df.loc[:, ~climate_df.columns.duplicated()]
         if 'state_name' in climate_df.columns:
             climate_df['State'] = climate_df['state_name']
@@ -228,51 +192,26 @@ def census_equity_explorer():
             climate_df['County Name'] = climate_df['county_name']
         climate_df.set_index(['State', 'County Name'], drop=True, inplace=True)
 
-        climate_epc, climate_df, climate_normalized_data, averages, epc_averages = queries.clean_climate_data(
-            climate_df, df_copy)
-        st.write(climate_df.columns)
-        geo_df = climate_df.copy()
-        geo_epc = climate_epc.copy()
-        geo_df = geo_df[['geom', 'Census Tract']]
-        geo_epc = geo_epc[['geom', 'Census Tract']]
+        epc['Climate'], df['Climate'], normalized_data['Climate'], averages['Climate'], epc_averages['Climate'] = queries.clean_climate_data(climate_df, df_copy)
+
+        # deep-dive visualizations
+        st.write('''
+        #### How does the Equity Geography average compare to the county-wide average?''')
+        visualization.make_horizontal_bar_chart(averages[selected_category], epc_averages[selected_category], feature)
+        
+        st.write('#### View variation by geography')
+        filter_map = {'Equity Geographies only':{'data':epc[selected_category], 'geo': geo_epc}, 'All census tracts in selected region':{'data':df[selected_category], 'geo': geo_df}}
+        radio_data = st.radio('Filter map for:', filter_map.keys(), key='transportation')
+
+        visualization.make_transport_census_map(filter_map[radio_data]['geo'], filter_map[radio_data]['data'], feature, show_transit=False)
+
+        epc[selected_category].drop(['geom'], inplace=True, axis=1)
+        df[selected_category].drop(['geom'], inplace=True, axis=1)
+        st.write(f'#### {feature} across all Equity Geographies')
+
+        visualization.make_transport_census_chart(epc[selected_category], averages[selected_category], feature)
+        
         st.markdown("""---""")
-        # st.radio()
-        st.write('''
-                ### NATURAL HAZARD RISK
-                
-                Analyze natural hazard risk for vulnerable communities in the county.          
-                ''')
-        with st.expander('More about this dataset'):
-            st.write('''
-                     We currently have almost 40 tables in the database, representing over 2 million rows of data. The following datasets were used for the transportation indicators considered.
-                    ''',
-                     TRANSPORT_DATA_TABLE)
-        st.write('''
-                ### Hazard Risk Considerations in the Region
-                
-                Compare Equity Geographies to the rest of the county for any of the natural hazard risk indicators. Analyze hazard risk for vulnerable communities in the county.
-                ''')
-
-        feature = st.selectbox(
-            "Nautral hazard to compare",
-            queries.CLIMATE_CENSUS_HEADERS)
-
-        st.write('### How does the Equity Geography average compare to the county-wide average?')
-        visualization.make_horizontal_bar_chart_climate(averages, epc_averages, feature)
-
-        st.write('### View variation by geography')
-        radio_data = st.radio('Filter map for:', ('Equity Geographies only', 'All census tracts in selected region'),
-                              key='natural_hazard')
-        select_data = {'All census tracts in selected region': climate_df, 'Equity Geographies only': climate_epc}
-        select_geo = {'All census tracts in selected region': geo_df, 'Equity Geographies only': geo_epc}
-
-        visualization.make_transport_census_map(select_geo[radio_data], select_data[radio_data], feature, show_transit=False)
-
-        climate_epc.drop(['geom'], inplace=True, axis=1)
-        climate_df.drop(['geom'], inplace=True, axis=1)
-        st.write(f'### {feature} across all Equity Geographies')
-
-        visualization.make_transport_census_chart(climate_epc, averages, feature)
 
         st.write('''
                 ### Create Transportation Vulnerability Index
@@ -315,13 +254,13 @@ def census_equity_explorer():
         st.write('''### Transportation Vulnerability Index''')
         st.caption('Equity geographies are sorted based on each of the transportation vulnerability index values')
 
-        normalized_data = transport_normalized_data.merge(climate_normalized_data,how='outer', on='Census Tract')
-        normalized_data = normalized_data.melt('Census Tract', selected_indicators, 'Indicators')
-        normalized_data.rename({'value': 'Index Value'}, axis=1, inplace=True)
-        normalized_data['Index Value'] = normalized_data['Indicators'].apply(lambda x: index_value[x]) * \
-                                         normalized_data['Index Value']
-        transport_index = normalized_data.groupby(['Census Tract'])['Index Value'].sum()
-        visualization.make_stacked(normalized_data)
+        combined_normalized_data = normalized_data['Transportation'].merge(normalized_data['Climate'],how='outer', on='Census Tract')
+        combined_normalized_data = combined_normalized_data.melt('Census Tract', selected_indicators, 'Indicators')
+        combined_normalized_data.rename({'value': 'Index Value'}, axis=1, inplace=True)
+        combined_normalized_data['Index Value'] = combined_normalized_data['Indicators'].apply(lambda x: index_value[x]) * \
+                                         combined_normalized_data['Index Value']
+        transport_index = combined_normalized_data.groupby(['Census Tract'])['Index Value'].sum()
+        visualization.make_stacked(combined_normalized_data)
 
         transport_index.sort_values(ascending=False, inplace=True)
 
@@ -332,47 +271,220 @@ def census_equity_explorer():
                                )[0]
 
         selected = transport_index.head(num_tracts).reset_index()
-        selected_tracts = transport_epc.copy().loc[transport_epc['Census Tract'].isin(selected['Census Tract'])]
+        combined_epc = epc['Transportation'].merge(epc['Climate'],how='outer', on='Census Tract', suffixes=['_transport', '_climate'])
+        selected_tracts = combined_epc.copy().loc[combined_epc['Census Tract'].isin(selected['Census Tract'])]
         selected_tracts['value'] = selected_tracts['Census Tract'].apply(lambda x: transport_index.loc[x])
         selected_geo = geo_epc.copy().loc[geo_epc['Census Tract'].isin(selected['Census Tract'])]
         selected_geo['Index Value'] = selected_geo['Census Tract'].apply(lambda x: round(transport_index.loc[x]))
-
+        st.write(selected_tracts.columns)
         selected_geo_copy = selected_geo.copy()
         selected_tracts_copy = selected_tracts.copy()
-        st.write(selected_geo.columns)
         visualization.make_transport_census_map(selected_geo, selected_tracts, 'Index Value', show_transit=False)
         
         st.write('''
                 #### How are these Equity Geographies most vulnerable?            
                 ''')
         st.caption('Select a census tract from the list below to investigate relative transit access and demand.')
-        transport_df.set_index('Census Tract', inplace=True)
+        df = transport_df.merge(climate_df,how='outer', on='Census Tract', suffixes=['_transport', '_climate'])
+        df.set_index('Census Tract', inplace=True)
         selected_tract = st.selectbox('Census Tract ID', selected_tracts['Census Tract'])
-
-        col1, col2 = st.columns(2)
+        averages = {**averages['Transportation'], **averages['Climate']}
+        
+        col1, col2, col3 = st.columns(3)
         with col1:
             for header in queries.TRANSPORT_CENSUS_HEADERS[(int(len(queries.TRANSPORT_CENSUS_HEADERS) / 2)):]:
                 st.metric(header,
-                          value=str(round(transport_df.loc[selected_tract, header], 1)) + queries.TABLE_UNITS[header],
-                          delta=str(round(transport_df.loc[selected_tract, header] - averages[header], 1)) +
+                          value=str(round(df.loc[selected_tract, header], 1)) + queries.TABLE_UNITS[header],
+                          delta=str(round(df.loc[selected_tract, header] - averages[header], 1)) +
                                 queries.TABLE_UNITS[header] + ' from county average')
         with col2:
             for header in queries.TRANSPORT_CENSUS_HEADERS[:(int(len(queries.TRANSPORT_CENSUS_HEADERS) / 2))]:
                 st.metric(header,
-                          value=str(round(transport_df.loc[selected_tract, header], 1)) + queries.TABLE_UNITS[header],
-                          delta=str(round(transport_df.loc[selected_tract, header] - averages[header], 1)) +
+                          value=str(round(df.loc[selected_tract, header], 1)) + queries.TABLE_UNITS[header],
+                          delta=str(round(df.loc[selected_tract, header] - averages[header], 1)) +
+                                queries.TABLE_UNITS[header] + ' from county average')
+        with col3:
+            for header in queries.CLIMATE_CENSUS_HEADERS:
+                st.metric(header,
+                          value=str(round(df.loc[selected_tract, header], 1)) + queries.TABLE_UNITS[header],
+                          delta=str(round(df.loc[selected_tract, header] - averages[header], 1)) +
                                 queries.TABLE_UNITS[header] + ' from county average')
 
         with st.expander('View data at the census tract level'):
             st.caption('Values for selected indicators are shown for the census tracts with the highest index values')
-            df = transport_df.loc[(transport_df.index).isin(selected['Census Tract'])][
+            selected_tracts_df = df.loc[(df.index).isin(selected['Census Tract'])][
                 queries.TRANSPORT_CENSUS_HEADERS + queries.POSITIVE_TRANSPORT_CENSUS_HEADERS]
-            st.dataframe(df)
-            st.download_button('Download selected tract data', utils.to_excel(df),
+            st.dataframe(selected_tracts_df)
+            st.download_button('Download selected tract data', utils.to_excel(selected_tracts_df),
                                file_name=f'{state}_selected_transport_data.xlsx')
         
         st.write('''
                 #### Do the Equity Geographies have access to public transit?            
                 ''')
         st.caption('The chart and map here show where existing transit lines are located for the selected Equity Geographies only. Scroll over the transit lines in the map to view the name of the transit system.')
-        visualization.make_transport_census_map(selected_geo_copy, selected_tracts_copy, feature, show_transit=True)
+        visualization.make_transport_census_map(selected_geo_copy, selected_tracts_copy, 'Index Value', show_transit=True)
+            
+################################################################################
+#         st.write('''
+#                 ### Equity Indicators
+#                 Compare Equity Geographies to the rest of the county for any of the equity indicators. 
+#                 Refer to criteria A and B above for more information on how equity indicators are used to identify Equity Geographies.  
+#                 ''')
+
+#         feature = st.selectbox(
+#             "Equity indicator to compare",
+#             queries.EQUITY_CENSUS_POC_LOW_INCOME + queries.EQUITY_CENSUS_REMAINING_HEADERS)
+
+#         st.write('''
+#                 ### How does the Equity Geography average compare to the county-wide average?''')
+#         visualization.make_horizontal_bar_chart(averages, epc_averages, feature)
+
+#         st.write('### View variation by geography')
+
+#         filter_level = st.radio('Filter map for:', ('Equity Geographies only', 'All census tracts in selected region'),
+#                                 key='equity')
+#         select_data = {'All census tracts in selected region': total_census_tracts, 'Equity Geographies only': df}
+#         select_geo = {'All census tracts in selected region': geo_total, 'Equity Geographies only': geo_df}
+
+#         visualization.make_equity_census_map(select_geo[filter_level], select_data[filter_level], feature + ' (%)')
+
+#         if st.checkbox('View data at the census tract level'):
+#             filter_data = (
+#                     ['Census Tract'] + ['Criteria'] + [x + ' (%)' for x in queries.EQUITY_CENSUS_POC_LOW_INCOME] +
+#                     [x + ' (%)' for x in queries.EQUITY_CENSUS_REMAINING_HEADERS]
+#             )
+#             st.dataframe(df[filter_data].reset_index(drop=True))
+#             st.download_button('Download selected data', utils.to_excel(df[filter_data]),
+#                                file_name=f'{state}_{filter_level}.xlsx')
+# ################################################################################
+
+#         tables = queries.TRANSPORT_CENSUS_TABLES
+#         tables = [_.strip().lower() for _ in tables]
+#         tables.sort()
+
+#         if len(tables) > 0 and len(counties) > 0:
+#             try:
+#                 if 'All' in counties:
+#                     transport_df = queries.latest_data_census_tracts(state, county_list, tables)
+#                 else:
+#                     transport_df = queries.latest_data_census_tracts(state, counties, tables)
+#             except:
+#                 transport_df = pd.DataFrame()
+
+#         transport_df = transport_df.loc[:, ~transport_df.columns.duplicated()]
+#         if 'state_name' in transport_df.columns:
+#             transport_df['State'] = transport_df['state_name']
+#         if 'county_name' in transport_df.columns:
+#             transport_df['County Name'] = transport_df['county_name']
+#         transport_df.set_index(['State', 'County Name'], drop=True, inplace=True)
+#         # st.write(transport_df.columns)
+#         transport_epc, transport_df, transport_normalized_data, transport_averages, epc_averages = queries.clean_transport_data(
+#             transport_df, df_copy)
+#         # st.write(transport_df.columns)
+#         geo_df = transport_df.copy()
+#         geo_epc = transport_epc.copy()
+#         geo_df = geo_df[['geom', 'Census Tract']]
+#         geo_epc = geo_epc[['geom', 'Census Tract']]
+#         st.markdown("""---""")
+
+# ################################################################################
+#         st.write('''
+#                 ### Equity in Transportation
+                
+#                 Analyze behavior and transportation considerations for vulnerable communities in the county.          
+#                 ''')
+#         with st.expander('More about this dataset'):
+#             st.write('''
+#                      We currently have almost 40 tables in the database, representing over 2 million rows of data. The following datasets were used for the transportation indicators considered.
+#                     ''',
+#                      TRANSPORT_DATA_TABLE)
+#         st.write('''
+#                 ### Transportation Considerations in the Region
+                
+#                 Compare Equity Geographies to the rest of the county for any of the transportation indicators. Analyze behavior and transportation considerations for vulnerable communities in the county.
+#                 ''')
+#         feature = st.selectbox(
+#             "Transportation indicator to compare",
+#             queries.TRANSPORT_CENSUS_HEADERS)
+
+#         st.write('### How does the Equity Geography average compare to the county-wide average?')
+#         visualization.make_horizontal_bar_chart(transport_averages, epc_averages, feature)
+#         st.write('### View variation by geography')
+#         radio_data = st.radio('Filter map for:', ('Equity Geographies only', 'All census tracts in selected region'),
+#                               key='transportation')
+#         select_data = {'All census tracts in selected region': transport_df, 'Equity Geographies only': transport_epc}
+#         select_geo = {'All census tracts in selected region': geo_df, 'Equity Geographies only': geo_epc}
+
+#         visualization.make_transport_census_map(select_geo[radio_data], select_data[radio_data], feature, show_transit=False)
+
+#         transport_epc.drop(['geom'], inplace=True, axis=1)
+#         transport_df.drop(['geom'], inplace=True, axis=1)
+#         st.write(f'### {feature} across all Equity Geographies')
+
+#         visualization.make_transport_census_chart(transport_epc, transport_averages, feature)
+            
+# ################################################################################
+#         tables = queries.CLIMATE_CENSUS_TABLES
+#         tables = [_.strip().lower() for _ in tables]
+#         tables.sort()
+
+#         if len(tables) > 0 and len(counties) > 0:
+#             try:
+#                 if 'All' in counties:
+#                     climate_df = queries.latest_data_census_tracts(state, county_list, tables)
+#                 else:
+#                     climate_df = queries.latest_data_census_tracts(state, counties, tables)
+#             except:
+#                 climate_df = pd.DataFrame()
+#         climate_df = climate_df.loc[:, ~climate_df.columns.duplicated()]
+#         if 'state_name' in climate_df.columns:
+#             climate_df['State'] = climate_df['state_name']
+#         if 'county_name' in climate_df.columns:
+#             climate_df['County Name'] = climate_df['county_name']
+#         climate_df.set_index(['State', 'County Name'], drop=True, inplace=True)
+
+#         climate_epc, climate_df, climate_normalized_data, climate_averages, epc_averages = queries.clean_climate_data(
+#             climate_df, df_copy)
+#         geo_df = climate_df.copy()
+#         geo_epc = climate_epc.copy()
+#         geo_df = geo_df[['geom', 'Census Tract']]
+#         geo_epc = geo_epc[['geom', 'Census Tract']]
+#         st.markdown("""---""")
+#         st.write('''
+#                 ### NATURAL HAZARD RISK
+                
+#                 Analyze natural hazard risk for vulnerable communities in the county.          
+#                 ''')
+#         with st.expander('More about this dataset'):
+#             st.write('''
+#                      We currently have almost 40 tables in the database, representing over 2 million rows of data. The following datasets were used for the transportation indicators considered.
+#                     ''',
+#                      TRANSPORT_DATA_TABLE)
+#         st.write('''
+#                 ### Hazard Risk Considerations in the Region
+                
+#                 Compare Equity Geographies to the rest of the county for any of the natural hazard risk indicators. Analyze hazard risk for vulnerable communities in the county.
+#                 ''')
+
+        
+#         feature = st.selectbox(
+#             "Nautral hazard to compare",
+#             queries.CLIMATE_CENSUS_HEADERS)
+
+#         st.write('### How does the Equity Geography average compare to the county-wide average?')
+#         visualization.make_horizontal_bar_chart_climate(climate_averages, epc_averages, feature)
+
+#         st.write('### View variation by geography')
+#         radio_data = st.radio('Filter map for:', ('Equity Geographies only', 'All census tracts in selected region'),
+#                               key='natural_hazard')
+#         select_data = {'All census tracts in selected region': climate_df, 'Equity Geographies only': climate_epc}
+#         select_geo = {'All census tracts in selected region': geo_df, 'Equity Geographies only': geo_epc}
+
+#         visualization.make_transport_census_map(select_geo[radio_data], select_data[radio_data], feature, show_transit=False)
+
+#         climate_epc.drop(['geom'], inplace=True, axis=1)
+#         climate_df.drop(['geom'], inplace=True, axis=1)
+#         st.write(f'### {feature} across all Equity Geographies')
+
+        # visualization.make_transport_census_chart(climate_epc, climate_averages, feature)
+        

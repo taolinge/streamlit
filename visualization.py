@@ -342,16 +342,13 @@ def make_equity_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: 
 
 
 def make_transport_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str, show_transit: bool = False):
-    st.write(df.columns)
     if 'Census Tract' in geo_df.columns:
         geo_df.reset_index(inplace=True)
     if 'Census Tract' in df.columns:
         df.reset_index(inplace=True)
     geo_df_copy = geo_df.copy()
-    st.write(geo_df_copy.columns)
-    st.write(df.columns)
-    # st.write(geojson)
-    geojson = utils.convert_geom(geo_df_copy, df, list(df.columns[4:]))
+
+    geojson = utils.convert_geom(geo_df_copy[['State', 'County Name', 'geom','Census Tract']], df, list(df.columns[4:]))
     geojson_df = pd.DataFrame(geojson)
 
     geo_df_copy["coordinates"] = geojson_df["features"].apply(lambda row: row["geometry"]["coordinates"])
