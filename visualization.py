@@ -341,19 +341,19 @@ def make_equity_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: 
     st.pydeck_chart(r)
 
 
-def make_transport_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str, show_transit: bool = False):
+def make_transport_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str, show_transit: bool):
+    subset = ['State', 'County Name', 'geom','Census Tract']
     if 'Census Tract' in geo_df.columns:
         geo_df.reset_index(inplace=True)
     if 'Census Tract' in df.columns:
         df.reset_index(inplace=True)
     geo_df_copy = geo_df.copy()
-    geojson = utils.convert_geom(geo_df_copy, df, queries.TRANSPORT_CENSUS_HEADERS)
+    geojson = utils.convert_geom(geo_df_copy[subset], df, list(set(df.columns)-set(subset)))
     geojson_df = pd.DataFrame(geojson)
-
     geo_df_copy["coordinates"] = geojson_df["features"].apply(lambda row: row["geometry"]["coordinates"])
     geo_df_copy["name"] = geojson_df["features"].apply(lambda row: row["properties"]["name"])
 
-    for header in queries.TRANSPORT_CENSUS_HEADERS:
+    for header in list(set(df.columns)-set(subset)):
         geo_df_copy[header] = geojson_df["features"].apply(lambda row: row["properties"][header])
 
     scaler = pre.MinMaxScaler()
@@ -386,7 +386,7 @@ def make_transport_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_featur
         else:
             tooltip = {
                 "html": "<b>Tract ID:</b> {" + str('name') + "} </br>" +
-                        "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "}% </br>"
+                        "<b>" + str(map_feature) + ":</b> {" + str(map_feature) + "}"+ queries.TABLE_UNITS[map_feature]+" </br>"
             }
 
     if len(geo_df_copy['coordinates'][0][0][0]) > 0:
@@ -520,7 +520,7 @@ def make_transport_census_chart(df: pd.DataFrame, average: dict, feature: str):
         bar = alt.Chart(df) \
             .mark_bar() \
             .encode(x=alt.X('Census Tract:O', axis=alt.Axis(labels=False), title='Census Tracts', sort='y'),
-                    y=alt.Y(feature + ':Q', title='Households(%)'),
+                    y=alt.Y(feature + ':Q', title=feature),
                     tooltip=['Census Tract', feature]) \
             .interactive()
 
@@ -538,17 +538,17 @@ def make_transport_census_chart(df: pd.DataFrame, average: dict, feature: str):
 
 
 def make_horizontal_bar_chart(average: dict, epc_average: dict, feature: str):
+
     df = pd.DataFrame([{"name": 'County average', "value": average[feature]},
                        {"name": 'Equity Geography average', "value": epc_average[feature]}])
 
     bar = alt.Chart(df) \
         .mark_bar() \
-        .encode(x=alt.X('value:Q', title='Households (%)'),
+        .encode(x=alt.X('value:Q', title=feature),
                 y=alt.Y('name:O', axis=alt.Axis(title="")),
                 color=alt.Color('name', legend=None))
 
     st.altair_chart(bar, use_container_width=True)
-
 
 def make_grouped_bar_chart(df: pd.DataFrame, id_var: str, features: list, features_name: str):
     df = df.melt([id_var], features, features_name)

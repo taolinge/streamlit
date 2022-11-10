@@ -125,6 +125,7 @@ TRANSPORT_DATA_TABLE = '''
 | Household Technology Availability | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs)| 2013 | Used to find percent that are No Computer Households |
 | Household Vehicle Availability | Census Tracts | [ACS](https://www.census.gov/programs-surveys/acs)| 2013 | Used to find percent of population in Zero-Vehicle Households |
 | Trip Miles | Census Tracts | [BTS](https://www.bts.gov/latch/latch-data) | 2013 | Used to find average Vehicle Miles Traveled |
+| National Hazard Risk Index | Census Tracts | [FEMA](https://hazards.fema.gov/nri/understanding-scores-ratings) | 2021 | Used to identify risk scores for water-related natural hazards |
 '''
 
 LINKS = {'mtc_framework': 'https://bayareametro.github.io/Spatial-Analysis-Mapping-Projects/Project-Documentation/Equity-Priority-Communities/#summary-of-mtc-epc-demographic-factors--demographic-factor-definitions'}

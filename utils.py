@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from six import BytesIO
 import geopandas as gpd
-
+import streamlit as st
 
 def to_excel(df: pd.DataFrame):
     output = BytesIO()
@@ -82,10 +82,9 @@ def convert_geom(geo_df: pd.DataFrame, data_df: pd.DataFrame, map_features: list
         data_df = data_df[['Census Tract'] + map_features]
         data_df = data_df.round(3)
 
-        geo_df = geo_df.merge(data_df, on='Census Tract')
-
+        geo_df = geo_df.merge(data_df, on='Census Tract', suffixes=('', '_DROP')).filter(
+            regex='^(?!.*_DROP)')
     # geo_df.fillna(0,inplace=True)
-
     geo_df['geom'] = geo_df.apply(lambda row: row['geom'].buffer(0), axis=1)
     geo_df['coordinates'] = geo_df.apply(lambda row: gpd.GeoSeries(row['geom']).__geo_interface__, axis=1)
     geo_df['coordinates'] = geo_df.apply(lambda row: convert_coordinates(row), axis=1)
