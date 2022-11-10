@@ -38,8 +38,7 @@ def census_equity_explorer():
 
         if st.checkbox('Show raw data'):
             st.subheader('Raw Data')
-            st.caption(str(df.shape))
-            st.dataframe(df.iloc[:, 2:])
+            st.dataframe(df.iloc[:, 3:])
             st.download_button('Download raw data', utils.to_excel(df), file_name=f'{state}_data.xlsx')
         if 'state_name' in df.columns:
             df = df.loc[:, ~df.columns.duplicated()]
@@ -52,6 +51,7 @@ def census_equity_explorer():
         df = queries.clean_equity_data(df)
 
         st.write('''
+                 
                 ### Identify Equity Geographies in the Region
                 
                 "Equity Geographies" are census tracts that have a significicant concentration of underserved populations, such as households with low incomes and people of color. Each of these census tracts meet at least one of the two criteria below. This methodology is based on the equity priority community [methodology](https://bayareametro.github.io/Spatial-Analysis-Mapping-Projects/Project-Documentation/Equity-Priority-Communities/#summary-of-mtc-epc-demographic-factors--demographic-factor-definitions) developed by the San Francisco Bay Area Metropolitan Transportation Commission (MTC).               
@@ -112,7 +112,7 @@ def census_equity_explorer():
         st.markdown("""---""")
 
         st.write('''
-                ### Deep-dive into the data
+                ### Explore the data
                 
                 Analyze demographic data, transportation considerations, and natural hazard risk for vulnerable communities in the county.          
                 ''')
@@ -121,13 +121,14 @@ def census_equity_explorer():
                             'Transportation': queries.TRANSPORT_CENSUS_HEADERS, 
                             'Climate': queries.CLIMATE_CENSUS_HEADERS}
 
-        selected_category = st.radio('Select category for analysis', header_selection.keys())
+        selected_category = st.selectbox('Select category for analysis', header_selection.keys())
 
         feature = st.selectbox(
         "Equity indicator to compare",
         header_selection[selected_category]
         )
-        with st.expander('More about this dataset'):
+        st.write('')
+        with st.expander('More about these datasets'):
             st.write('''
                         We currently have almost 40 tables in the database, representing over 2 million rows of data. The following datasets were used for the transportation indicators considered.
                     ''',
@@ -203,7 +204,7 @@ def census_equity_explorer():
         filter_map = {'Equity Geographies only':{'data':epc[selected_category], 'geo': geo_epc}, 'All census tracts in selected region':{'data':df[selected_category], 'geo': geo_df}}
         radio_data = st.radio('Filter map for:', filter_map.keys(), key='transportation')
 
-        visualization.make_transport_census_map(filter_map[radio_data]['geo'], filter_map[radio_data]['data'], feature, show_transit=False)
+        visualization.make_transport_census_map(filter_map[radio_data]['geo'], filter_map[radio_data]['data'], feature, False)
 
         epc[selected_category].drop(['geom'], inplace=True, axis=1)
         df[selected_category].drop(['geom'], inplace=True, axis=1)
@@ -214,17 +215,17 @@ def census_equity_explorer():
         st.markdown("""---""")
 
         st.write('''
-                ### Create Transportation Vulnerability Index
+                ### Create Equity Vulnerability Index
                 
-                Create a framework to identify a subset of the Equity Geographies where there may be a gap in access to transit.
+                Create a framework to identify Equity Geographies that are most at risk with regard to demographics, transportation access, and natural hazard risk.
                 
-                #### Customize the Transportation Vulnerability Index              
+                ## Customize the index           
                 ''')
 
         selected_indicators = st.multiselect('Select which indicators to use in the Transportation Vulnerability Index',
                                              queries.TRANSPORT_CENSUS_HEADERS+queries.CLIMATE_CENSUS_HEADERS,
                                              default=['Zero-Vehicle Households (%)', 'Vehicle Miles Traveled',
-                                                      'People of Color (%)', 'No Computer Households (%)']
+                                                      'People of Color (%)', 'Riverine Flooding Risk Score']
                                              )
 
         st.write('''Select weights for each of the selected indicators. Ensure the sum of the weights is 100%.''')
@@ -254,7 +255,8 @@ def census_equity_explorer():
         st.write('''### Transportation Vulnerability Index''')
         st.caption('Equity geographies are sorted based on each of the transportation vulnerability index values')
 
-        combined_normalized_data = normalized_data['Transportation'].merge(normalized_data['Climate'],how='outer', on='Census Tract')
+        combined_normalized_data = normalized_data['Transportation'].merge(normalized_data['Climate'],how='outer', on='Census Tract', suffixes=('', '_DROP')).filter(
+            regex='^(?!.*_DROP)')
         combined_normalized_data = combined_normalized_data.melt('Census Tract', selected_indicators, 'Indicators')
         combined_normalized_data.rename({'value': 'Index Value'}, axis=1, inplace=True)
         combined_normalized_data['Index Value'] = combined_normalized_data['Indicators'].apply(lambda x: index_value[x]) * \
@@ -271,21 +273,22 @@ def census_equity_explorer():
                                )[0]
 
         selected = transport_index.head(num_tracts).reset_index()
-        combined_epc = epc['Transportation'].merge(epc['Climate'],how='outer', on='Census Tract', suffixes=['_transport', '_climate'])
+        combined_epc = epc['Transportation'].merge(epc['Climate'],how='outer', on='Census Tract', suffixes=('', '_DROP')).filter(
+            regex='^(?!.*_DROP)')
         selected_tracts = combined_epc.copy().loc[combined_epc['Census Tract'].isin(selected['Census Tract'])]
         selected_tracts['value'] = selected_tracts['Census Tract'].apply(lambda x: transport_index.loc[x])
         selected_geo = geo_epc.copy().loc[geo_epc['Census Tract'].isin(selected['Census Tract'])]
         selected_geo['Index Value'] = selected_geo['Census Tract'].apply(lambda x: round(transport_index.loc[x]))
-        st.write(selected_tracts.columns)
         selected_geo_copy = selected_geo.copy()
         selected_tracts_copy = selected_tracts.copy()
-        visualization.make_transport_census_map(selected_geo, selected_tracts, 'Index Value', show_transit=False)
+        visualization.make_transport_census_map(selected_geo, selected_tracts, 'Index Value', False)
         
         st.write('''
                 #### How are these Equity Geographies most vulnerable?            
                 ''')
         st.caption('Select a census tract from the list below to investigate relative transit access and demand.')
-        df = transport_df.merge(climate_df,how='outer', on='Census Tract', suffixes=['_transport', '_climate'])
+        df = df['Transportation'].merge(df['Climate'], on='Census Tract', suffixes=('', '_DROP')).filter(
+            regex='^(?!.*_DROP)')
         df.set_index('Census Tract', inplace=True)
         selected_tract = st.selectbox('Census Tract ID', selected_tracts['Census Tract'])
         averages = {**averages['Transportation'], **averages['Climate']}
