@@ -86,7 +86,6 @@ def convert_geom(geo_df: pd.DataFrame, data_df: pd.DataFrame, map_features: list
             regex='^(?!.*_DROP)')
     # geo_df.fillna(0,inplace=True)
     geo_df['geom'] = geo_df.apply(lambda row: row['geom'].buffer(0), axis=1)
-    st.write(geo_df.apply(lambda row: gpd.GeoSeries(row['geom']).__geo_interface__, axis=1))
     geo_df['coordinates'] = geo_df.apply(lambda row: gpd.GeoSeries(row['geom']).__geo_interface__, axis=1)
     geo_df['coordinates'] = geo_df.apply(lambda row: convert_coordinates(row), axis=1)
     geojson = make_geojson(geo_df, map_features)

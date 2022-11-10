@@ -520,7 +520,7 @@ def make_transport_census_chart(df: pd.DataFrame, average: dict, feature: str):
         bar = alt.Chart(df) \
             .mark_bar() \
             .encode(x=alt.X('Census Tract:O', axis=alt.Axis(labels=False), title='Census Tracts', sort='y'),
-                    y=alt.Y(feature + ':Q', title='Households(%)'),
+                    y=alt.Y(feature + ':Q', title=feature),
                     tooltip=['Census Tract', feature]) \
             .interactive()
 
