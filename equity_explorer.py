@@ -260,7 +260,7 @@ def census_equity_explorer():
 
         selected_indicators = st.multiselect('Select which indicators to use in the Transportation Vulnerability Index',
                                              queries.TRANSPORT_CENSUS_HEADERS+queries.CLIMATE_CENSUS_HEADERS,
-                                             default=['Zero-Vehicle Households (%)', 'Vehicle Miles Traveled',
+                                             default=['Zero-Vehicle Households (%)', 'Average Commute Time (min)',
                                                       'People of Color (%)', 'Coastal Flooding Risk Score']
                                              )
 
