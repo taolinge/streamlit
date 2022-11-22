@@ -203,9 +203,15 @@ def census_equity_explorer():
         
         st.write('##### What areas score highest?')
         filter_map = {'Equity Geographies only':{'data':epc[selected_category], 'geo': geo_epc}, 'All census tracts in selected region':{'data':df[selected_category], 'geo': geo_df}}
-        radio_data = st.radio('Filter map for:', filter_map.keys(), key='transportation')
-
-        visualization.make_transport_census_map(filter_map[radio_data]['geo'], filter_map[radio_data]['data'], feature, False)
+        col1, col2 = st.columns([1,1])
+        with col1:
+            radio_data = st.radio('Filter map for:', filter_map.keys(), key='transportation')
+        with col2:
+            st.write('')
+            st.write('')
+            show_transit = st.checkbox('Show transit stops in Equity Geographies', False)
+        
+        visualization.make_transport_census_map(filter_map[radio_data]['geo'], filter_map[radio_data]['data'], feature, show_transit, filter_map['Equity Geographies only']['data'])
 
         epc[selected_category].drop(['geom'], inplace=True, axis=1)
         df[selected_category].drop(['geom'], inplace=True, axis=1)
@@ -254,7 +260,7 @@ def census_equity_explorer():
 
         selected_indicators = st.multiselect('Select which indicators to use in the Transportation Vulnerability Index',
                                              queries.TRANSPORT_CENSUS_HEADERS+queries.CLIMATE_CENSUS_HEADERS,
-                                             default=['Zero-Vehicle Households (%)', 'Vehicle Miles Traveled',
+                                             default=['Zero-Vehicle Households (%)', 'Average Commute Time (min)',
                                                       'People of Color (%)', 'Coastal Flooding Risk Score']
                                              )
 
@@ -312,7 +318,7 @@ def census_equity_explorer():
         selected_geo['Index Value'] = selected_geo['Census Tract'].apply(lambda x: round(transport_index.loc[x]))
         selected_geo_copy = selected_geo.copy()
         selected_tracts_copy = selected_tracts.copy()
-        visualization.make_transport_census_map(selected_geo, selected_tracts, 'Index Value', False)
+        visualization.make_transport_census_map(selected_geo, selected_tracts, 'Index Value', False, selected_tracts)
         
         with st.expander('Download data at the census tract level'):
             st.caption('Values for selected indicators are shown for the census tracts with the highest index values')
