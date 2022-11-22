@@ -341,7 +341,7 @@ def make_equity_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: 
     st.pydeck_chart(r)
 
 
-def make_transport_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str, show_transit: bool):
+def make_transport_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_feature: str, show_transit: bool, tracts_for_transit: pd.DataFrame):
     subset = ['State', 'County Name', 'geom','Census Tract']
     if 'Census Tract' in geo_df.columns:
         geo_df.reset_index(inplace=True)
@@ -414,7 +414,7 @@ def make_transport_census_map(geo_df: pd.DataFrame, df: pd.DataFrame, map_featur
         )
         layers = [polygon_layer]
 
-        transit_layers = make_transit_layers(tract_df=df)
+        transit_layers = make_transit_layers(tracts_for_transit)
         layers += transit_layers
         tooltip = {
             "html": "<b>Description: </b>{route_long_name}</br>" +
@@ -617,7 +617,7 @@ def make_transit_layers(tract_df: pd.DataFrame, pickable: bool = True):
     NTM_stops.drop_duplicates(subset=['geom'])
 
     if NTM_shapes.empty:
-        st.write("Transit lines have not been identified in this region.")
+        st.write("Transit lines have not been identified for Equity Geographies in this region.")
         line_layer = None
     else:
         NTM_shapes['path'] = NTM_shapes['geom'].apply(utils.coord_extractor)
@@ -629,16 +629,17 @@ def make_transit_layers(tract_df: pd.DataFrame, pickable: bool = True):
         NTM_shapes['color'] = NTM_shapes['route_type_text'].apply(lambda x: route_colors[x])
         NTM_shapes['alt_color'] = NTM_shapes['color'].apply(lambda x: "#%02x%02x%02x" % (x[0], x[1], x[2]))
 
-        bar = alt.Chart(
-            NTM_shapes[['length', 'route_type_text', 'alt_color', 'tract_id', 'route_long_name']]).mark_bar().encode(
-            y=alt.Y('route_type_text:O', title=None, axis=alt.Axis(labelFontWeight='bolder')),
-            # column=alt.Column('count(length):Q', title=None, bin=None), 
-            x=alt.X('tract_id:N', title='Census Tracts', axis=alt.Axis(orient='top', labelAngle=0)),
-            color=alt.Color('alt_color', scale=None),
-            tooltip=['tract_id']) \
-            .interactive()
+        # REMOVED LEGEND BECAUSE IT LOOKED BUSY
+        # bar = alt.Chart(
+        #     NTM_shapes[['length', 'route_type_text', 'alt_color', 'tract_id', 'route_long_name']]).mark_bar().encode(
+        #     y=alt.Y('route_type_text:O', title=None, axis=alt.Axis(labelFontWeight='bolder')),
+        #     # column=alt.Column('count(length):Q', title=None, bin=None), 
+        #     x=alt.X('tract_id:N', title='Census Tracts', axis=alt.Axis(orient='top', labelAngle=0)),
+        #     color=alt.Color('alt_color', scale=None),
+        #     tooltip=['tract_id']) \
+        #     .interactive()
 
-        st.altair_chart(bar, use_container_width=True)
+        # st.altair_chart(bar, use_container_width=True)
 
         line_layer = pdk.Layer(
             "PathLayer",
@@ -654,7 +655,7 @@ def make_transit_layers(tract_df: pd.DataFrame, pickable: bool = True):
         )
 
     if NTM_stops.empty:
-        st.write("Transit stops have not been identified in this region.")
+        st.write("Transit stops have not been identified for Equity Geographies in this region.")
         stop_layer = None
     else:
         stop_layer = pdk.Layer(
@@ -662,7 +663,7 @@ def make_transit_layers(tract_df: pd.DataFrame, pickable: bool = True):
             NTM_stops,
             get_position=['stop_lon', 'stop_lat'],
             auto_highlight=pickable,
-            pickable=pickable,
+            pickable=False,
             get_radius=36,
             get_fill_color=[255, 140, 0],
         )
