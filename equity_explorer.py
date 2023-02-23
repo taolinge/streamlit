@@ -88,25 +88,29 @@ def census_equity_explorer():
             options=['Low', 'Medium', 'High'])
         coeff = {'Low': 0.5, 'Medium': 1, 'High': 1.5}
 
-        equity_df, total_census_tracts, concentration_thresholds, equity_averages, equity_epc_averages = queries.get_equity_geographies(
-            df, coeff[concentration])
+        try:
+            equity_df, total_census_tracts, concentration_thresholds, equity_averages, equity_epc_averages = queries.get_equity_geographies(
+                df, coeff[concentration])
 
-        geo_df = equity_df.copy()
-        geo_total = total_census_tracts.copy()
-        df_copy = equity_df.copy()
-        equity_df.drop(['geom'], inplace=True, axis=1)
-        total_census_tracts.drop(['geom'], inplace=True, axis=1)
-        geo_df = geo_df[['geom', 'Census Tract']]
-        geo_total = geo_total[['geom', 'Census Tract']]
+            geo_df = equity_df.copy()
+            geo_total = total_census_tracts.copy()
+            df_copy = equity_df.copy()
+            equity_df.drop(['geom'], inplace=True, axis=1)
+            total_census_tracts.drop(['geom'], inplace=True, axis=1)
+            geo_df = geo_df[['geom', 'Census Tract']]
+            geo_total = geo_total[['geom', 'Census Tract']]
 
-        visualization.make_equity_census_map(geo_total, total_census_tracts, 'Criteria')
+            visualization.make_equity_census_map(geo_total, total_census_tracts, 'Criteria')
 
-        with st.expander('More on how concentrations are defined'):
-            st.write('''
-                    Equity geographies are compared against concentration thresholds as defined below.
-                    ''')
-            st.caption('*concentration threshold = average + (standard deviation x coefficient)*')
-            st.write('Coefficients default to be 0.5. Coefficients can be increased to 1 or 1.5 to narrow the search.')
+            with st.expander('More on how concentrations are defined'):
+                st.write('''
+                        Equity geographies are compared against concentration thresholds as defined below.
+                        ''')
+                st.caption('*concentration threshold = average + (standard deviation x coefficient)*')
+                st.write('Coefficients default to be 0.5. Coefficients can be increased to 1 or 1.5 to narrow the search.')
+        except:
+            st.error('Equity Geographies cannot be shown for this geography at this time. Please select a different region.')
+            st.stop()
             
 ################################################################################
         st.markdown("""---""")
@@ -142,112 +146,114 @@ def census_equity_explorer():
         #     st.dataframe(df[filter_data].reset_index(drop=True))
         #     st.download_button('Download selected data', utils.to_excel(df[filter_data]),
         #                        file_name=f'{state}_{filter_level}.xlsx')
-        
-        tables = queries.TRANSPORT_CENSUS_TABLES
-        tables = [_.strip().lower() for _ in tables]
-        tables.sort()
+        try:
+            tables = queries.TRANSPORT_CENSUS_TABLES
+            tables = [_.strip().lower() for _ in tables]
+            tables.sort()
 
-        if len(tables) > 0 and len(counties) > 0:
-            try:
-                if 'All' in counties:
-                    transport_df = queries.latest_data_census_tracts(state, county_list, tables)
-                else:
-                    transport_df = queries.latest_data_census_tracts(state, counties, tables)
-            except:
-                transport_df = pd.DataFrame()
+            if len(tables) > 0 and len(counties) > 0:
+                try:
+                    if 'All' in counties:
+                        transport_df = queries.latest_data_census_tracts(state, county_list, tables)
+                    else:
+                        transport_df = queries.latest_data_census_tracts(state, counties, tables)
+                except:
+                    transport_df = pd.DataFrame()
 
-        transport_df = transport_df.loc[:, ~transport_df.columns.duplicated()]
-        if 'state_name' in transport_df.columns:
-            transport_df['State'] = transport_df['state_name']
-        if 'county_name' in transport_df.columns:
-            transport_df['County Name'] = transport_df['county_name']
-        transport_df.set_index(['State', 'County Name'], drop=True, inplace=True)
+            transport_df = transport_df.loc[:, ~transport_df.columns.duplicated()]
+            if 'state_name' in transport_df.columns:
+                transport_df['State'] = transport_df['state_name']
+            if 'county_name' in transport_df.columns:
+                transport_df['County Name'] = transport_df['county_name']
+            transport_df.set_index(['State', 'County Name'], drop=True, inplace=True)
 
-        epc = {'Demographic Factors': df_copy}
-        df = {'Demographic Factors': geo_total}
-        normalized_data = {}
-        averages = {'Demographic Factors': equity_averages}
-        epc_averages = {'Demographic Factors': equity_epc_averages}
-        
-        epc['Transportation'], df['Transportation'], normalized_data['Transportation'], averages['Transportation'], epc_averages['Transportation'] = queries.clean_transport_data(transport_df, df_copy)
-
-        geo_df = df['Transportation'].copy()[['geom', 'Census Tract']]
-        geo_epc = epc['Transportation'].copy()[['geom', 'Census Tract']]
-        
-        tables = queries.CLIMATE_CENSUS_TABLES
-        tables = [_.strip().lower() for _ in tables]
-        tables.sort()
-
-        if len(tables) > 0 and len(counties) > 0:
-            try:
-                if 'All' in counties:
-                    climate_df = queries.latest_data_census_tracts(state, county_list, tables)
-                else:
-                    climate_df = queries.latest_data_census_tracts(state, counties, tables)
-            except:
-                climate_df = pd.DataFrame()
-        climate_df = climate_df.loc[:, ~climate_df.columns.duplicated()]
-        if 'state_name' in climate_df.columns:
-            climate_df['State'] = climate_df['state_name']
-        if 'county_name' in climate_df.columns:
-            climate_df['County Name'] = climate_df['county_name']
-        climate_df.set_index(['State', 'County Name'], drop=True, inplace=True)
-
-        epc['Climate'], df['Climate'], normalized_data['Climate'], averages['Climate'], epc_averages['Climate'] = queries.clean_climate_data(climate_df, df_copy)
-
-        # deep-dive visualizations
-        st.write('')
-        st.write(f'### {feature}')
-        st.write('##### How does the county-wide average compare to the Equity Geography average?')
-        visualization.make_horizontal_bar_chart(averages[selected_category], epc_averages[selected_category], feature)
-        
-        st.write('##### What areas score highest?')
-        filter_map = {'Equity Geographies only':{'data':epc[selected_category], 'geo': geo_epc}, 'All census tracts in selected region':{'data':df[selected_category], 'geo': geo_df}}
-        col1, col2 = st.columns([1,1])
-        with col1:
-            radio_data = st.radio('Filter map for:', filter_map.keys(), key='transportation')
-        with col2:
-            st.write('')
-            st.write('')
-            show_transit = st.checkbox('Show transit stops in Equity Geographies', False)
-        
-        visualization.make_transport_census_map(filter_map[radio_data]['geo'], filter_map[radio_data]['data'], feature, show_transit, filter_map['Equity Geographies only']['data'])
-
-        epc[selected_category].drop(['geom'], inplace=True, axis=1)
-        df[selected_category].drop(['geom'], inplace=True, axis=1)
-        st.write(f'##### How large is the disparity?')
-
-        visualization.make_transport_census_chart(epc[selected_category], averages[selected_category], feature)
-        
-        with st.expander('Drill down to census-tract level data', expanded=False):
-            st.caption('Select a census tract from the list below to investigate demographic, transportation, and climate risk data.')
-            df = df['Transportation'].merge(df['Climate'], on='Census Tract', suffixes=('', '_DROP')).filter(
-                regex='^(?!.*_DROP)')
-            df.set_index('Census Tract', inplace=True)
-            selected_tract = st.selectbox('Census Tract ID', df.index.unique()) #selected_tracts['Census Tract]
-            averages = {**averages['Transportation'], **averages['Climate']}
+            epc = {'Demographic Factors': df_copy}
+            df = {'Demographic Factors': geo_total}
+            normalized_data = {}
+            averages = {'Demographic Factors': equity_averages}
+            epc_averages = {'Demographic Factors': equity_epc_averages}
             
-            col1, col2, col3 = st.columns(3)
+            epc['Transportation'], df['Transportation'], normalized_data['Transportation'], averages['Transportation'], epc_averages['Transportation'] = queries.clean_transport_data(transport_df, df_copy)
+
+            geo_df = df['Transportation'].copy()[['geom', 'Census Tract']]
+            geo_epc = epc['Transportation'].copy()[['geom', 'Census Tract']]
+            
+            tables = queries.CLIMATE_CENSUS_TABLES
+            tables = [_.strip().lower() for _ in tables]
+            tables.sort()
+
+            if len(tables) > 0 and len(counties) > 0:
+                try:
+                    if 'All' in counties:
+                        climate_df = queries.latest_data_census_tracts(state, county_list, tables)
+                    else:
+                        climate_df = queries.latest_data_census_tracts(state, counties, tables)
+                except:
+                    climate_df = pd.DataFrame()
+            climate_df = climate_df.loc[:, ~climate_df.columns.duplicated()]
+            if 'state_name' in climate_df.columns:
+                climate_df['State'] = climate_df['state_name']
+            if 'county_name' in climate_df.columns:
+                climate_df['County Name'] = climate_df['county_name']
+            climate_df.set_index(['State', 'County Name'], drop=True, inplace=True)
+
+            epc['Climate'], df['Climate'], normalized_data['Climate'], averages['Climate'], epc_averages['Climate'] = queries.clean_climate_data(climate_df, df_copy)
+
+            # deep-dive visualizations
+            st.write('')
+            st.write(f'### {feature}')
+            st.write('##### How does the county-wide average compare to the Equity Geography average?')
+            visualization.make_horizontal_bar_chart(averages[selected_category], epc_averages[selected_category], feature)
+            
+            st.write('##### What areas score highest?')
+            filter_map = {'Equity Geographies only':{'data':epc[selected_category], 'geo': geo_epc}, 'All census tracts in selected region':{'data':df[selected_category], 'geo': geo_df}}
+            col1, col2 = st.columns([1,1])
             with col1:
-                for header in queries.TRANSPORT_CENSUS_HEADERS[(int(len(queries.TRANSPORT_CENSUS_HEADERS) / 2)):]:
-                    st.metric(header,
-                            value=str(round(df.loc[selected_tract, header], 1)) + queries.TABLE_UNITS[header],
-                            delta=str(round(df.loc[selected_tract, header] - averages[header], 1)) +
-                                    queries.TABLE_UNITS[header] + ' from county average')
+                radio_data = st.radio('Filter map for:', filter_map.keys(), key='transportation')
             with col2:
-                for header in queries.TRANSPORT_CENSUS_HEADERS[:(int(len(queries.TRANSPORT_CENSUS_HEADERS) / 2))]:
-                    st.metric(header,
-                            value=str(round(df.loc[selected_tract, header], 1)) + queries.TABLE_UNITS[header],
-                            delta=str(round(df.loc[selected_tract, header] - averages[header], 1)) +
-                                    queries.TABLE_UNITS[header] + ' from county average')
-            with col3:
-                for header in queries.CLIMATE_CENSUS_HEADERS:
-                    st.metric(header,
-                            value=str(round(df.loc[selected_tract, header], 1)) + queries.TABLE_UNITS[header],
-                            delta=str(round(df.loc[selected_tract, header] - averages[header], 1)) +
-                                    queries.TABLE_UNITS[header] + ' from county average')
+                st.write('')
+                st.write('')
+                show_transit = st.checkbox('Show transit stops in Equity Geographies', False)
+            
+            visualization.make_transport_census_map(filter_map[radio_data]['geo'], filter_map[radio_data]['data'], feature, show_transit, filter_map['Equity Geographies only']['data'])
+
+            epc[selected_category].drop(['geom'], inplace=True, axis=1)
+            df[selected_category].drop(['geom'], inplace=True, axis=1)
+            st.write(f'##### How large is the disparity?')
+
+            visualization.make_transport_census_chart(epc[selected_category], averages[selected_category], feature)
+            
+            with st.expander('Drill down to census-tract level data', expanded=False):
+                st.caption('Select a census tract from the list below to investigate demographic, transportation, and climate risk data.')
+                df = df['Transportation'].merge(df['Climate'], on='Census Tract', suffixes=('', '_DROP')).filter(
+                    regex='^(?!.*_DROP)')
+                df.set_index('Census Tract', inplace=True)
+                selected_tract = st.selectbox('Census Tract ID', df.index.unique()) #selected_tracts['Census Tract]
+                averages = {**averages['Transportation'], **averages['Climate']}
                 
-        
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    for header in queries.TRANSPORT_CENSUS_HEADERS[(int(len(queries.TRANSPORT_CENSUS_HEADERS) / 2)):]:
+                        st.metric(header,
+                                value=str(round(df.loc[selected_tract, header], 1)) + queries.TABLE_UNITS[header],
+                                delta=str(round(df.loc[selected_tract, header] - averages[header], 1)) +
+                                        queries.TABLE_UNITS[header] + ' from county average')
+                with col2:
+                    for header in queries.TRANSPORT_CENSUS_HEADERS[:(int(len(queries.TRANSPORT_CENSUS_HEADERS) / 2))]:
+                        st.metric(header,
+                                value=str(round(df.loc[selected_tract, header], 1)) + queries.TABLE_UNITS[header],
+                                delta=str(round(df.loc[selected_tract, header] - averages[header], 1)) +
+                                        queries.TABLE_UNITS[header] + ' from county average')
+                with col3:
+                    for header in queries.CLIMATE_CENSUS_HEADERS:
+                        st.metric(header,
+                                value=str(round(df.loc[selected_tract, header], 1)) + queries.TABLE_UNITS[header],
+                                delta=str(round(df.loc[selected_tract, header] - averages[header], 1)) +
+                                        queries.TABLE_UNITS[header] + ' from county average')
+        except:
+            st.error('Equity and vulnerability indicators cannot be shown for this geography at this time. Please select a different region.')
+            st.stop()  
+            
         st.markdown("""---""")
 
         st.write('''
@@ -288,45 +294,50 @@ def census_equity_explorer():
         if sum(index_value.values()) > 101 or sum(index_value.values()) < 99:
             st.error("Weights must sum to 100")
 
-        st.write('')
-        st.write('''##### Equity Vulnerability Index''')
-        st.caption('Equity geographies are sorted based on each of the equity vulnerability index values')
+        try:
+            st.write('')
+            st.write('''##### Equity Vulnerability Index''')
+            st.caption('Equity geographies are sorted based on each of the equity vulnerability index values')
 
-        combined_normalized_data = normalized_data['Transportation'].merge(normalized_data['Climate'],how='outer', on='Census Tract', suffixes=('', '_DROP')).filter(
-            regex='^(?!.*_DROP)')
-        combined_normalized_data = combined_normalized_data.melt('Census Tract', selected_indicators, 'Indicators')
-        combined_normalized_data.rename({'value': 'Index Value'}, axis=1, inplace=True)
-        combined_normalized_data['Index Value'] = combined_normalized_data['Indicators'].apply(lambda x: index_value[x]) * \
-                                         combined_normalized_data['Index Value']
-        transport_index = combined_normalized_data.groupby(['Census Tract'])['Index Value'].sum()
-        visualization.make_stacked(combined_normalized_data)
+            combined_normalized_data = normalized_data['Transportation'].merge(normalized_data['Climate'],how='outer', on='Census Tract', suffixes=('', '_DROP')).filter(
+                regex='^(?!.*_DROP)')
+            combined_normalized_data = combined_normalized_data.melt('Census Tract', selected_indicators, 'Indicators')
+            combined_normalized_data.rename({'value': 'Index Value'}, axis=1, inplace=True)
+            combined_normalized_data['Index Value'] = combined_normalized_data['Indicators'].apply(lambda x: index_value[x]) * \
+                                            combined_normalized_data['Index Value']
+            transport_index = combined_normalized_data.groupby(['Census Tract'])['Index Value'].sum()
+            visualization.make_stacked(combined_normalized_data)
 
-        transport_index.sort_values(ascending=False, inplace=True)
+            transport_index.sort_values(ascending=False, inplace=True)
 
-        st.write('##### Locate the census tracts with the highest index values')
-        num_tracts = st.slider('Select number of census tracts to view',
-                               min_value=1, max_value=len(transport_index),
-                               value=[5 if 5 < len(transport_index) else len(transport_index)]
-                               )[0]
+            st.write('##### Locate the census tracts with the highest index values')
+            num_tracts = st.slider('Select number of census tracts to view',
+                                min_value=1, max_value=len(transport_index),
+                                value=[5 if 5 < len(transport_index) else len(transport_index)]
+                                )[0]
 
-        selected = transport_index.head(num_tracts).reset_index()
-        combined_epc = epc['Transportation'].merge(epc['Climate'],how='outer', on='Census Tract', suffixes=('', '_DROP')).filter(
-            regex='^(?!.*_DROP)')
-        selected_tracts = combined_epc.copy().loc[combined_epc['Census Tract'].isin(selected['Census Tract'])]
-        selected_tracts['value'] = selected_tracts['Census Tract'].apply(lambda x: transport_index.loc[x])
-        selected_geo = geo_epc.copy().loc[geo_epc['Census Tract'].isin(selected['Census Tract'])]
-        selected_geo['Index Value'] = selected_geo['Census Tract'].apply(lambda x: round(transport_index.loc[x]))
-        selected_geo_copy = selected_geo.copy()
-        selected_tracts_copy = selected_tracts.copy()
-        visualization.make_transport_census_map(selected_geo, selected_tracts, 'Index Value', False, selected_tracts)
-        
-        with st.expander('Download data at the census tract level'):
-            st.caption('Values for selected indicators are shown for the census tracts with the highest index values')
-            selected_tracts_df = df.loc[(df.index).isin(selected['Census Tract'])][
-                queries.TRANSPORT_CENSUS_HEADERS + queries.POSITIVE_TRANSPORT_CENSUS_HEADERS]
-            st.dataframe(selected_tracts_df)
-            st.download_button('Download', utils.to_excel(selected_tracts_df),
-                               file_name=f'{state}_selected_transport_data.xlsx')
+            selected = transport_index.head(num_tracts).reset_index()
+            combined_epc = epc['Transportation'].merge(epc['Climate'],how='outer', on='Census Tract', suffixes=('', '_DROP')).filter(
+                regex='^(?!.*_DROP)')
+            selected_tracts = combined_epc.copy().loc[combined_epc['Census Tract'].isin(selected['Census Tract'])]
+            selected_tracts['value'] = selected_tracts['Census Tract'].apply(lambda x: transport_index.loc[x])
+            selected_geo = geo_epc.copy().loc[geo_epc['Census Tract'].isin(selected['Census Tract'])]
+            selected_geo['Index Value'] = selected_geo['Census Tract'].apply(lambda x: round(transport_index.loc[x]))
+            selected_geo_copy = selected_geo.copy()
+            selected_tracts_copy = selected_tracts.copy()
+            visualization.make_transport_census_map(selected_geo, selected_tracts, 'Index Value', False, selected_tracts)
+            
+            with st.expander('Download data at the census tract level'):
+                st.caption('Values for selected indicators are shown for the census tracts with the highest index values')
+                selected_tracts_df = df.loc[(df.index).isin(selected['Census Tract'])][
+                    queries.TRANSPORT_CENSUS_HEADERS + queries.POSITIVE_TRANSPORT_CENSUS_HEADERS]
+                st.dataframe(selected_tracts_df)
+                st.download_button('Download', utils.to_excel(selected_tracts_df),
+                                file_name=f'{state}_selected_transport_data.xlsx')
+   
+        except:
+            st.error('Equity Vulnerability Index cannot be shown for this geography at this time. Please select a different region.')
+            st.stop()
         
        # EXPLORE OPTIONS TO ADD RASTER FLOODMAP DATA
         # st.markdown("""---""")

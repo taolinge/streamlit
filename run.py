@@ -172,7 +172,12 @@ def run_UI():
             
             Please note that this tool is a work in progress. Contact us [here](mailto:shannon.nakamura@arup.com) or consider contributing to our [GitHub](https://github.com/arup-group/social-data) repository with any suggestions or questions.     
         """)
-        equity_explorer.census_equity_explorer()
+        try:
+            equity_explorer.census_equity_explorer()
+        except:
+            st.error('Equity Explorer is currently under construction. Come back soon!')
+            st.stop()
+
     else:
         st.sidebar.write("""
             ## About
@@ -209,7 +214,7 @@ if __name__ == '__main__':
 
             st.session_state.page = PAGES.index(url_params['page'][0])
             st.session_state['data_type'] = 'County Level'
-            st.session_state['data_format'] = 'Raw Values'
+            st.session_state['data_format'  ] = 'Raw Values'
             st.session_state['loaded'] = False
 
         run_UI()
