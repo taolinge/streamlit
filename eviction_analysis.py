@@ -190,8 +190,8 @@ def eviction_UI():
             ranks = relative_risk_ranking(natl_df, 'National')
             eviction_visualizations(ranks, 'National')
     except:
-            st.error('Data cannot be shown for this geography at this time. Please select a different region.')
-            st.stop()
+        st.error('Data cannot be shown for this geography at this time. Please select a different region.')
+        st.stop()
 
 
 def eviction_visualizations(df: pd.DataFrame, state: str = None):
