@@ -39,52 +39,88 @@ def eviction_UI():
                         ['Single County', 'Multiple Counties', 'State', 'National'], 1)
     metro_areas, locations = queries.load_distributions()
 
-    if task == 'Single County' or task == '':
-        res = st.text_input('Enter the county and state (ie: Jefferson County, Colorado):')
-        if res:
-            res = res.strip().split(',')
-            county = res[0].strip()
-            state = res[1].strip()
-            if county and state:
-                df = queries.get_county_data(state, [county])
+    try:
+        if task == 'Single County' or task == '':
+            res = st.text_input('Enter the county and state (ie: Jefferson County, Colorado):')
+            if res:
+                res = res.strip().split(',')
+                county = res[0].strip()
+                state = res[1].strip()
+                if county and state:
+                    df = queries.get_county_data(state, [county])
+                    if st.checkbox('Show raw data'):
+                        st.subheader('Raw Data')
+                        st.dataframe(df)
+                        st.download_button('Download raw data', utils.to_excel(df), file_name=f'{county}_data.xlsx')
+
+                    with st.expander('Cost to avoid evictions'):
+                        st.write("""
+                                The cost to avoid evictions is defined as the cost to a municipality or other entity if it was to pay 
+                                people's rent directly. In this calculation, we assume a distribution of housing stock (0 bedroom to 4+ bedroom)
+                                based on Census data. You can select which distribution to use that is most similar to the community that you're analyzing. 
+
+                                We default to using Fair Market Rents for this calculation, but you can use the Median value as well. 
+
+                                We also assume that only the burdened population is being considered for support, but not every burdened 
+                                person will receive support. You can adjust the percentage of the burdened population to consider.
+
+                                The reported value is the *monthly cost* to an entity to support the chosen housing distribution, rent type, and percent of the burdened population. 
+
+                                This is only an estimate, and should not be used for detailed planning or policy making.
+                                """)
+
+                    if st.checkbox('Do cost to avoid eviction analysis?'):
+                        evictions_cost_df = cost_of_evictions(df, metro_areas, locations)
+                        st.download_button('Download cost data', utils.to_excel(evictions_cost_df),
+                                        file_name=f'{county}_cost_data.xlsx')
+
+                else:
+                    st.error('Enter a valid county and state, separated by a comma')
+                    st.stop()
+
+        elif task == 'Multiple Counties':
+            state = st.selectbox("Select a state", STATES).strip()
+            county_list = queries.all_counties_query()
+            county_list = county_list[county_list['state_name'] == state]['county_name'].to_list()
+            counties = st.multiselect('Please specify one or more counties', county_list)
+            counties = [_.strip().lower() for _ in counties]
+            if len(counties) > 0:
+                df = queries.get_county_data(state, counties)
+
                 if st.checkbox('Show raw data'):
                     st.subheader('Raw Data')
                     st.dataframe(df)
-                    st.download_button('Download raw data', utils.to_excel(df), file_name=f'{county}_data.xlsx')
+                    st.download_button('Download raw data', utils.to_excel(df), file_name=f'{state}_data.xlsx')
 
                 with st.expander('Cost to avoid evictions'):
                     st.write("""
                             The cost to avoid evictions is defined as the cost to a municipality or other entity if it was to pay 
                             people's rent directly. In this calculation, we assume a distribution of housing stock (0 bedroom to 4+ bedroom)
-                             based on Census data. You can select which distribution to use that is most similar to the community that you're analyzing. 
+                            based on Census data. You can select which distribution to use that is most similar to the community that you're analyzing. 
 
-                             We default to using Fair Market Rents for this calculation, but you can use the Median value as well. 
+                            We default to using Fair Market Rents for this calculation, but you can use the Median value as well. 
 
-                             We also assume that only the burdened population is being considered for support, but not every burdened 
-                             person will receive support. You can adjust the percentage of the burdened population to consider.
+                            We also assume that only the burdened population is being considered for support, but not every burdened 
+                            person will receive support. You can adjust the percentage of the burdened population to consider.
 
-                             The reported value is the *monthly cost* to an entity to support the chosen housing distribution, rent type, and percent of the burdened population. 
+                            The reported value is the *monthly cost* to an entity to support the chosen housing distribution, rent type, and percent of the burdened population. 
 
-                             This is only an estimate, and should not be used for detailed planning or policy making.
+                            This is only an estimate, and should not be used for detailed planning or policy making.
                             """)
 
                 if st.checkbox('Do cost to avoid eviction analysis?'):
                     evictions_cost_df = cost_of_evictions(df, metro_areas, locations)
                     st.download_button('Download cost data', utils.to_excel(evictions_cost_df),
-                                       file_name=f'{county}_cost_data.xlsx')
+                                    file_name=f'{state}_cost_data.xlsx')
 
+                ranks = relative_risk_ranking(df, state)
+                eviction_visualizations(ranks, state)
             else:
-                st.error('Enter a valid county and state, separated by a comma')
+                st.error('Select counties to analyze')
                 st.stop()
-
-    elif task == 'Multiple Counties':
-        state = st.selectbox("Select a state", STATES).strip()
-        county_list = queries.all_counties_query()
-        county_list = county_list[county_list['state_name'] == state]['county_name'].to_list()
-        counties = st.multiselect('Please specify one or more counties', county_list)
-        counties = [_.strip().lower() for _ in counties]
-        if len(counties) > 0:
-            df = queries.get_county_data(state, counties)
+        elif task == 'State':
+            state = st.selectbox("Select a state", STATES).strip()
+            df = queries.get_county_data(state)
 
             if st.checkbox('Show raw data'):
                 st.subheader('Raw Data')
@@ -95,99 +131,67 @@ def eviction_UI():
                 st.write("""
                         The cost to avoid evictions is defined as the cost to a municipality or other entity if it was to pay 
                         people's rent directly. In this calculation, we assume a distribution of housing stock (0 bedroom to 4+ bedroom)
-                         based on Census data. You can select which distribution to use that is most similar to the community that you're analyzing. 
+                        based on Census data. You can select which distribution to use that is most similar to the community that you're analyzing. 
 
-                         We default to using Fair Market Rents for this calculation, but you can use the Median value as well. 
+                        We default to using Fair Market Rents for this calculation, but you can use the Median value as well. 
 
-                         We also assume that only the burdened population is being considered for support, but not every burdened 
-                         person will receive support. You can adjust the percentage of the burdened population to consider.
+                        We also assume that only the burdened population is being considered for support, but not every burdened 
+                        person will receive support. You can adjust the percentage of the burdened population to consider.
 
-                         The reported value is the *monthly cost* to an entity to support the chosen housing distribution, rent type, and percent of the burdened population. 
+                        The reported value is the *monthly cost* to an entity to support the chosen housing distribution, rent type, and percent of the burdened population. 
 
-                         This is only an estimate, and should not be used for detailed planning or policy making.
+                        This is only an estimate, and should not be used for detailed planning or policy making.
                         """)
 
             if st.checkbox('Do cost to avoid eviction analysis?'):
                 evictions_cost_df = cost_of_evictions(df, metro_areas, locations)
-                st.download_button('Download cost data', utils.to_excel(evictions_cost_df),
-                                   file_name=f'{state}_cost_data.xlsx')
+                st.download_button('Download raw data', utils.to_excel(evictions_cost_df),
+                                file_name=f'{state}_cost_data.xlsx')
 
             ranks = relative_risk_ranking(df, state)
             eviction_visualizations(ranks, state)
-        else:
-            st.error('Select counties to analyze')
+
+        elif task == 'National':
+            st.info('Analysis for every county in the US can take a while! Please wait...')
+            with st.expander("Caveats"):
+                st.write(
+                    "There are some counties that don't show up in this analysis because of how they are named or because data is missing. We are aware of this issue.")
+
+            frames = []
+            for state in STATES:
+                df = queries.get_county_data(state)
+                frames.append(df)
+            natl_df = pd.concat(frames)
+            if st.checkbox('Show raw data'):
+                st.subheader('Raw Data')
+                st.dataframe(natl_df)
+                st.download_button('Download raw data', utils.to_excel(natl_df), file_name=f'national_data.xlsx')
+            with st.expander('Cost to avoid evictions'):
+                st.write("""
+                        The cost to avoid evictions is defined as the cost to a municipality or other entity if it was to pay 
+                        people's rent directly. In this calculation, we assume a distribution of housing stock (0 bedroom to 4+ bedroom)
+                        based on Census data. You can select which distribution to use that is most similar to the community that you're analyzing. 
+
+                        We default to using Fair Market Rents for this calculation, but you can use the Median value as well. 
+
+                        We also assume that only the burdened population is being considered for support, but not every burdened 
+                        person will receive support. You can adjust the percentage of the burdened population to consider.
+
+                        The reported value is the *monthly cost* to an entity to support the chosen housing distribution, rent type, and percent of the burdened population. 
+
+                        This is only an estimate, and should not be used for detailed planning or policy making.
+                        """)
+
+            if st.checkbox('Do cost to avoid eviction analysis?'):
+                evictions_cost_df = cost_of_evictions(natl_df, metro_areas, locations)
+                st.download_button('Download cost data', utils.to_excel(evictions_cost_df),
+                                file_name=f'national_cost_data.xlsx')
+
+            ranks = relative_risk_ranking(natl_df, 'National')
+            eviction_visualizations(ranks, 'National')
+    except:
+            st.error('Data cannot be shown for this geography at this time. Please select a different region.')
             st.stop()
-    elif task == 'State':
-        state = st.selectbox("Select a state", STATES).strip()
-        df = queries.get_county_data(state)
-
-        if st.checkbox('Show raw data'):
-            st.subheader('Raw Data')
-            st.dataframe(df)
-            st.download_button('Download raw data', utils.to_excel(df), file_name=f'{state}_data.xlsx')
-
-        with st.expander('Cost to avoid evictions'):
-            st.write("""
-                    The cost to avoid evictions is defined as the cost to a municipality or other entity if it was to pay 
-                    people's rent directly. In this calculation, we assume a distribution of housing stock (0 bedroom to 4+ bedroom)
-                     based on Census data. You can select which distribution to use that is most similar to the community that you're analyzing. 
-
-                     We default to using Fair Market Rents for this calculation, but you can use the Median value as well. 
-
-                     We also assume that only the burdened population is being considered for support, but not every burdened 
-                     person will receive support. You can adjust the percentage of the burdened population to consider.
-
-                     The reported value is the *monthly cost* to an entity to support the chosen housing distribution, rent type, and percent of the burdened population. 
-
-                     This is only an estimate, and should not be used for detailed planning or policy making.
-                    """)
-
-        if st.checkbox('Do cost to avoid eviction analysis?'):
-            evictions_cost_df = cost_of_evictions(df, metro_areas, locations)
-            st.download_button('Download raw data', utils.to_excel(evictions_cost_df),
-                               file_name=f'{state}_cost_data.xlsx')
-
-        ranks = relative_risk_ranking(df, state)
-        eviction_visualizations(ranks, state)
-
-    elif task == 'National':
-        st.info('Analysis for every county in the US can take a while! Please wait...')
-        with st.expander("Caveats"):
-            st.write(
-                "There are some counties that don't show up in this analysis because of how they are named or because data is missing. We are aware of this issue.")
-
-        frames = []
-        for state in STATES:
-            df = queries.get_county_data(state)
-            frames.append(df)
-        natl_df = pd.concat(frames)
-        if st.checkbox('Show raw data'):
-            st.subheader('Raw Data')
-            st.dataframe(natl_df)
-            st.download_button('Download raw data', utils.to_excel(natl_df), file_name=f'national_data.xlsx')
-        with st.expander('Cost to avoid evictions'):
-            st.write("""
-                    The cost to avoid evictions is defined as the cost to a municipality or other entity if it was to pay 
-                    people's rent directly. In this calculation, we assume a distribution of housing stock (0 bedroom to 4+ bedroom)
-                     based on Census data. You can select which distribution to use that is most similar to the community that you're analyzing. 
-
-                     We default to using Fair Market Rents for this calculation, but you can use the Median value as well. 
-
-                     We also assume that only the burdened population is being considered for support, but not every burdened 
-                     person will receive support. You can adjust the percentage of the burdened population to consider.
-
-                     The reported value is the *monthly cost* to an entity to support the chosen housing distribution, rent type, and percent of the burdened population. 
-
-                     This is only an estimate, and should not be used for detailed planning or policy making.
-                    """)
-
-        if st.checkbox('Do cost to avoid eviction analysis?'):
-            evictions_cost_df = cost_of_evictions(natl_df, metro_areas, locations)
-            st.download_button('Download cost data', utils.to_excel(evictions_cost_df),
-                               file_name=f'national_cost_data.xlsx')
-
-        ranks = relative_risk_ranking(natl_df, 'National')
-        eviction_visualizations(ranks, 'National')
 
 
 def eviction_visualizations(df: pd.DataFrame, state: str = None):
