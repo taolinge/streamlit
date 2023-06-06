@@ -14,11 +14,7 @@ from constants import STATES
 pd.options.display.max_rows = 25
 pd.options.display.max_columns = 12
 pd.options.display.expand_frame_repr = True
-pd.options.display.large_repr = True
-# pd.set_option('max_rows', 25)
-# pd.set_option('max_columns', 12)
-# pd.set_option('expand_frame_repr', True)
-# pd.set_option('large_repr', 'truncate')
+pd.options.display.large_repr = 'truncate'
 pd.options.display.float_format = '{:.2f}'.format
 
 PAGES = [
